@@ -3,7 +3,7 @@ import Header from "../components/Header";
 import StatusCard from "../components/StatusCard";
 import { api } from "../services/api";
 import { appConfig } from "../constants";
-import "./HomePage.css";
+import "../styles/pages/HomePage.css";
 
 const HomePage = () => {
   const [message, setMessage] = useState("");
