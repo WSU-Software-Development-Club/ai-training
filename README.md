@@ -29,7 +29,7 @@ A simple web application with a React.js frontend and Flask backend, containeriz
 
 ### Prerequisites
 
-Before you begin, you'll need to install Docker Desktop on your machine:
+Before you begin, you'll need to install the following tools on your machine:
 
 #### Install Docker Desktop
 
@@ -37,6 +37,52 @@ Before you begin, you'll need to install Docker Desktop on your machine:
 
 - **Windows**: [Download Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
 - **Mac**: [Download Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+
+#### Install Python
+
+**Windows:**
+
+1. Go to [python.org/downloads](https://www.python.org/downloads/)
+2. Download the latest Python 3.x version
+3. Run the installer and **check "Add Python to PATH"**
+4. Verify installation:
+   ```cmd
+   python --version
+   ```
+
+**Mac:**
+
+1. Go to [python.org/downloads](https://www.python.org/downloads/)
+2. Download the latest Python 3.x version
+3. Run the installer
+4. Verify installation:
+   ```bash
+   python3 --version
+   ```
+
+#### Install Node.js
+
+**Windows:**
+
+1. Go to [nodejs.org](https://nodejs.org/)
+2. Download the LTS version (recommended)
+3. Run the installer
+4. Verify installation:
+   ```cmd
+   node --version
+   npm --version
+   ```
+
+**Mac:**
+
+1. Go to [nodejs.org](https://nodejs.org/)
+2. Download the LTS version (recommended)
+3. Run the installer
+4. Verify installation:
+   ```bash
+   node --version
+   npm --version
+   ```
 
 ### 1. Clone the Repository
 
@@ -146,6 +192,17 @@ npm start
 
 - Make sure Docker Desktop is installed and running
 - Restart Docker Desktop if it's not responding
+
+**Python not found:**
+
+- **Windows**: Make sure you checked "Add Python to PATH" during installation
+- **Mac**: Try using `python3` instead of `python`
+- Restart your terminal/command prompt after installation
+
+**Node.js not found:**
+
+- Restart your terminal/command prompt after installation
+- Try running `npm` commands from the project directory
 
 **Port already in use:**
 
