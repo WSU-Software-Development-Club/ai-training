@@ -207,6 +207,7 @@ npm start
 **Port already in use:**
 
 - Stop other applications using ports 3000 or 5000
+- Use environment variables to override ports (see below)
 - Or modify the ports in `docker-compose.yml`
 
 **Permission denied (Mac/Linux):**
@@ -218,6 +219,83 @@ sudo chown -R $USER:$USER .
 **Windows firewall:**
 
 - Allow Docker through Windows Firewall when prompted
+
+### Port Conflicts
+
+If ports 3000 or 5000 are already in use on your machine, you have several options:
+
+#### Option 1: Use Environment Variables (Recommended)
+
+Create a `.env` file in your project root:
+
+```bash
+# .env file
+BACKEND_PORT=5001
+FRONTEND_PORT=3001
+```
+
+Then run with environment variables:
+
+**Windows:**
+
+```cmd
+set BACKEND_PORT=5001 && set FRONTEND_PORT=3001 && docker-compose up --build
+```
+
+**Mac/Linux:**
+
+```bash
+BACKEND_PORT=5001 FRONTEND_PORT=3001 docker-compose up --build
+```
+
+#### Option 2: Use Different Ports in Docker Compose
+
+Run with port overrides:
+
+```bash
+docker-compose up --build -p 5001:5000 -p 3001:3000
+```
+
+#### Option 3: Find and Kill the Process Using the Port
+
+**Windows:**
+
+```cmd
+# Find what's using port 5000
+netstat -ano | findstr :5000
+
+# Kill the process (replace PID with actual process ID)
+taskkill /PID <PID> /F
+```
+
+**Mac/Linux:**
+
+```bash
+# Find what's using port 5000
+lsof -i :5000
+
+# Kill the process (replace PID with actual process ID)
+kill -9 <PID>
+```
+
+#### Option 4: Create a Local Override File
+
+Create `docker-compose.override.yml` (this file is automatically ignored by git):
+
+```yaml
+version: "3.8"
+
+services:
+  backend:
+    ports:
+      - "5001:5000"
+
+  frontend:
+    ports:
+      - "3001:3000"
+```
+
+Then just run: `docker-compose up --build`
 
 ### Stopping the Application
 
