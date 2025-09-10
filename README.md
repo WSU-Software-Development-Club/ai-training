@@ -106,13 +106,13 @@ Make sure Docker Desktop is running before proceeding. You should see the Docker
 
 ### 3. Run the Application
 
-**For development with hot reloading (extra dev feautres):**
+**For development with hot reloading (slower startup):**
 
 ```bash
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
-**Or use the regular compose file:**
+**Or use the regular compose file (faster startup):**
 
 ```bash
 docker-compose up --build
