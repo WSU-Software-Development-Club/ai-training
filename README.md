@@ -224,6 +224,12 @@ sudo chown -R $USER:$USER .
 
 If ports 3000 or 5000 are already in use on your machine, you have several options:
 
+**Important Notes:**
+
+- When changing ports, both frontend and backend ports should be changed together
+- CORS origins are automatically configured based on the FRONTEND_PORT
+- No manual CORS configuration needed!
+
 #### Option 1: Use Environment Variables (Recommended)
 
 Create a `.env` file in your project root:
@@ -296,6 +302,15 @@ services:
 ```
 
 Then just run: `docker-compose up --build`
+
+#### Option 5: Custom CORS Origins (Advanced)
+
+If you need custom CORS origins beyond the automatic configuration:
+
+```bash
+# Override CORS origins completely
+CORS_ORIGINS="http://localhost:3003,http://127.0.0.1:3003,https://yourdomain.com" docker-compose up --build
+```
 
 ### Stopping the Application
 

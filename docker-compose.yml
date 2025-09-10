@@ -10,6 +10,7 @@ services:
       - FLASK_DEBUG=True
       - FLASK_RUN_HOST=0.0.0.0
       - FLASK_RUN_PORT=5000
+      - CORS_ORIGINS=http://localhost:${FRONTEND_PORT:-3000},http://127.0.0.1:${FRONTEND_PORT:-3000}
     volumes:
       - ./backend:/app
     restart: unless-stopped
@@ -21,6 +22,7 @@ services:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:${BACKEND_PORT:-5000}
+      - REACT_APP_BACKEND_PORT=${BACKEND_PORT:-5000}
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     volumes:

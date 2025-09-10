@@ -16,7 +16,7 @@ class Config:
     API_VERSION = 'v1'
     
     # CORS Configuration
-    CORS_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000']
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
 class DevelopmentConfig(Config):
     """Development configuration"""
