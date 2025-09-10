@@ -1,0 +1,21 @@
+.header {
+  text-align: center;
+  padding: var(--spacing-header-padding);
+  background-color: var(--color-primary);
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-lg);
+}
+
+.header__title {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-xxxl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.header__subtitle {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-normal);
+  opacity: 0.9;
+}
