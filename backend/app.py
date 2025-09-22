@@ -4,6 +4,9 @@ from flask_cors import CORS
 from config import config
 from routes.main import main_bp
 from routes.api import api_bp
+from routes.history import history_bp
+from routes.rankings import rankings_bp
+from routes.stats import stats_bp
 from utils.helpers import setup_logging
 
 # Create the Flask application
@@ -22,6 +25,9 @@ CORS(app, origins=app.config['CORS_ORIGINS'])
 # Register blueprints
 app.register_blueprint(main_bp)
 app.register_blueprint(api_bp)
+app.register_blueprint(history_bp)
+app.register_blueprint(rankings_bp)
+app.register_blueprint(stats_bp)
 
 if __name__ == '__main__':
     app.run(
