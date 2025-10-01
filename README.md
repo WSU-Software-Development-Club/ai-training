@@ -89,14 +89,14 @@ Before you begin, you'll need to install the following tools on your machine:
 **Windows (Command Prompt or PowerShell):**
 
 ```cmd
-git clone https://github.com/yourusername/ai-training.git
+git clone https://github.com/WSU-Software-Development-Club/ai-training.git
 cd ai-training
 ```
 
 **Mac (Terminal):**
 
 ```bash
-git clone https://github.com/yourusername/ai-training.git
+git clone https://github.com/WSU-Software-Development-Club/ai-training.git
 cd ai-training
 ```
 

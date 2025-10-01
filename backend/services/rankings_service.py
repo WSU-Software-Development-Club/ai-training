@@ -15,6 +15,10 @@ def get_ap_rankings():
     """
     # TODO: Implement this function
     # Hint: Use NCAA_API_BASE_URL and make a GET request to /rankings/football/fbs/associated-press
+    response = requests.get(f"{NCAA_API_BASE_URL}/rankings/football/fbs/associated-press")
+
+    if response.status_code == 200:
+        return response.json()
     
     print("get_ap_rankings not implemented yet")
     return None
