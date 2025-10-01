@@ -1,7 +1,7 @@
 """Main application routes"""
 
 from flask import Blueprint, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Create main blueprint
 main_bp = Blueprint('main', __name__)
@@ -13,7 +13,7 @@ def home():
         'message': 'Hello from Flask backend!',
         'app_name': 'React Flask Web App',
         'version': '1.0.0',
-        'timestamp': datetime.utcnow().isoformat()
+        'timestamp': datetime.now(timezone.utc).isoformat()
     })
 
 @main_bp.route('/about', methods=['GET'])
