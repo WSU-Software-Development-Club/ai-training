@@ -4,7 +4,7 @@ Stats routes for NCAA football statistics data
 
 from flask import Blueprint, jsonify
 from services.stats_service import (
-    get_stat_category_name,
+get_stat_category_name,
 get_all_teams_stats,
 get_team_stats,
 
