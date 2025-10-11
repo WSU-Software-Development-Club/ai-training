@@ -1,19 +1,56 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import StatsTable from "../components/StatsTable";
 import { appConfig } from "../constants";
 import { mockStats, statCategories } from "../utils/mockData";
+import { getStats, hasBackendSupport } from "../services/api";
 import "../styles/pages/StatsPage.css";
 
 const StatsPage = () => {
-  const [selectedCategory, setSelectedCategory] = useState("Scoring Offense");
+  const [selectedCategory, setSelectedCategory] = useState("Total Offense");
+  const [stats, setStats] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSearch = (searchTerm) => {
     // TODO: Replace with API call to /api/search
     console.log("Searching for:", searchTerm);
   };
 
-  const currentStats = mockStats[selectedCategory] || [];
+  // Fetch stats data when category changes
+  useEffect(() => {
+    const fetchStats = async () => {
+      // Check if this category has backend support
+      if (hasBackendSupport(selectedCategory)) {
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await getStats(selectedCategory);
+          if (response.success && response.data && response.data.data) {
+            setStats(response.data.data);
+          } else {
+            setError(`Failed to fetch ${selectedCategory} statistics`);
+            setStats([]);
+          }
+        } catch (err) {
+          console.error(`Error fetching ${selectedCategory} stats:`, err);
+          setError(`Error loading ${selectedCategory} statistics`);
+          setStats([]);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Use mock data for categories without backend support
+        setStats(mockStats[selectedCategory] || []);
+        setError(null);
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [selectedCategory]);
+
+  const currentStats = stats;
 
   return (
     <div className="stats-page">
@@ -46,36 +83,21 @@ const StatsPage = () => {
           </div>
 
           <div className="stats-page__content">
-            <StatsTable
-              stats={currentStats}
-              title={selectedCategory}
-              statCategory={selectedCategory}
-            />
+            {loading && (
+              <div className="stats-page__loading">
+                Loading {selectedCategory} statistics...
+              </div>
+            )}
 
-            {/* TODO: Replace mockStats with API call to /api/stats */}
-            {/* Hint: Use useState, useEffect, and fetch API */}
-            {/* 
-            Example API integration:
-            const [stats, setStats] = useState([]);
-            const [loading, setLoading] = useState(true);
-            
-            useEffect(() => {
-              const fetchStats = async () => {
-                try {
-                  const response = await fetch(`/api/stats/${selectedCategory}`);
-                  const data = await response.json();
-                  if (data.success) {
-                    setStats(data.data);
-                  }
-                } catch (error) {
-                  console.error('Error fetching stats:', error);
-                } finally {
-                  setLoading(false);
-                }
-              };
-              fetchStats();
-            }, [selectedCategory]);
-            */}
+            {error && <div className="stats-page__error">{error}</div>}
+
+            {!loading && !error && (
+              <StatsTable
+                stats={currentStats}
+                title={selectedCategory}
+                statCategory={selectedCategory}
+              />
+            )}
           </div>
         </div>
       </main>

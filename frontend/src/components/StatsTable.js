@@ -13,7 +13,9 @@ const StatsTable = ({ stats, title, statCategory }) => {
 
   // Get the first stat to determine column structure
   const firstStat = stats[0];
-  const columns = Object.keys(firstStat).filter((key) => key !== "rank");
+  const columns = Object.keys(firstStat).filter(
+    (key) => key !== "rank" && key !== "Rank"
+  );
 
   return (
     <div className="stats-table">
@@ -35,12 +37,15 @@ const StatsTable = ({ stats, title, statCategory }) => {
           </thead>
           <tbody>
             {stats.map((stat, index) => (
-              <tr key={stat.rank || index} className="stats-table__row">
+              <tr
+                key={stat.rank || stat.Rank || index}
+                className="stats-table__row"
+              >
                 <td className="stats-table__cell stats-table__cell--rank">
-                  {stat.rank}
+                  {stat.rank || stat.Rank}
                 </td>
                 <td className="stats-table__cell stats-table__cell--team">
-                  {stat.team}
+                  {stat.team || stat.Team}
                 </td>
                 {columns.map((column) => (
                   <td key={column} className="stats-table__cell">

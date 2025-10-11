@@ -17,5 +17,6 @@ export const appConfig = {
     teams: "/api/teams",
     search: "/api/search",
     stats: "/api/stats",
+    totalOffense: "/stats/offense",
   },
 };

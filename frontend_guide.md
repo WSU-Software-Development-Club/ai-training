@@ -956,3 +956,190 @@ export default RankingsPage;
 3. **Use useMemo for expensive calculations** - caches computed values
 4. **Lazy load components** - load pages only when needed
 5. **Optimize images** - use appropriate formats and sizes
+
+## Stats System Implementation Guide
+
+### How the Stats System Works
+
+The stats system in this app is designed to be **scalable** and **easy to understand**. Here's how it works:
+
+#### 1. The Big Picture
+
+```
+User selects "Total Offense" → Frontend checks if backend supports it →
+If supported: Calls backend API → Gets real data → Displays table
+If not supported: Uses mock data → Displays table
+```
+
+#### 2. Key Files and Their Roles
+
+**`frontend/src/services/api.js`** - The "phone book" that knows how to call different APIs
+**`frontend/src/pages/StatsPage.js`** - The main page that shows the stats table
+**`frontend/src/components/StatsTable.js`** - The table component that displays the data
+**`frontend/src/utils/mockData.js`** - Fake data for categories not yet connected to backend
+
+#### 3. How to Add a New Stat Category
+
+Adding a new stat category is **super simple** - just add one line!
+
+**Step 1: Add the category to the mapping**
+
+In `frontend/src/services/api.js`, find this section:
+
+```javascript
+const STAT_CATEGORY_ENDPOINTS = {
+  "Total Offense": "/stats/offense",
+  "Total Defense": "/stats/defense",
+  "Rushing Offense": "/stats/offense/rushing",
+  "Rushing Defense": "/stats/defense/rushing",
+  // Add more categories as backend endpoints become available
+};
+```
+
+**Step 2: Add your new category**
+
+```javascript
+const STAT_CATEGORY_ENDPOINTS = {
+  "Total Offense": "/stats/offense",
+  "Total Defense": "/stats/defense",
+  "Rushing Offense": "/stats/offense/rushing",
+  "Rushing Defense": "/stats/defense/rushing",
+  "Passing Offense": "/stats/passing/offense", // ← Just add this line!
+  // Add more categories as backend endpoints become available
+};
+```
+
+**That's it!** The system automatically:
+
+- ✅ Adds "Passing Offense" to the dropdown menu
+- ✅ Knows to call the backend when user selects it
+- ✅ Handles loading and error states
+- ✅ Falls back to mock data if backend isn't ready
+
+#### 4. Understanding the Code Flow
+
+**When user selects a category:**
+
+1. **StatsPage.js** calls `hasBackendSupport(selectedCategory)`
+2. **api.js** checks if the category exists in `STAT_CATEGORY_ENDPOINTS`
+3. **If supported:** Calls `getStats(selectedCategory)` → Backend API → Real data
+4. **If not supported:** Uses mock data from `mockData.js`
+5. **StatsTable.js** displays the data in a table
+
+**The magic is in these two functions:**
+
+```javascript
+// Check if backend supports this category
+export const hasBackendSupport = (category) => {
+  return STAT_CATEGORY_ENDPOINTS.hasOwnProperty(category);
+};
+
+// Get stats for any supported category
+export const getStats = async (category) => {
+  const endpoint = STAT_CATEGORY_ENDPOINTS[category];
+  if (!endpoint) {
+    throw new Error(`No backend support for category: ${category}`);
+  }
+  return apiRequest(endpoint);
+};
+```
+
+#### 5. Real Example: Adding "Scoring Offense"
+
+Let's say you want to add "Scoring Offense" stats:
+
+**Step 1:** Add to the mapping
+
+```javascript
+"Scoring Offense": "/stats/scoring/offense",
+```
+
+**Step 2:** Make sure the backend has this endpoint (that's a backend task)
+
+**Step 3:** Test it! The frontend will automatically:
+
+- Show "Scoring Offense" in the dropdown
+- Call `/stats/scoring/offense` when selected
+- Display the data in the table
+
+#### 6. Understanding the Data Flow
+
+**Backend Response Structure:**
+
+```javascript
+{
+  "success": true,
+  "data": {
+    "sport": "Football",
+    "title": "Total Offense",
+    "updated": "Friday, October 10, 2025",
+    "page": 1,
+    "pages": 3,
+    "data": [
+      {
+        "Rank": "1",
+        "Team": "Texas Tech",
+        "G": "5",
+        "Plays": "384",
+        "YDS": "2844",
+        "Yds/Play": "7.41",
+        "Off TDs": "29",
+        "YPG": "568.8"
+      }
+      // ... more teams
+    ]
+  },
+  "stat_name": "Total Offense"
+}
+```
+
+**Frontend Processing:**
+
+```javascript
+// In StatsPage.js
+const response = await getStats(selectedCategory);
+if (response.success && response.data && response.data.data) {
+  setStats(response.data.data); // Extract just the team data array
+}
+```
+
+**StatsTable Display:**
+
+- Takes the array of team objects
+- Creates columns dynamically based on the data keys
+- Displays Rank, Team, and all other stats
+
+#### 7. Common Questions
+
+**Q: Why do we need mock data?**
+A: Mock data lets us build and test the UI before the backend is ready. It's like having a practice dummy before the real game.
+
+**Q: What if the backend endpoint doesn't exist yet?**
+A: The frontend will show an error message. Add the endpoint to the backend, then add it to the mapping.
+
+**Q: How do I know what endpoint to use?**
+A: Check the backend routes in `backend/routes/stats.py`. Each route has a URL path like `/stats/offense`.
+
+**Q: Can I add multiple categories at once?**
+A: Yes! Just add multiple lines to the `STAT_CATEGORY_ENDPOINTS` object.
+
+#### 8. Best Practices
+
+1. **Always test with mock data first** - Make sure the UI works before connecting to backend
+2. **Use descriptive category names** - "Total Offense" is better than "TO"
+3. **Keep the mapping simple** - One line per category, that's it
+4. **Handle errors gracefully** - The system shows error messages if something goes wrong
+5. **Test both supported and unsupported categories** - Make sure mock data still works
+
+#### 9. Troubleshooting
+
+**Problem:** Category shows in dropdown but gives error when selected
+**Solution:** Check that the backend endpoint exists and works
+
+**Problem:** Data doesn't display correctly
+**Solution:** Check the data structure in browser console (F12 → Network tab)
+
+**Problem:** Mock data doesn't show
+**Solution:** Make sure the category name matches exactly in `mockData.js`
+
+This system is designed to be **beginner-friendly** while still being **powerful and scalable**. Once you understand this pattern, you can add new features quickly and confidently!
