@@ -3,9 +3,9 @@ import Header from "../components/Header";
 import ScoreCard from "../components/ScoreCard";
 import { appConfig } from "../constants";
 import { mockScores } from "../utils/mockData";
-import "../styles/pages/HomePage.css";
+import "../styles/pages/ScoresPage.css";
 
-const HomePage = () => {
+const ScoresPage = () => {
   const [selectedConference, setSelectedConference] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
 
@@ -31,23 +31,23 @@ const HomePage = () => {
   });
 
   return (
-    <div className="home-page">
+    <div className="scores-page">
       <Header title={appConfig.name} onSearch={handleSearch} />
 
-      <main className="home-page__main">
-        <div className="home-page__container">
-          <div className="home-page__header">
-            <h1 className="home-page__title">College Football Scores</h1>
-            <p className="home-page__subtitle">
-              Latest scores from across all conferences
+      <main className="scores-page__main">
+        <div className="scores-page__container">
+          <div className="scores-page__header">
+            <h1 className="scores-page__title">College Football Scores</h1>
+            <p className="scores-page__subtitle">
+              Filter and view scores by conference and status
             </p>
           </div>
 
-          <div className="home-page__filters">
-            <div className="home-page__filter-group">
-              <label className="home-page__filter-label">Conference:</label>
+          <div className="scores-page__filters">
+            <div className="scores-page__filter-group">
+              <label className="scores-page__filter-label">Conference:</label>
               <select
-                className="home-page__filter-select"
+                className="scores-page__filter-select"
                 value={selectedConference}
                 onChange={(e) => setSelectedConference(e.target.value)}
               >
@@ -59,10 +59,10 @@ const HomePage = () => {
               </select>
             </div>
 
-            <div className="home-page__filter-group">
-              <label className="home-page__filter-label">Status:</label>
+            <div className="scores-page__filter-group">
+              <label className="scores-page__filter-label">Status:</label>
               <select
-                className="home-page__filter-select"
+                className="scores-page__filter-select"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
@@ -75,27 +75,26 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Recent Scores Section */}
-          <section className="home-page__section">
-            <div className="home-page__scores-grid">
-              {filteredScores.slice(0, 6).map((game) => (
+          <div className="scores-page__content">
+            <div className="scores-page__scores-grid">
+              {filteredScores.map((game) => (
                 <ScoreCard key={game.id} game={game} />
               ))}
             </div>
 
             {filteredScores.length === 0 && (
-              <div className="home-page__no-results">
+              <div className="scores-page__no-results">
                 <p>No scores found matching your filters.</p>
               </div>
             )}
 
             {/* TODO: Replace mockScores with API call to /api/scores */}
             {/* Hint: Use useState, useEffect, and fetch API */}
-          </section>
+          </div>
         </div>
       </main>
     </div>
   );
 };
 
-export default HomePage;
+export default ScoresPage;

@@ -1,0 +1,102 @@
+.stats-table {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.stats-table__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-lg) 0;
+  text-align: center;
+}
+
+.stats-table__container {
+  overflow-x: auto;
+}
+
+.stats-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.stats-table__header {
+  background-color: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  padding: var(--spacing-md) var(--spacing-sm);
+  text-align: left;
+  border-bottom: 2px solid var(--color-primary);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stats-table__row {
+  border-bottom: 1px solid var(--color-secondary);
+  transition: var(--transition-colors);
+}
+
+.stats-table__row:hover {
+  background-color: var(--color-background-secondary);
+}
+
+.stats-table__row:last-child {
+  border-bottom: none;
+}
+
+.stats-table__cell {
+  padding: var(--spacing-md) var(--spacing-sm);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.stats-table__cell--rank {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  text-align: center;
+  width: 60px;
+}
+
+.stats-table__cell--team {
+  font-weight: var(--font-weight-medium);
+  min-width: 150px;
+}
+
+.stats-table__empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+  padding: var(--spacing-xl);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-table {
+    padding: var(--spacing-md);
+  }
+
+  .stats-table__title {
+    font-size: var(--font-size-lg);
+  }
+
+  .stats-table__header,
+  .stats-table__cell {
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+
+  .stats-table__cell--team {
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-table__cell--rank {
+    display: none;
+  }
+}

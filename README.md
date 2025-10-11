@@ -106,16 +106,10 @@ Make sure Docker Desktop is running before proceeding. You should see the Docker
 
 ### 3. Run the Application
 
-**For development with hot reloading (slower startup):**
+**For development with hot reloading (slow, be patient):**
 
 ```bash
 docker-compose -f docker-compose.dev.yml up --build
-```
-
-**Or use the regular compose file (faster startup):**
-
-```bash
-docker-compose up --build
 ```
 
 ### 4. Access the Application
