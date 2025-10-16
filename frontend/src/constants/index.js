@@ -12,11 +12,11 @@ export const appConfig = {
   endpoints: {
     home: "/",
     health: "/api/health",
-    scores: "/api/scores",
+    scores: "scores",
     rankings: "/rankings/ap-top25",
-    teams: "/api/teams",
-    search: "/api/search",
-    stats: "/api/stats",
+    teams: "teams",
+    search: "search",
+    stats: "stats",
     totalOffense: "/stats/offense",
   },
 };
