@@ -3,7 +3,7 @@ Scoreboard routes for NCAA football game data
 """
 
 from flask import Blueprint, jsonify, request
-from services.scoreboard_service import get_formatted_scoreboard_data
+from services.scoreboard_service import get_scoreboard_data
 
 # Create blueprint for scoreboard routes
 scoreboard_bp = Blueprint('scoreboard', __name__, url_prefix='/scoreboard')
