@@ -25,7 +25,7 @@ const RankingsPage = () => {
         }
       } catch (err) {
         console.error(err);
-        setError("Unable to load ranking.");
+        setError("Unable to load rankings.");
       } finally {
         setLoading(false);
       }
@@ -48,7 +48,7 @@ const RankingsPage = () => {
           </div>
 
           <div className="rankings-page__content">
-            {loading && <p>Loading ranking...</p>}
+            {loading && <p>Loading rankings...</p>}
             {error && <p className="error">{error}</p>}
             {ranking && (
               <RankingsTable rankings={ranking.data} title="AP Top 25" />
