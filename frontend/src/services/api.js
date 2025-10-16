@@ -62,6 +62,8 @@ export const api = {
 
   // Get stats for any supported category
   getStats,
+
+  getRankings: () => apiRequest(appConfig.endpoints.rankings)
 };
 
 export default api;

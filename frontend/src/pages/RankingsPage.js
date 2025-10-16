@@ -1,15 +1,38 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import RankingsTable from "../components/RankingsTable";
 import { appConfig } from "../constants";
-import { mockRankings } from "../utils/mockData";
+import api from "../services/api";
 import "../styles/pages/RankingsPage.css";
 
 const RankingsPage = () => {
+  const [ranking, setRanking] = useState(null); // single ranking
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const handleSearch = (searchTerm) => {
-    // MOCK FUNCTIONALITY - Replace with actual search API call
     console.log("Searching for:", searchTerm);
   };
+  useEffect(() => {
+    const fetchRanking = async () => {
+      try {
+        const response = await api.getRankings(); // <-- use a named variable
+        console.log("API response:", response.data) /* DEBUGGING PURPOSES */
+        if (response.success) {
+          setRanking(response.data);
+        } else {
+          setError("No rankings available");
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Unable to load ranking.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRanking();
+  }, []);
 
   return (
     <div className="rankings-page">
@@ -25,10 +48,11 @@ const RankingsPage = () => {
           </div>
 
           <div className="rankings-page__content">
-            <RankingsTable rankings={mockRankings} title="AP Top 25" />
-
-            {/* TODO: Replace mockRankings with API call to /api/rankings/ap-top25 */}
-            {/* Hint: Use useState, useEffect, and fetch API */}
+            {loading && <p>Loading ranking...</p>}
+            {error && <p className="error">{error}</p>}
+            {ranking && (
+              <RankingsTable rankings={ranking.data} title="AP Top 25" />
+            )}
           </div>
         </div>
       </main>

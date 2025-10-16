@@ -20,29 +20,29 @@ const RankingsTable = ({ rankings, title = "AP Top 25" }) => {
           <thead>
             <tr>
               <th className="rankings-table__header">Rank</th>
-              <th className="rankings-table__header">Team</th>
-              <th className="rankings-table__header">Record</th>
-              <th className="rankings-table__header">Conference</th>
+              <th className="rankings-table__header">School</th>
               <th className="rankings-table__header">Points</th>
+              <th className="rankings-table__header">Record</th>
+              <th className="rankings-table__header">Previous</th>
             </tr>
           </thead>
           <tbody>
             {rankings.map((team, index) => (
               <tr key={team.rank || index} className="rankings-table__row">
                 <td className="rankings-table__cell rankings-table__cell--rank">
-                  {team.rank}
+                  {team.RANK}
                 </td>
-                <td className="rankings-table__cell rankings-table__cell--team">
-                  {team.team}
-                </td>
-                <td className="rankings-table__cell rankings-table__cell--record">
-                  {team.record}
-                </td>
-                <td className="rankings-table__cell rankings-table__cell--conference">
-                  {team.conference}
+                <td className="rankings-table__cell rankings-table__cell--school">
+                  {team.SCHOOL}
                 </td>
                 <td className="rankings-table__cell rankings-table__cell--points">
-                  {team.points}
+                  {team.POINTS}
+                </td>
+                <td className="rankings-table__cell rankings-table__cell--record">
+                  {team.RECORD}
+                </td>
+                <td className="rankings-table__cell rankings-table__cell--previous">
+                  {team.PREVIOUS}
                 </td>
               </tr>
             ))}
