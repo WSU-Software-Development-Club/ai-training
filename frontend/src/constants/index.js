@@ -13,7 +13,7 @@ export const appConfig = {
     home: "/",
     health: "/api/health",
     scores: "/api/scores",
-    rankings: "/api/rankings/ap-top25",
+    rankings: "/rankings/ap-top25",
     teams: "/api/teams",
     search: "/api/search",
     stats: "/api/stats",
