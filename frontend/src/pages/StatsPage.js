@@ -4,6 +4,7 @@ import StatsTable from "../components/StatsTable";
 import { appConfig } from "../constants";
 import { mockStats, statCategories } from "../utils/mockData";
 import { getStats, hasBackendSupport } from "../services/api";
+import LoadingSpinner from "../components/LoadingSpinner"
 import "../styles/pages/StatsPage.css";
 
 const StatsPage = () => {
@@ -83,11 +84,7 @@ const StatsPage = () => {
           </div>
 
           <div className="stats-page__content">
-            {loading && (
-              <div className="stats-page__loading">
-                Loading {selectedCategory} statistics...
-              </div>
-            )}
+            {loading && <LoadingSpinner />}
 
             {error && <div className="stats-page__error">{error}</div>}
 
