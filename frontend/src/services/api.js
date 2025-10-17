@@ -54,7 +54,7 @@ export const getStats = async (category) => {
 
 // Specific API functions
 export const api = {
-  // Get welcome message
+  // Get welcome message4
   getWelcomeMessage: () => apiRequest(appConfig.endpoints.home),
 
   // Get health status

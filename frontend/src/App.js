@@ -6,6 +6,7 @@ import StatsPage from "./pages/StatsPage";
 import TeamsPage from "./pages/TeamsPage";
 import ComparisonPage from "./pages/ComparisonPage";
 import PredictionPage from "./pages/PredictionPage";
+import SpinnerTest from "./utils/SpinnerTestPage";
 import "./App.css";
 
 function App() {
