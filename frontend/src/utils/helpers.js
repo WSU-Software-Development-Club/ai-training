@@ -33,3 +33,31 @@ export const debounce = (func, wait) => {
     timeout = setTimeout(later, wait);
   };
 };
+
+export const getCurrentWeek = () => {
+  
+  const startDate = new Date();
+  startDate.setMonth(7);
+  startDate.setDate(23);
+
+  const endDate = new Date();
+  endDate.setMonth(11);
+  endDate.setDate(13);
+
+  const currentDate = new Date();
+
+  if (currentDate.getMonth() < 7)
+    return 1;
+  if (currentDate.getMonth() > 11)
+    return 16;
+  
+  const daysSinceStart = Math.floor(
+    (currentDate - startDate) / (1000 * 60 * 60 * 24)
+  )
+
+  const weeks = Math.floor(
+    (daysSinceStart / 7) + 1
+  )
+
+  return weeks;
+}
