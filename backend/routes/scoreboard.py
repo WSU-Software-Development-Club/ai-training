@@ -17,4 +17,17 @@ def get_scoreboard_by_week(week):
     Returns:
         JSON response with scoreboard data or error message
     """
-    pass
+    scoreboard_data = get_scoreboard_data(week)
+
+    if scoreboard_data is None:
+        return jsonify({
+            "success": False,
+            "error": "Failed to fetch scoreboard data"
+        }), 500
+    
+    return jsonify({
+        "success": True,
+        "data": scoreboard_data,
+        "data_type": "Scoreboard data"
+    })
+
