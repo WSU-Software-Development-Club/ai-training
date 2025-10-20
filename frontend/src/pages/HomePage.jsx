@@ -3,7 +3,6 @@ import Header from "../components/Header";
 import ScoreCard from "../components/ScoreCard";
 import { appConfig } from "../constants";
 import { mockScores } from "../utils/mockData";
-import { getCurrentWeek } from "../utils/helpers"
 import "../styles/pages/HomePage.css";
 
 const HomePage = () => {
