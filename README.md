@@ -31,6 +31,8 @@ A simple web application with a React.js frontend and Flask backend, containeriz
 
 Before you begin, you'll need to install the following tools on your machine:
 
+> **Note**: This project uses specific versions of Python and Node.js. If you use version managers like `pyenv` or `nvm`, you can use the included `.python-version` and `.nvmrc` files to automatically switch to the correct versions.
+
 #### Install Docker Desktop
 
 **Download and install Docker Desktop:**
@@ -40,49 +42,57 @@ Before you begin, you'll need to install the following tools on your machine:
 
 #### Install Python
 
+**Required Version: Python 3.11**
+
 **Windows:**
 
 1. Go to [python.org/downloads](https://www.python.org/downloads/)
-2. Download the latest Python 3.x version
+2. Download Python 3.11.x (latest 3.11 version)
 3. Run the installer and **check "Add Python to PATH"**
 4. Verify installation:
    ```cmd
    python --version
    ```
+   Should show: `Python 3.11.x`
 
 **Mac:**
 
 1. Go to [python.org/downloads](https://www.python.org/downloads/)
-2. Download the latest Python 3.x version
+2. Download Python 3.11.x (latest 3.11 version)
 3. Run the installer
 4. Verify installation:
    ```bash
    python3 --version
    ```
+   Should show: `Python 3.11.x`
 
 #### Install Node.js
+
+**Required Version: Node.js 18**
 
 **Windows:**
 
 1. Go to [nodejs.org](https://nodejs.org/)
-2. Download the LTS version (recommended)
+2. Download Node.js 18.x LTS version
 3. Run the installer
 4. Verify installation:
    ```cmd
    node --version
    npm --version
    ```
+   Should show: `v18.x.x`
 
 **Mac:**
 
 1. Go to [nodejs.org](https://nodejs.org/)
-2. Download the LTS version (recommended)
+2. Download Node.js 18.x LTS version
 3. Run the installer
 4. Verify installation:
    ```bash
    node --version
    npm --version
    ```
+   Should show: `v18.x.x`
 
 ### 1. Clone the Repository
 
