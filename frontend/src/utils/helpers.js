@@ -60,5 +60,5 @@ export const getCurrentWeek = () => {
     (daysSinceStart / 7) + 1
   )
 
-  return weeks;
+  return weeks > 16 ? 16 : weeks;
 }
