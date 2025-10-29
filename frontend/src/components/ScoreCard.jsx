@@ -1,5 +1,5 @@
 import React from "react";
-import "../styles/components/ScoreCard.css";
+import styles from "../styles/components/ScoreCard.module.css";
 
 const ScoreCard = ({ game }) => {
   const {
@@ -16,13 +16,13 @@ const ScoreCard = ({ game }) => {
   const getStatusClass = (status) => {
     switch (status.toLowerCase()) {
       case "final":
-        return "score-card__status--final";
+        return styles.scoreCardStatusFinal;
       case "live":
-        return "score-card__status--live";
+        return styles.scoreCardStatusLive;
       case "upcoming":
-        return "score-card__status--upcoming";
+        return styles.scoreCardStatusUpcoming;
       default:
-        return "score-card__status--final";
+        return styles.scoreCardStatusFinal;
     }
   };
 
@@ -35,29 +35,29 @@ const ScoreCard = ({ game }) => {
   };
 
   return (
-    <div className="score-card">
-      <div className="score-card__header">
-        <span className="score-card__conference">{conference}</span>
-        <span className={`score-card__status ${getStatusClass(status)}`}>
+    <div className={styles.scoreCard}>
+      <div className={styles.scoreCardHeader}>
+        <span className={styles.scoreCardConference}>{conference}</span>
+        <span className={`${styles.scoreCardStatus} ${getStatusClass(status)}`}>
           {status}
         </span>
       </div>
 
-      <div className="score-card__date">
+      <div className={styles.scoreCardDate}>
         {formatDate(date)} • {time}
       </div>
 
-      <div className="score-card__teams">
-        <div className="score-card__team score-card__team--away">
-          <div className="score-card__team-name">{awayTeam}</div>
-          <div className="score-card__team-score">{awayScore}</div>
+      <div className={styles.scoreCardTeams}>
+        <div className={`${styles.scoreCardTeam} ${styles.scoreCardTeamAway}`}>
+          <div className={styles.scoreCardTeamName}>{awayTeam}</div>
+          <div className={styles.scoreCardTeamScore}>{awayScore}</div>
         </div>
 
-        <div className="score-card__vs">@</div>
+        <div className={styles.scoreCardVs}>@</div>
 
-        <div className="score-card__team score-card__team--home">
-          <div className="score-card__team-name">{homeTeam}</div>
-          <div className="score-card__team-score">{homeScore}</div>
+        <div className={`${styles.scoreCardTeam} ${styles.scoreCardTeamHome}`}>
+          <div className={styles.scoreCardTeamName}>{homeTeam}</div>
+          <div className={styles.scoreCardTeamScore}>{homeScore}</div>
         </div>
       </div>
     </div>

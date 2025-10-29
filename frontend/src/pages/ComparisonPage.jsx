@@ -1,7 +1,7 @@
 import React from "react";
 import Header from "../components/Header";
 import { appConfig } from "../constants";
-import "../styles/pages/ComparisonPage.css";
+import styles from "../styles/pages/ComparisonPage.module.css";
 
 const ComparisonPage = () => {
   const handleSearch = (searchTerm) => {
@@ -10,21 +10,21 @@ const ComparisonPage = () => {
   };
 
   return (
-    <div className="comparison-page">
+    <div className={styles.comparisonPage}>
       <Header title={appConfig.name} onSearch={handleSearch} />
 
-      <main className="comparison-page__main">
-        <div className="comparison-page__container">
-          <div className="comparison-page__header">
-            <h1 className="comparison-page__title">Team Comparison</h1>
-            <p className="comparison-page__subtitle">
+      <main className={styles.comparisonPageMain}>
+        <div className={styles.comparisonPageContainer}>
+          <div className={styles.comparisonPageHeader}>
+            <h1 className={styles.comparisonPageTitle}>Team Comparison</h1>
+            <p className={styles.comparisonPageSubtitle}>
               Compare statistics between college football teams
             </p>
           </div>
 
-          <div className="comparison-page__content">
-            <div className="comparison-page__placeholder">
-              <div className="comparison-page__placeholder-icon">
+          <div className={styles.comparisonPageContent}>
+            <div className={styles.comparisonPagePlaceholder}>
+              <div className={styles.comparisonPagePlaceholderIcon}>
                 <svg
                   width="64"
                   height="64"
@@ -41,10 +41,10 @@ const ComparisonPage = () => {
                   />
                 </svg>
               </div>
-              <h2 className="comparison-page__placeholder-title">
+              <h2 className={styles.comparisonPagePlaceholderTitle}>
                 Coming Soon
               </h2>
-              <p className="comparison-page__placeholder-text">
+              <p className={styles.comparisonPagePlaceholderText}>
                 Team comparison feature is under development. This will allow
                 you to compare statistics, records, and performance metrics
                 between different college football teams.

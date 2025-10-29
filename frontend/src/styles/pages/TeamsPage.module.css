@@ -1,16 +1,16 @@
-.teams-page {
+.teamsPage {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
 }
 
-.teams-page__main {
+.teamsPageMain {
   flex: 1;
   padding: var(--spacing-lg);
 }
 
-.teams-page__container {
+.teamsPageContainer {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -18,31 +18,31 @@
   gap: var(--spacing-xl);
 }
 
-.teams-page__header {
+.teamsPageHeader {
   text-align: center;
   margin-bottom: var(--spacing-lg);
 }
 
-.teams-page__title {
+.teamsPageTitle {
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin: 0 0 var(--spacing-sm) 0;
 }
 
-.teams-page__subtitle {
+.teamsPageSubtitle {
   font-size: var(--font-size-lg);
   color: var(--color-text-muted);
   margin: 0;
 }
 
-.teams-page__content {
+.teamsPageContent {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
 }
 
-.teams-page__teams-grid {
+.teamsPageTeamsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: var(--spacing-lg);
@@ -50,26 +50,26 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .teams-page__main {
+  .teamsPageMain {
     padding: var(--spacing-md);
   }
 
-  .teams-page__title {
+  .teamsPageTitle {
     font-size: var(--font-size-xl);
   }
 
-  .teams-page__subtitle {
+  .teamsPageSubtitle {
     font-size: var(--font-size-md);
   }
 
-  .teams-page__teams-grid {
+  .teamsPageTeamsGrid {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: var(--spacing-md);
   }
 }
 
 @media (max-width: 480px) {
-  .teams-page__teams-grid {
+  .teamsPageTeamsGrid {
     grid-template-columns: 1fr;
   }
 }

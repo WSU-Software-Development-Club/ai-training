@@ -4,8 +4,8 @@ import StatsTable from "../components/StatsTable";
 import { appConfig } from "../constants";
 import { mockStats, statCategories } from "../utils/mockData";
 import { getStats, hasBackendSupport } from "../services/api";
-import LoadingSpinner from "../components/LoadingSpinner"
-import "../styles/pages/StatsPage.css";
+import LoadingSpinner from "../components/LoadingSpinner";
+import styles from "../styles/pages/StatsPage.module.css";
 
 const StatsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState("Total Offense");
@@ -54,23 +54,25 @@ const StatsPage = () => {
   const currentStats = stats;
 
   return (
-    <div className="stats-page">
+    <div className={styles.statsPage}>
       <Header title={appConfig.name} onSearch={handleSearch} />
 
-      <main className="stats-page__main">
-        <div className="stats-page__container">
-          <div className="stats-page__header">
-            <h1 className="stats-page__title">Team Statistics</h1>
-            <p className="stats-page__subtitle">
+      <main className={styles.statsPageMain}>
+        <div className={styles.statsPageContainer}>
+          <div className={styles.statsPageHeader}>
+            <h1 className={styles.statsPageTitle}>Team Statistics</h1>
+            <p className={styles.statsPageSubtitle}>
               View team statistics across different categories
             </p>
           </div>
 
-          <div className="stats-page__filters">
-            <div className="stats-page__filter-group">
-              <label className="stats-page__filter-label">Stat Category:</label>
+          <div className={styles.statsPageFilters}>
+            <div className={styles.statsPageFilterGroup}>
+              <label className={styles.statsPageFilterLabel}>
+                Stat Category:
+              </label>
               <select
-                className="stats-page__filter-select"
+                className={styles.statsPageFilterSelect}
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
@@ -83,7 +85,7 @@ const StatsPage = () => {
             </div>
           </div>
 
-          <div className="stats-page__content">
+          <div className={styles.statsPageContent}>
             {loading && <LoadingSpinner />}
 
             {error && <div className="stats-page__error">{error}</div>}

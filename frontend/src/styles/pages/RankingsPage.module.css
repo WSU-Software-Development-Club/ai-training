@@ -1,16 +1,16 @@
-.rankings-page {
+.rankingsPage {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
 }
 
-.rankings-page__main {
+.rankingsPageMain {
   flex: 1;
   padding: var(--spacing-lg);
 }
 
-.rankings-page__container {
+.rankingsPageContainer {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -18,25 +18,25 @@
   gap: var(--spacing-xl);
 }
 
-.rankings-page__header {
+.rankingsPageHeader {
   text-align: center;
   margin-bottom: var(--spacing-lg);
 }
 
-.rankings-page__title {
+.rankingsPageTitle {
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin: 0 0 var(--spacing-sm) 0;
 }
 
-.rankings-page__subtitle {
+.rankingsPageSubtitle {
   font-size: var(--font-size-lg);
   color: var(--color-text-muted);
   margin: 0;
 }
 
-.rankings-page__content {
+.rankingsPageContent {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
@@ -44,15 +44,15 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .rankings-page__main {
+  .rankingsPageMain {
     padding: var(--spacing-md);
   }
 
-  .rankings-page__title {
+  .rankingsPageTitle {
     font-size: var(--font-size-xl);
   }
 
-  .rankings-page__subtitle {
+  .rankingsPageSubtitle {
     font-size: var(--font-size-md);
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../styles/components/SearchBar.css";
+import styles from "../styles/components/SearchBar.module.css";
 
 const SearchBar = ({ onSearch, placeholder = "Search teams, games..." }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,9 +18,9 @@ const SearchBar = ({ onSearch, placeholder = "Search teams, games..." }) => {
   };
 
   return (
-    <form className="search-bar" onSubmit={handleSubmit}>
-      <div className="search-bar__container">
-        <div className="search-bar__icon">
+    <form className={styles.searchBar} onSubmit={handleSubmit}>
+      <div className={styles.searchBarContainer}>
+        <div className={styles.searchBarIcon}>
           <svg
             width="20"
             height="20"
@@ -39,7 +39,7 @@ const SearchBar = ({ onSearch, placeholder = "Search teams, games..." }) => {
         </div>
         <input
           type="text"
-          className="search-bar__input"
+          className={styles.searchBarInput}
           placeholder={placeholder}
           value={searchTerm}
           onChange={handleChange}

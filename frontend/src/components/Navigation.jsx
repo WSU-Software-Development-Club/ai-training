@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import "../styles/components/Navigation.css";
+import styles from "../styles/components/Navigation.module.css";
 
 const Navigation = () => {
   const location = useLocation();
@@ -10,53 +10,53 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="navigation">
-      <div className="navigation__container">
-        <div className="navigation__tabs">
+    <nav className={styles.navigation}>
+      <div className={styles.navigationContainer}>
+        <div className={styles.navigationTabs}>
           <Link
             to="/"
-            className={`navigation__tab ${
-              isActive("/") ? "navigation__tab--active" : ""
+            className={`${styles.navigationTab} ${
+              isActive("/") ? styles.navigationTabActive : ""
             }`}
           >
             Home
           </Link>
           <Link
             to="/stats"
-            className={`navigation__tab ${
-              isActive("/stats") ? "navigation__tab--active" : ""
+            className={`${styles.navigationTab} ${
+              isActive("/stats") ? styles.navigationTabActive : ""
             }`}
           >
             Stats
           </Link>
           <Link
             to="/rankings"
-            className={`navigation__tab ${
-              isActive("/rankings") ? "navigation__tab--active" : ""
+            className={`${styles.navigationTab} ${
+              isActive("/rankings") ? styles.navigationTabActive : ""
             }`}
           >
             Rankings
           </Link>
           <Link
             to="/teams"
-            className={`navigation__tab ${
-              isActive("/teams") ? "navigation__tab--active" : ""
+            className={`${styles.navigationTab} ${
+              isActive("/teams") ? styles.navigationTabActive : ""
             }`}
           >
             Teams
           </Link>
           <Link
             to="/comparison"
-            className={`navigation__tab ${
-              isActive("/comparison") ? "navigation__tab--active" : ""
+            className={`${styles.navigationTab} ${
+              isActive("/comparison") ? styles.navigationTabActive : ""
             }`}
           >
             Team Comparison
           </Link>
           <Link
             to="/prediction"
-            className={`navigation__tab ${
-              isActive("/prediction") ? "navigation__tab--active" : ""
+            className={`${styles.navigationTab} ${
+              isActive("/prediction") ? styles.navigationTabActive : ""
             }`}
           >
             Win Prediction

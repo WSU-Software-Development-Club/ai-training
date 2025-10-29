@@ -1,7 +1,7 @@
 import React from "react";
 import Header from "../components/Header";
 import { appConfig } from "../constants";
-import "../styles/pages/PredictionPage.css";
+import styles from "../styles/pages/PredictionPage.module.css";
 
 const PredictionPage = () => {
   const handleSearch = (searchTerm) => {
@@ -10,21 +10,21 @@ const PredictionPage = () => {
   };
 
   return (
-    <div className="prediction-page">
+    <div className={styles.predictionPage}>
       <Header title={appConfig.name} onSearch={handleSearch} />
 
-      <main className="prediction-page__main">
-        <div className="prediction-page__container">
-          <div className="prediction-page__header">
-            <h1 className="prediction-page__title">Win Prediction</h1>
-            <p className="prediction-page__subtitle">
+      <main className={styles.predictionPageMain}>
+        <div className={styles.predictionPageContainer}>
+          <div className={styles.predictionPageHeader}>
+            <h1 className={styles.predictionPageTitle}>Win Prediction</h1>
+            <p className={styles.predictionPageSubtitle}>
               Predict game outcomes using advanced analytics
             </p>
           </div>
 
-          <div className="prediction-page__content">
-            <div className="prediction-page__placeholder">
-              <div className="prediction-page__placeholder-icon">
+          <div className={styles.predictionPageContent}>
+            <div className={styles.predictionPagePlaceholder}>
+              <div className={styles.predictionPagePlaceholderIcon}>
                 <svg
                   width="64"
                   height="64"
@@ -55,10 +55,10 @@ const PredictionPage = () => {
                   />
                 </svg>
               </div>
-              <h2 className="prediction-page__placeholder-title">
+              <h2 className={styles.predictionPagePlaceholderTitle}>
                 Coming Soon
               </h2>
-              <p className="prediction-page__placeholder-text">
+              <p className={styles.predictionPagePlaceholderText}>
                 Win prediction feature is under development. This will use
                 machine learning algorithms and historical data to predict game
                 outcomes with confidence percentages.

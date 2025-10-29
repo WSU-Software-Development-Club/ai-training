@@ -1,4 +1,4 @@
-.score-card {
+.scoreCard {
   background-color: var(--color-surface);
   border: 1px solid var(--color-secondary);
   border-radius: var(--border-radius-lg);
@@ -7,20 +7,20 @@
   cursor: pointer;
 }
 
-.score-card:hover {
+.scoreCard:hover {
   border-color: var(--color-primary);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
-.score-card__header {
+.scoreCardHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-sm);
 }
 
-.score-card__conference {
+.scoreCardConference {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
@@ -28,7 +28,7 @@
   letter-spacing: 0.5px;
 }
 
-.score-card__status {
+.scoreCardStatus {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   padding: var(--spacing-xs) var(--spacing-sm);
@@ -37,18 +37,18 @@
   letter-spacing: 0.5px;
 }
 
-.score-card__status--final {
+.scoreCardStatusFinal {
   background-color: var(--color-secondary);
   color: var(--color-text-light);
 }
 
-.score-card__status--live {
+.scoreCardStatusLive {
   background-color: var(--color-success);
   color: var(--color-text-light);
   animation: pulse 2s infinite;
 }
 
-.score-card__status--upcoming {
+.scoreCardStatusUpcoming {
   background-color: var(--color-info);
   color: var(--color-text-light);
 }
@@ -65,47 +65,47 @@
   }
 }
 
-.score-card__date {
+.scoreCardDate {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   margin-bottom: var(--spacing-md);
   text-align: center;
 }
 
-.score-card__teams {
+.scoreCardTeams {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-md);
 }
 
-.score-card__team {
+.scoreCardTeam {
   flex: 1;
   text-align: center;
 }
 
-.score-card__team--away {
+.scoreCardTeamAway {
   text-align: left;
 }
 
-.score-card__team--home {
+.scoreCardTeamHome {
   text-align: right;
 }
 
-.score-card__team-name {
+.scoreCardTeamName {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   margin-bottom: var(--spacing-xs);
 }
 
-.score-card__team-score {
+.scoreCardTeamScore {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
 }
 
-.score-card__vs {
+.scoreCardVs {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
@@ -114,19 +114,19 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .score-card {
+  .scoreCard {
     padding: var(--spacing-sm);
   }
 
-  .score-card__team-name {
+  .scoreCardTeamName {
     font-size: var(--font-size-sm);
   }
 
-  .score-card__team-score {
+  .scoreCardTeamScore {
     font-size: var(--font-size-lg);
   }
 
-  .score-card__teams {
+  .scoreCardTeams {
     gap: var(--spacing-sm);
   }
 }

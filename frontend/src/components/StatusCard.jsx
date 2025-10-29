@@ -1,11 +1,20 @@
 import React from "react";
-import "../styles/components/StatusCard.css";
+import styles from "../styles/components/StatusCard.module.css";
 
 const StatusCard = ({ title, value, status = "info" }) => {
+  const variantClass =
+    status === "success"
+      ? styles.statusCardSuccess
+      : status === "warning"
+      ? styles.statusCardWarning
+      : status === "error"
+      ? styles.statusCardError
+      : styles.statusCardInfo;
+
   return (
-    <div className={`status-card status-card--${status}`}>
-      <h3 className="status-card__title">{title}</h3>
-      <p className="status-card__value">{value}</p>
+    <div className={`${styles.statusCard} ${variantClass}`}>
+      <h3 className={styles.statusCardTitle}>{title}</h3>
+      <p className={styles.statusCardValue}>{value}</p>
     </div>
   );
 };

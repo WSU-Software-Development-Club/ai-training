@@ -1,12 +1,14 @@
 import React from "react";
-import "../styles/components/StatsTable.css";
+import styles from "../styles/components/StatsTable.module.css";
 
 const StatsTable = ({ stats, title, statCategory }) => {
   if (!stats || stats.length === 0) {
     return (
-      <div className="stats-table">
-        <h2 className="stats-table__title">{title}</h2>
-        <div className="stats-table__empty">No statistics data available</div>
+      <div className={styles.statsTable}>
+        <h2 className={styles.statsTableTitle}>{title}</h2>
+        <div className={styles.statsTableEmpty}>
+          No statistics data available
+        </div>
       </div>
     );
   }
@@ -18,17 +20,17 @@ const StatsTable = ({ stats, title, statCategory }) => {
   );
 
   return (
-    <div className="stats-table">
-      <h2 className="stats-table__title">{title}</h2>
+    <div className={styles.statsTable}>
+      <h2 className={styles.statsTableTitle}>{title}</h2>
 
-      <div className="stats-table__container">
-        <table className="stats-table__table">
+      <div className={styles.statsTableContainer}>
+        <table className={styles.statsTableTable}>
           <thead>
             <tr>
-              <th className="stats-table__header">Rank</th>
-              <th className="stats-table__header">Team</th>
+              <th className={styles.statsTableHeader}>Rank</th>
+              <th className={styles.statsTableHeader}>Team</th>
               {columns.map((column) => (
-                <th key={column} className="stats-table__header">
+                <th key={column} className={styles.statsTableHeader}>
                   {column.charAt(0).toUpperCase() +
                     column.slice(1).replace(/([A-Z])/g, " $1")}
                 </th>
@@ -39,16 +41,20 @@ const StatsTable = ({ stats, title, statCategory }) => {
             {stats.map((stat, index) => (
               <tr
                 key={stat.rank || stat.Rank || index}
-                className="stats-table__row"
+                className={styles.statsTableRow}
               >
-                <td className="stats-table__cell stats-table__cell--rank">
+                <td
+                  className={`${styles.statsTableCell} ${styles.statsTableCellRank}`}
+                >
                   {stat.rank || stat.Rank}
                 </td>
-                <td className="stats-table__cell stats-table__cell--team">
+                <td
+                  className={`${styles.statsTableCell} ${styles.statsTableCellTeam}`}
+                >
                   {stat.team || stat.Team}
                 </td>
                 {columns.map((column) => (
-                  <td key={column} className="stats-table__cell">
+                  <td key={column} className={styles.statsTableCell}>
                     {stat[column]}
                   </td>
                 ))}

@@ -1,16 +1,16 @@
-.stats-page {
+.statsPage {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
 }
 
-.stats-page__main {
+.statsPageMain {
   flex: 1;
   padding: var(--spacing-lg);
 }
 
-.stats-page__container {
+.statsPageContainer {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -18,25 +18,25 @@
   gap: var(--spacing-xl);
 }
 
-.stats-page__header {
+.statsPageHeader {
   text-align: center;
   margin-bottom: var(--spacing-lg);
 }
 
-.stats-page__title {
+.statsPageTitle {
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin: 0 0 var(--spacing-sm) 0;
 }
 
-.stats-page__subtitle {
+.statsPageSubtitle {
   font-size: var(--font-size-lg);
   color: var(--color-text-muted);
   margin: 0;
 }
 
-.stats-page__filters {
+.statsPageFilters {
   display: flex;
   gap: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
@@ -46,19 +46,19 @@
   border-radius: var(--border-radius-lg);
 }
 
-.stats-page__filter-group {
+.statsPageFilterGroup {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
 
-.stats-page__filter-label {
+.statsPageFilterLabel {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
-.stats-page__filter-select {
+.statsPageFilterSelect {
   background-color: var(--color-background-secondary);
   border: 1px solid var(--color-secondary);
   border-radius: var(--border-radius);
@@ -69,17 +69,17 @@
   transition: var(--transition-colors);
 }
 
-.stats-page__filter-select:focus {
+.statsPageFilterSelect:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(152, 30, 50, 0.2);
 }
 
-.stats-page__filter-select:hover {
+.statsPageFilterSelect:hover {
   border-color: var(--color-primary);
 }
 
-.stats-page__content {
+.statsPageContent {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
@@ -87,19 +87,19 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .stats-page__main {
+  .statsPageMain {
     padding: var(--spacing-md);
   }
 
-  .stats-page__title {
+  .statsPageTitle {
     font-size: var(--font-size-xl);
   }
 
-  .stats-page__subtitle {
+  .statsPageSubtitle {
     font-size: var(--font-size-md);
   }
 
-  .stats-page__filters {
+  .statsPageFilters {
     flex-direction: column;
     gap: var(--spacing-md);
   }

@@ -1,4 +1,4 @@
-.rankings-table {
+.rankingsTable {
   background-color: var(--color-surface);
   border: 1px solid var(--color-secondary);
   border-radius: var(--border-radius-lg);
@@ -6,7 +6,7 @@
   margin-bottom: var(--spacing-lg);
 }
 
-.rankings-table__title {
+.rankingsTableTitle {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
@@ -14,17 +14,17 @@
   text-align: center;
 }
 
-.rankings-table__container {
+.rankingsTableContainer {
   overflow-x: auto;
 }
 
-.rankings-table__table {
+.rankingsTableTable {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--font-size-sm);
 }
 
-.rankings-table__header {
+.rankingsTableHeader {
   background-color: var(--color-background-secondary);
   color: var(--color-text-primary);
   font-weight: var(--font-weight-bold);
@@ -36,44 +36,44 @@
   letter-spacing: 0.5px;
 }
 
-.rankings-table__row {
+.rankingsTableRow {
   border-bottom: 1px solid var(--color-secondary);
   transition: var(--transition-colors);
 }
 
-.rankings-table__row:hover {
+.rankingsTableRow:hover {
   background-color: var(--color-background-secondary);
 }
 
-.rankings-table__row:last-child {
+.rankingsTableRow:last-child {
   border-bottom: none;
 }
 
-.rankings-table__cell {
+.rankingsTableCell {
   padding: var(--spacing-md) var(--spacing-sm);
   color: var(--color-text-primary);
   vertical-align: middle;
 }
 
-.rankings-table__cell--rank {
+.rankingsTableCellRank {
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
   text-align: center;
   width: 60px;
 }
 
-.rankings-table__cell--team {
+.rankingsTableCellTeam {
   font-weight: var(--font-weight-medium);
   min-width: 150px;
 }
 
-.rankings-table__cell--record {
+.rankingsTableCellRecord {
   text-align: center;
   font-weight: var(--font-weight-medium);
   width: 80px;
 }
 
-.rankings-table__cell--conference {
+.rankingsTableCellConference {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   text-transform: uppercase;
@@ -81,14 +81,14 @@
   width: 100px;
 }
 
-.rankings-table__cell--points {
+.rankingsTableCellPoints {
   text-align: center;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
   width: 80px;
 }
 
-.rankings-table__empty {
+.rankingsTableEmpty {
   text-align: center;
   color: var(--color-text-muted);
   font-style: italic;
@@ -97,31 +97,31 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .rankings-table {
+  .rankingsTable {
     padding: var(--spacing-md);
   }
 
-  .rankings-table__title {
+  .rankingsTableTitle {
     font-size: var(--font-size-lg);
   }
 
-  .rankings-table__header,
-  .rankings-table__cell {
+  .rankingsTableHeader,
+  .rankingsTableCell {
     padding: var(--spacing-sm);
     font-size: var(--font-size-xs);
   }
 
-  .rankings-table__cell--team {
+  .rankingsTableCellTeam {
     min-width: 120px;
   }
 
-  .rankings-table__cell--conference {
+  .rankingsTableCellConference {
     display: none;
   }
 }
 
 @media (max-width: 480px) {
-  .rankings-table__cell--points {
+  .rankingsTableCellPoints {
     display: none;
   }
 }

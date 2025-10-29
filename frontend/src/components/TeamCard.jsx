@@ -1,5 +1,5 @@
 import React from "react";
-import "../styles/components/TeamCard.css";
+import styles from "../styles/components/TeamCard.module.css";
 
 const TeamCard = ({ team }) => {
   const { name, conference, record, stats } = team;
@@ -10,35 +10,39 @@ const TeamCard = ({ team }) => {
   };
 
   return (
-    <div className="team-card" onClick={handleTeamClick}>
-      <div className="team-card__header">
-        <div className="team-card__logo">
+    <div className={styles.teamCard} onClick={handleTeamClick}>
+      <div className={styles.teamCardHeader}>
+        <div className={styles.teamCardLogo}>
           {/* Placeholder for team logo */}
-          <div className="team-card__logo-placeholder">{name.charAt(0)}</div>
+          <div className={styles.teamCardLogoPlaceholder}>{name.charAt(0)}</div>
         </div>
-        <div className="team-card__info">
-          <h3 className="team-card__name">{name}</h3>
-          <span className="team-card__conference">{conference}</span>
+        <div className={styles.teamCardInfo}>
+          <h3 className={styles.teamCardName}>{name}</h3>
+          <span className={styles.teamCardConference}>{conference}</span>
         </div>
       </div>
 
-      <div className="team-card__record">
-        <span className="team-card__record-label">Record:</span>
-        <span className="team-card__record-value">{record}</span>
+      <div className={styles.teamCardRecord}>
+        <span className={styles.teamCardRecordLabel}>Record:</span>
+        <span className={styles.teamCardRecordValue}>{record}</span>
       </div>
 
-      <div className="team-card__stats">
-        <div className="team-card__stat">
-          <span className="team-card__stat-label">PPG</span>
-          <span className="team-card__stat-value">{stats.pointsPerGame}</span>
+      <div className={styles.teamCardStats}>
+        <div className={styles.teamCardStat}>
+          <span className={styles.teamCardStatLabel}>PPG</span>
+          <span className={styles.teamCardStatValue}>
+            {stats.pointsPerGame}
+          </span>
         </div>
-        <div className="team-card__stat">
-          <span className="team-card__stat-label">PAPG</span>
-          <span className="team-card__stat-value">{stats.pointsAllowed}</span>
+        <div className={styles.teamCardStat}>
+          <span className={styles.teamCardStatLabel}>PAPG</span>
+          <span className={styles.teamCardStatValue}>
+            {stats.pointsAllowed}
+          </span>
         </div>
-        <div className="team-card__stat">
-          <span className="team-card__stat-label">YPG</span>
-          <span className="team-card__stat-value">{stats.totalYards}</span>
+        <div className={styles.teamCardStat}>
+          <span className={styles.teamCardStatLabel}>YPG</span>
+          <span className={styles.teamCardStatValue}>{stats.totalYards}</span>
         </div>
       </div>
     </div>

@@ -1,17 +1,19 @@
 import React from "react";
 import SearchBar from "./SearchBar";
 import Navigation from "./Navigation";
-import "../styles/components/Header.css";
+import styles from "../styles/components/Header.module.css";
 
 const Header = ({ title, onSearch }) => {
   return (
-    <header className="header">
-      <div className="header__container">
-        <div className="header__branding">
-          <h1 className="header__title">{title}</h1>
-          <p className="header__subtitle">College Football Scores & Rankings</p>
+    <header className={styles.header}>
+      <div className={styles.headerContainer}>
+        <div className={styles.headerBranding}>
+          <h1 className={styles.headerTitle}>{title}</h1>
+          <p className={styles.headerSubtitle}>
+            College Football Scores & Rankings
+          </p>
         </div>
-        <div className="header__search">
+        <div className={styles.headerSearch}>
           <SearchBar onSearch={onSearch} />
         </div>
       </div>

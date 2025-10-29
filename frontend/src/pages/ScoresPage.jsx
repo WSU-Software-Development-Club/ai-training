@@ -3,7 +3,7 @@ import Header from "../components/Header";
 import ScoreCard from "../components/ScoreCard";
 import { appConfig } from "../constants";
 import { mockScores } from "../utils/mockData";
-import "../styles/pages/ScoresPage.css";
+import styles from "../styles/pages/ScoresPage.module.css";
 
 const ScoresPage = () => {
   const [selectedConference, setSelectedConference] = useState("All");
@@ -31,23 +31,25 @@ const ScoresPage = () => {
   });
 
   return (
-    <div className="scores-page">
+    <div className={styles.scoresPage}>
       <Header title={appConfig.name} onSearch={handleSearch} />
 
-      <main className="scores-page__main">
-        <div className="scores-page__container">
-          <div className="scores-page__header">
-            <h1 className="scores-page__title">College Football Scores</h1>
-            <p className="scores-page__subtitle">
+      <main className={styles.scoresPageMain}>
+        <div className={styles.scoresPageContainer}>
+          <div className={styles.scoresPageHeader}>
+            <h1 className={styles.scoresPageTitle}>College Football Scores</h1>
+            <p className={styles.scoresPageSubtitle}>
               Filter and view scores by conference and status
             </p>
           </div>
 
-          <div className="scores-page__filters">
-            <div className="scores-page__filter-group">
-              <label className="scores-page__filter-label">Conference:</label>
+          <div className={styles.scoresPageFilters}>
+            <div className={styles.scoresPageFilterGroup}>
+              <label className={styles.scoresPageFilterLabel}>
+                Conference:
+              </label>
               <select
-                className="scores-page__filter-select"
+                className={styles.scoresPageFilterSelect}
                 value={selectedConference}
                 onChange={(e) => setSelectedConference(e.target.value)}
               >
@@ -59,10 +61,10 @@ const ScoresPage = () => {
               </select>
             </div>
 
-            <div className="scores-page__filter-group">
-              <label className="scores-page__filter-label">Status:</label>
+            <div className={styles.scoresPageFilterGroup}>
+              <label className={styles.scoresPageFilterLabel}>Status:</label>
               <select
-                className="scores-page__filter-select"
+                className={styles.scoresPageFilterSelect}
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
@@ -75,15 +77,15 @@ const ScoresPage = () => {
             </div>
           </div>
 
-          <div className="scores-page__content">
-            <div className="scores-page__scores-grid">
+          <div className={styles.scoresPageContent}>
+            <div className={styles.scoresPageScoresGrid}>
               {filteredScores.map((game) => (
                 <ScoreCard key={game.id} game={game} />
               ))}
             </div>
 
             {filteredScores.length === 0 && (
-              <div className="scores-page__no-results">
+              <div className={styles.scoresPageNoResults}>
                 <p>No scores found matching your filters.</p>
               </div>
             )}

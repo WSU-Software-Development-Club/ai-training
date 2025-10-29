@@ -1,16 +1,16 @@
-.scores-page {
+.homePage {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
 }
 
-.scores-page__main {
+.homePageMain {
   flex: 1;
   padding: var(--spacing-lg);
 }
 
-.scores-page__container {
+.homePageContainer {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -18,25 +18,29 @@
   gap: var(--spacing-xl);
 }
 
-.scores-page__header {
+.homePageHeader {
   text-align: center;
   margin-bottom: var(--spacing-lg);
 }
 
-.scores-page__title {
+.homePageTitle {
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin: 0 0 var(--spacing-sm) 0;
 }
 
-.scores-page__subtitle {
+.homePageSubtitle {
   font-size: var(--font-size-lg);
   color: var(--color-text-muted);
   margin: 0;
 }
 
-.scores-page__filters {
+.homePageSection {
+  margin-bottom: var(--spacing-xl);
+}
+
+.homePageFilters {
   display: flex;
   gap: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
@@ -46,19 +50,19 @@
   border-radius: var(--border-radius-lg);
 }
 
-.scores-page__filter-group {
+.homePageFilterGroup {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
 
-.scores-page__filter-label {
+.homePageFilterLabel {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
-.scores-page__filter-select {
+.homePageFilterSelect {
   background-color: var(--color-background-secondary);
   border: 1px solid var(--color-secondary);
   border-radius: var(--border-radius);
@@ -69,29 +73,23 @@
   transition: var(--transition-colors);
 }
 
-.scores-page__filter-select:focus {
+.homePageFilterSelect:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(152, 30, 50, 0.2);
 }
 
-.scores-page__filter-select:hover {
+.homePageFilterSelect:hover {
   border-color: var(--color-primary);
 }
 
-.scores-page__content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.scores-page__scores-grid {
+.homePageScoresGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: var(--spacing-lg);
 }
 
-.scores-page__no-results {
+.homePageNoResults {
   text-align: center;
   padding: var(--spacing-xl);
   color: var(--color-text-muted);
@@ -100,24 +98,24 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .scores-page__main {
+  .homePageMain {
     padding: var(--spacing-md);
   }
 
-  .scores-page__title {
+  .homePageTitle {
     font-size: var(--font-size-xl);
   }
 
-  .scores-page__subtitle {
+  .homePageSubtitle {
     font-size: var(--font-size-md);
   }
 
-  .scores-page__filters {
+  .homePageFilters {
     flex-direction: column;
     gap: var(--spacing-md);
   }
 
-  .scores-page__scores-grid {
+  .homePageScoresGrid {
     grid-template-columns: 1fr;
     gap: var(--spacing-md);
   }

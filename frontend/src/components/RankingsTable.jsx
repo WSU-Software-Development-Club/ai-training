@@ -1,49 +1,57 @@
 import React from "react";
-import "../styles/components/RankingsTable.css";
+import styles from "../styles/components/RankingsTable.module.css";
 
 const RankingsTable = ({ rankings, title = "AP Top 25" }) => {
   if (!rankings || rankings.length === 0) {
     return (
-      <div className="rankings-table">
-        <h2 className="rankings-table__title">{title}</h2>
-        <div className="rankings-table__empty">No rankings data available</div>
+      <div className={styles.rankingsTable}>
+        <h2 className={styles.rankingsTableTitle}>{title}</h2>
+        <div className={styles.rankingsTableEmpty}>
+          No rankings data available
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="rankings-table">
-      <h2 className="rankings-table__title">{title}</h2>
+    <div className={styles.rankingsTable}>
+      <h2 className={styles.rankingsTableTitle}>{title}</h2>
 
-      <div className="rankings-table__container">
-        <table className="rankings-table__table">
+      <div className={styles.rankingsTableContainer}>
+        <table className={styles.rankingsTableTable}>
           <thead>
             <tr>
-              <th className="rankings-table__header">Rank</th>
-              <th className="rankings-table__header">School</th>
-              <th className="rankings-table__header">Points</th>
-              <th className="rankings-table__header">Record</th>
-              <th className="rankings-table__header">Previous</th>
+              <th className={styles.rankingsTableHeader}>Rank</th>
+              <th className={styles.rankingsTableHeader}>School</th>
+              <th className={styles.rankingsTableHeader}>Points</th>
+              <th className={styles.rankingsTableHeader}>Record</th>
+              <th className={styles.rankingsTableHeader}>Previous</th>
             </tr>
           </thead>
           <tbody>
             {rankings.map((team, index) => (
-              <tr key={team.rank || index} className="rankings-table__row">
-                <td className="rankings-table__cell rankings-table__cell--rank">
+              <tr key={team.rank || index} className={styles.rankingsTableRow}>
+                <td
+                  className={`${styles.rankingsTableCell} ${styles.rankingsTableCellRank}`}
+                >
                   {team.RANK}
                 </td>
-                <td className="rankings-table__cell rankings-table__cell--school">
+                <td
+                  className={`${styles.rankingsTableCell} ${styles.rankingsTableCellTeam}`}
+                >
                   {team.SCHOOL}
                 </td>
-                <td className="rankings-table__cell rankings-table__cell--points">
+                <td
+                  className={`${styles.rankingsTableCell} ${styles.rankingsTableCellPoints}`}
+                >
                   {team.POINTS}
                 </td>
-                <td className="rankings-table__cell rankings-table__cell--record">
+                <td
+                  className={`${styles.rankingsTableCell} ${styles.rankingsTableCellRecord}`}
+                >
                   {team.RECORD}
                 </td>
-                <td className="rankings-table__cell rankings-table__cell--previous">
-                  {team.PREVIOUS}
-                </td>
+                <td className={styles.rankingsTableCell}>{team.PREVIOUS}</td>
               </tr>
             ))}
           </tbody>

@@ -1,4 +1,4 @@
-.status-card {
+.statusCard {
   background-color: var(--color-surface);
   border: 1px solid var(--color-light-gray);
   border-radius: var(--border-radius);
@@ -9,12 +9,12 @@
   transition: var(--transition-transform), var(--transition-all);
 }
 
-.status-card:hover {
+.statusCard:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
-.status-card__title {
+.statusCardTitle {
   margin: 0 0 var(--spacing-xs) 0;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -23,7 +23,7 @@
   letter-spacing: 0.5px;
 }
 
-.status-card__value {
+.statusCardValue {
   margin: 0;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
@@ -31,18 +31,18 @@
 }
 
 /* Status variants */
-.status-card--success {
+.statusCardSuccess {
   border-left: 4px solid var(--color-success);
 }
 
-.status-card--warning {
+.statusCardWarning {
   border-left: 4px solid var(--color-warning);
 }
 
-.status-card--error {
+.statusCardError {
   border-left: 4px solid var(--color-error);
 }
 
-.status-card--info {
+.statusCardInfo {
   border-left: 4px solid var(--color-info);
 }

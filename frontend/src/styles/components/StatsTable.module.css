@@ -1,4 +1,4 @@
-.stats-table {
+.statsTable {
   background-color: var(--color-surface);
   border: 1px solid var(--color-secondary);
   border-radius: var(--border-radius-lg);
@@ -6,7 +6,7 @@
   margin-bottom: var(--spacing-lg);
 }
 
-.stats-table__title {
+.statsTableTitle {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
@@ -14,17 +14,17 @@
   text-align: center;
 }
 
-.stats-table__container {
+.statsTableContainer {
   overflow-x: auto;
 }
 
-.stats-table__table {
+.statsTableTable {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--font-size-sm);
 }
 
-.stats-table__header {
+.statsTableHeader {
   background-color: var(--color-background-secondary);
   color: var(--color-text-primary);
   font-weight: var(--font-weight-bold);
@@ -36,38 +36,38 @@
   letter-spacing: 0.5px;
 }
 
-.stats-table__row {
+.statsTableRow {
   border-bottom: 1px solid var(--color-secondary);
   transition: var(--transition-colors);
 }
 
-.stats-table__row:hover {
+.statsTableRow:hover {
   background-color: var(--color-background-secondary);
 }
 
-.stats-table__row:last-child {
+.statsTableRow:last-child {
   border-bottom: none;
 }
 
-.stats-table__cell {
+.statsTableCell {
   padding: var(--spacing-md) var(--spacing-sm);
   color: var(--color-text-primary);
   vertical-align: middle;
 }
 
-.stats-table__cell--rank {
+.statsTableCellRank {
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
   text-align: center;
   width: 60px;
 }
 
-.stats-table__cell--team {
+.statsTableCellTeam {
   font-weight: var(--font-weight-medium);
   min-width: 150px;
 }
 
-.stats-table__empty {
+.statsTableEmpty {
   text-align: center;
   color: var(--color-text-muted);
   font-style: italic;
@@ -76,27 +76,27 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .stats-table {
+  .statsTable {
     padding: var(--spacing-md);
   }
 
-  .stats-table__title {
+  .statsTableTitle {
     font-size: var(--font-size-lg);
   }
 
-  .stats-table__header,
-  .stats-table__cell {
+  .statsTableHeader,
+  .statsTableCell {
     padding: var(--spacing-sm);
     font-size: var(--font-size-xs);
   }
 
-  .stats-table__cell--team {
+  .statsTableCellTeam {
     min-width: 120px;
   }
 }
 
 @media (max-width: 480px) {
-  .stats-table__cell--rank {
+  .statsTableCellRank {
     display: none;
   }
 }

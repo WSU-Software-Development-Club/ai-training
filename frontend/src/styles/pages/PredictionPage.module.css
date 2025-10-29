@@ -1,16 +1,16 @@
-.comparison-page {
+.predictionPage {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
 }
 
-.comparison-page__main {
+.predictionPageMain {
   flex: 1;
   padding: var(--spacing-lg);
 }
 
-.comparison-page__container {
+.predictionPageContainer {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -18,31 +18,31 @@
   gap: var(--spacing-xl);
 }
 
-.comparison-page__header {
+.predictionPageHeader {
   text-align: center;
   margin-bottom: var(--spacing-lg);
 }
 
-.comparison-page__title {
+.predictionPageTitle {
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin: 0 0 var(--spacing-sm) 0;
 }
 
-.comparison-page__subtitle {
+.predictionPageSubtitle {
   font-size: var(--font-size-lg);
   color: var(--color-text-muted);
   margin: 0;
 }
 
-.comparison-page__content {
+.predictionPageContent {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
 }
 
-.comparison-page__placeholder {
+.predictionPagePlaceholder {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -55,19 +55,19 @@
   margin: var(--spacing-xl) 0;
 }
 
-.comparison-page__placeholder-icon {
+.predictionPagePlaceholderIcon {
   color: var(--color-primary);
   margin-bottom: var(--spacing-lg);
 }
 
-.comparison-page__placeholder-title {
+.predictionPagePlaceholderTitle {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin: 0 0 var(--spacing-md) 0;
 }
 
-.comparison-page__placeholder-text {
+.predictionPagePlaceholderText {
   font-size: var(--font-size-md);
   color: var(--color-text-muted);
   line-height: var(--line-height-relaxed);
@@ -77,27 +77,27 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .comparison-page__main {
+  .predictionPageMain {
     padding: var(--spacing-md);
   }
 
-  .comparison-page__title {
+  .predictionPageTitle {
     font-size: var(--font-size-xl);
   }
 
-  .comparison-page__subtitle {
+  .predictionPageSubtitle {
     font-size: var(--font-size-md);
   }
 
-  .comparison-page__placeholder {
+  .predictionPagePlaceholder {
     padding: var(--spacing-xl);
   }
 
-  .comparison-page__placeholder-title {
+  .predictionPagePlaceholderTitle {
     font-size: var(--font-size-lg);
   }
 
-  .comparison-page__placeholder-text {
+  .predictionPagePlaceholderText {
     font-size: var(--font-size-sm);
   }
 }
