@@ -1,29 +1,37 @@
-/* CSS Variables - Import from constants */
+/* CSS Variables - WSU Crimson Dark Mode Theme */
 :root {
-  /* Colors */
-  --color-primary: #282c34;
-  --color-primary-light: #3a3f4a;
-  --color-primary-dark: #1e2126;
-  --color-secondary: #61dafb;
-  --color-secondary-light: #8ee5fb;
-  --color-secondary-dark: #4a9fb8;
+  /* WSU Brand Colors */
+  --color-primary: #981e32; /* WSU Crimson */
+  --color-primary-light: #b83a4f;
+  --color-primary-dark: #7a1a28;
+  --color-secondary: #5e6a71; /* WSU Gray */
+  --color-secondary-light: #a7a8aa; /* WSU Light Gray */
+  --color-secondary-dark: #3d4449;
+
+  /* Dark Mode Colors */
   --color-white: #ffffff;
   --color-black: #000000;
-  --color-gray: #6c757d;
-  --color-light-gray: #f8f9fa;
-  --color-dark-gray: #343a40;
+  --color-gray: #5e6a71;
+  --color-light-gray: #a7a8aa;
+  --color-dark-gray: #2d2d2d;
   --color-success: #28a745;
   --color-warning: #ffc107;
   --color-error: #dc3545;
   --color-info: #17a2b8;
-  --color-background: #ffffff;
-  --color-background-dark: #282c34;
-  --color-surface: #f8f9fa;
-  --color-surface-dark: #3a3f4a;
-  --color-text-primary: #212529;
-  --color-text-secondary: #6c757d;
+
+  /* Dark Mode Backgrounds */
+  --color-background: #1a1a1a;
+  --color-background-secondary: #242424;
+  --color-background-tertiary: #2d2d2d;
+  --color-surface: #242424;
+  --color-surface-light: #2d2d2d;
+  --color-surface-dark: #1a1a1a;
+
+  /* Dark Mode Text */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #e0e0e0;
   --color-text-light: #ffffff;
-  --color-text-muted: #6c757d;
+  --color-text-muted: #a7a8aa;
 
   /* Spacing */
   --spacing-xs: 4px;

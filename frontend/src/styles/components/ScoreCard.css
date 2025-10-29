@@ -1,0 +1,132 @@
+.score-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-md);
+  transition: var(--transition-all);
+  cursor: pointer;
+}
+
+.score-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.score-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.score-card__conference {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.score-card__status {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.score-card__status--final {
+  background-color: var(--color-secondary);
+  color: var(--color-text-light);
+}
+
+.score-card__status--live {
+  background-color: var(--color-success);
+  color: var(--color-text-light);
+  animation: pulse 2s infinite;
+}
+
+.score-card__status--upcoming {
+  background-color: var(--color-info);
+  color: var(--color-text-light);
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.score-card__date {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-md);
+  text-align: center;
+}
+
+.score-card__teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.score-card__team {
+  flex: 1;
+  text-align: center;
+}
+
+.score-card__team--away {
+  text-align: left;
+}
+
+.score-card__team--home {
+  text-align: right;
+}
+
+.score-card__team-name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.score-card__team-score {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.score-card__vs {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .score-card {
+    padding: var(--spacing-sm);
+  }
+
+  .score-card__team-name {
+    font-size: var(--font-size-sm);
+  }
+
+  .score-card__team-score {
+    font-size: var(--font-size-lg);
+  }
+
+  .score-card__teams {
+    gap: var(--spacing-sm);
+  }
+}

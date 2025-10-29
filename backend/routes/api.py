@@ -1,7 +1,7 @@
 """API routes for the application"""
 
 from flask import Blueprint, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Create API blueprint
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -11,7 +11,7 @@ def health():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.now(timezone.utc).isoformat(),
         'version': '1.0.0'
     })
 

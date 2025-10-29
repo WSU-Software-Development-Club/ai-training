@@ -1,0 +1,147 @@
+.team-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-md);
+  transition: var(--transition-all);
+  cursor: pointer;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.team-card__header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.team-card__logo {
+  margin-right: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.team-card__logo-placeholder {
+  width: 48px;
+  height: 48px;
+  background-color: var(--color-primary);
+  color: var(--color-text-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.team-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.team-card__name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+  line-height: var(--line-height-tight);
+}
+
+.team-card__conference {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.team-card__record {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background-color: var(--color-background-secondary);
+  border-radius: var(--border-radius);
+}
+
+.team-card__record-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.team-card__record-value {
+  font-size: var(--font-size-md);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.team-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-sm);
+  margin-top: auto;
+}
+
+.team-card__stat {
+  text-align: center;
+  padding: var(--spacing-sm);
+  background-color: var(--color-background-secondary);
+  border-radius: var(--border-radius);
+}
+
+.team-card__stat-label {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.team-card__stat-value {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .team-card {
+    padding: var(--spacing-sm);
+  }
+
+  .team-card__logo-placeholder {
+    width: 40px;
+    height: 40px;
+    font-size: var(--font-size-md);
+  }
+
+  .team-card__name {
+    font-size: var(--font-size-sm);
+  }
+
+  .team-card__stats {
+    gap: var(--spacing-xs);
+  }
+
+  .team-card__stat {
+    padding: var(--spacing-xs);
+  }
+
+  .team-card__stat-label {
+    font-size: 10px;
+  }
+
+  .team-card__stat-value {
+    font-size: var(--font-size-xs);
+  }
+}

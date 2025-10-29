@@ -13,8 +13,14 @@ def get_ap_rankings():
     Returns:
         dict or None: AP Top 25 rankings data, or None if error occurred
     """
-    # TODO: Implement this function
-    # Hint: Use NCAA_API_BASE_URL and make a GET request to /rankings/football/fbs/associated-press
-    
-    print("get_ap_rankings not implemented yet")
+
+    try:
+        response = requests.get(f'{NCAA_API_BASE_URL}/rankings/football/fbs/associated-press', timeout=10)
+        response.raise_for_status()
+        return response.json()
+
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP error occurred: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"Request error occurred: {e}")
     return None
