@@ -54,7 +54,7 @@ export const getStats = async (category) => {
 
 // Specific API functions
 export const api = {
-  // Get welcome message4
+  // Get welcome message
   getWelcomeMessage: () => apiRequest(appConfig.endpoints.home),
 
   // Get health status
@@ -63,7 +63,11 @@ export const api = {
   // Get stats for any supported category
   getStats,
 
-  getRankings: () => apiRequest(appConfig.endpoints.rankings)
+  // Get AP rankings
+  getRankings: () => apiRequest(appConfig.endpoints.rankings),
+
+  // Get scoreboard by a given week
+  getScoreboardByWeek: (week) => apiRequest(appConfig.endpoints.scores + week)
 };
 
 export default api;
