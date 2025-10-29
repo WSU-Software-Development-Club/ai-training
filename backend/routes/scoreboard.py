@@ -11,7 +11,7 @@ scoreboard_bp = Blueprint('scoreboard', __name__, url_prefix='/scoreboard')
 @scoreboard_bp.route('/week/<int:week>', methods=['GET'])
 def get_scoreboard_by_week(week):
     """
-    TODO: Route to get scoreboard data for a specific week
+    Route to get scoreboard data for a specific week
     Args:
         week (int): Week number (1-16 typically)
     Returns:
