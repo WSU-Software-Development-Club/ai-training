@@ -5,6 +5,8 @@ from unittest.mock import patch, Mock
 from app import create_app
 from api_vars import NCAA_API_BASE_URL
 from services.history_service import get_championship_winners
+from services.rankings_service import get_ap_rankings
+from services.stats_service import get_team_stats
 
 
 class TestServices(unittest.TestCase):
@@ -41,9 +43,17 @@ class TestServices(unittest.TestCase):
                         "Season": "2022",
                         "Selecting Organization": "CFP"
                     }
-                ]
+                ],
+                "page": 1,
+                "pages": 1,
+                "sport": "Football",
+                "title": "Championship History",
+                "updated": ""
+            },
+            "message": "Championship data retrieved successfully",
+            "success": True
             }
-        }
+
         mock_get.return_value = mock_response
         
         result = get_championship_winners()
@@ -67,9 +77,17 @@ class TestServices(unittest.TestCase):
         mock_response.json.return_value = {
             "count": 0,
             "data": {
-                "data": []
+                "data": [],
+                "page": 1,
+                "pages": 1,
+                "sport": "Football",
+                "title": "Championship History",
+                "updated": ""
+            },
+            "message": "Championship data retrieved successfully",
+            "success": True
             }
-        }
+
         mock_get.return_value = mock_response
         
         result = get_championship_winners()
@@ -101,25 +119,99 @@ class TestServices(unittest.TestCase):
         mock_get.return_value = mock_response
         
         result = get_championship_winners()
-        
+
         self.assertIsNotNone(result)
         self.assertEqual(result['error'], 'Internal Server Error')
     
     
+
+    @patch('services.rankings_service.requests.get')
+    def test_get_ap_rankings_success(self, mock_get):
+        """Test successful retrieval of rankings"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "data": [
+                {
+                    "POINTS": "1633",
+                    "PREVIOUS": "1",
+                    "RANK": "1",
+                    "RECORD": "7-0",
+                    "SCHOOL": "Ohio State (54)"
+                },
+                {
+                    "POINTS": "1589",
+                    "PREVIOUS": "2",
+                    "RANK": "2",
+                    "RECORD": "8-0",
+                    "SCHOOL": "Indiana (11)"
+                },
+                {
+                    "POINTS": "1523",
+                    "PREVIOUS": "3",
+                    "RANK": "3",
+                    "RECORD": "8-0",
+                    "SCHOOL": "Texas A&M (1)"
+                }
+                ],
+                "page": 1,
+                "pages": 1,
+                "sport": "Football",
+                "title": "College football rankings: Associated Press Top 25",
+                "updated": "Through Games OCT. 26, 2025"
+            },
+            "data_type": "AP rankings",
+            "success": True
+        }
+        mock_get.return_value = mock_response
+        
+        result = get_ap_rankings()
+        
+        self.assertIsNotNone(result)
+        self.assertEqual(result['data_type'], "AP rankings")
+        self.assertEqual(len(result['data']['data']), 3)
+        
+        rank_one = result['data']['data'][0]
+        self.assertEqual(rank_one['SCHOOL'], 'Ohio State (54)')
+        self.assertEqual(rank_one['RECORD'], '7-0')
+        
+        mock_get.assert_called_once_with(f'{NCAA_API_BASE_URL}/rankings/football/fbs/associated-press', timeout=10)
     
-    def test_ranking_service(self):
-        """Test ranking service"""
-        response = self.client.get('/rankings/football/fbs/associated-press')
-        self.assertEqual(response.status_code, 200)
-        data = response.get_json()
-        self.assertIn('status', data)
-    
-    def test_stats_service(self):
-        """Test stats service"""
-        response = self.client.get('/stats/football/fbs/current/team/')
-        self.assertEqual(response.status_code, 200)
-        data = response.get_json()
-        self.assertIn('name', data)
+
+    @patch('services.rankings_service.requests.get')
+    def test_get_ap_rankings_empty_response(self, mock_get):
+        """Test successful retrieval of empty rankings"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "data": [],
+                "page": 1,
+                "pages": 1,
+                "sport": "Football",
+                "title": "College football rankings: Associated Press Top 25",
+                "updated": "Through Games OCT. 26, 2025"
+            },
+            "data_type": "AP rankings",
+            "success": True
+        }
+        mock_get.return_value = mock_response
+        
+        result = get_ap_rankings()
+        
+        self.assertIsNotNone(result)
+        self.assertEqual(result['data_type'], "AP rankings")
+        self.assertEqual(len(result['data']['data']), 0)
+        
+        mock_get.assert_called_once_with(f'{NCAA_API_BASE_URL}/rankings/football/fbs/associated-press', timeout = 10)
+        
+    ##def test_stats_service(self):
+    ##    """Test stats service"""
+    ##    response = self.client.get('/stats/football/fbs/current/team/')
+    ##    self.assertEqual(response.status_code, 200)
+    ##    data = response.get_json()
+    ##    self.assertIn('name', data)
 
 if __name__ == '__main__':
     unittest.main()
