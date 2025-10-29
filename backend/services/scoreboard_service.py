@@ -16,7 +16,7 @@ def process_games(raw_data: dict):
 
         game_data = {
             'game_state':  { 
-                'isUpcoming': True if (game.get('gameState') == "Pre") else False,
+                'isUpcoming': True if game.get('gameState') == "pre" else False,
                 'isLive': True if game.get('gameState') == "live" else False,
                 'isFinished': True if game.get('gameState') == "final" else False
                 },
@@ -24,7 +24,6 @@ def process_games(raw_data: dict):
                 'score': None if away_team.get('score') in ('', None) else int(away_team.get('score')),
                 'names': away_team.get('names', {}),
                 'rank': None if away_team.get('rank') in ('', None) else int(away_team.get('rank')),
-                'description': away_team.get('description'),
                 'conference': (
                     away_team.get('conferences', [{}])[0].get('conferenceSeo')
                     if away_team.get('conferences') else None
@@ -35,7 +34,6 @@ def process_games(raw_data: dict):
                 'score': None if home_team.get('score') in ('', None) else int(home_team.get('score')),
                 'names': home_team.get('names', {}),
                 'rank': None if home_team.get('rank') in ('', None) else int(home_team.get('rank')),
-                'description': home_team.get('description'),
                 'conference': (
                     home_team.get('conferences', [{}])[0].get('conferenceSeo')
                     if home_team.get('conferences') else None
