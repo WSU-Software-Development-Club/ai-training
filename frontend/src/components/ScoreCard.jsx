@@ -1,50 +1,56 @@
 import React from "react";
 import styles from "../styles/components/ScoreCard.module.css";
 
+
 const ScoreCard = ({ game }) => {
   const {
-    homeTeam,
-    awayTeam,
-    homeScore,
-    awayScore,
-    status,
+    home,
+    away,
+    game_state,
     date,
-    time,
-    conference,
+    time
   } = game;
 
-  const getStatusClass = (status) => {
-    switch (status.toLowerCase()) {
-      case "final":
-        return styles.scoreCardStatusFinal;
-      case "live":
-        return styles.scoreCardStatusLive;
-      case "upcoming":
-        return styles.scoreCardStatusUpcoming;
-      default:
-        return styles.scoreCardStatusFinal;
-    }
-  };
+  const homeTeam = home?.names?.short || "Home";
+  const awayTeam = away?.names?.short || "Away";
+  const homeScore = home?.score ?? "-";
+  const awayScore = away?.score ?? "-";
+  const conference = home?.conference || away?.conference || "N/A";
+  const status = game_state?.isLive
+    ? "Live"
+    : game_state?.isFinished
+    ? "Final"
+    : game_state?.isUpcoming
+    ? "Upcoming"
+    : "Unknown";
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
+  const getFormattedDate = (date) => {
+    const dateObject = new Date(date);
+    return dateObject.toLocaleDateString('en-US', {
+      year: '2-digit',
+      month: 'short',
+      day: 'numeric',
     });
   };
+
+  const getStatusClass = (game_state) => {
+    if (game_state.isFinished) return styles.scoreCardStatusFinal;
+    if (game_state.isLive) return styles.scoreCardStatusLive;
+    if (game_state.isUpcoming) return styles.scoreCardStatusUpcoming;
+    return "";
+  }
 
   return (
     <div className={styles.scoreCard}>
       <div className={styles.scoreCardHeader}>
         <span className={styles.scoreCardConference}>{conference}</span>
-        <span className={`${styles.scoreCardStatus} ${getStatusClass(status)}`}>
+        <span className={`${styles.scoreCardStatus} ${getStatusClass(game_state)}`}>
           {status}
         </span>
       </div>
 
       <div className={styles.scoreCardDate}>
-        {formatDate(date)} • {time}
+        {date ? getFormattedDate(date) : "TBD"} • {time || ""}
       </div>
 
       <div className={styles.scoreCardTeams}>
