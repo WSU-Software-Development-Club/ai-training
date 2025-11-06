@@ -10,6 +10,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 const HomePage = () => {
   const [selectedConference, setSelectedConference] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
+  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeek());
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,10 +23,10 @@ const HomePage = () => {
   useEffect(() => {
     const fetchGameData = async () => {
       setLoading(true);
+      setError(null);
 
       try {
-        const week = getCurrentWeek();
-        const response = await api.getScoreboardByWeek(week);
+        const response = await api.getScoreboardByWeek(selectedWeek);
 
         if (response.success) {
           setGameData(response.data);
@@ -41,7 +42,7 @@ const HomePage = () => {
     };
 
     fetchGameData();
-  }, []);
+  }, [selectedWeek]);
 
   if (loading) {
     return (
@@ -79,19 +80,18 @@ const HomePage = () => {
 
   const statuses = ["All", "Final", "Live", "Upcoming"];
 
+  const weeks = Array.from({ length: 14}, (_, i) => i + 1);
+
   // Filter scores based on selected filters
   const filteredScores = gameData.games.filter(game => {
     const conferenceMatch =
       selectedConference === "All" || game.away.conference === selectedConference || game.home.conference === selectedConference;
     const statusMatch =
-       selectedStatus === "All" || (game.game_state.isUpcoming && selectedStatus === "Upcoming") ||
+      selectedStatus === "All" || (game.game_state.isUpcoming && selectedStatus === "Upcoming") ||
       (game.game_state.isLive && selectedStatus === "Live") || 
       (game.game_state.isFinished && selectedStatus === "Final");
     return conferenceMatch && statusMatch;
   });
-
-
-
 
   return (
     <div className={styles.homePage}>
@@ -107,6 +107,21 @@ const HomePage = () => {
           </div>
 
           <div className={styles.homePageFilters}>
+            {/* Week Dropdown */}
+            <div className={styles.homePageFilterGroup}>
+              <label className={styles.homePageFilterLabel}>Week:</label>
+              <select
+                className={styles.homePageFilterSelect}
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(Number(e.target.value))}
+              >
+                {weeks.map((weekNumber) => (
+                  <option key={weekNumber} value={weekNumber}>
+                    Week {weekNumber}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className={styles.homePageFilterGroup}>
               <label className={styles.homePageFilterLabel}>Conference:</label>
               <select

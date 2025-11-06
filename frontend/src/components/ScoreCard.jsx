@@ -24,6 +24,7 @@ const ScoreCard = ({ game }) => {
     ? "Upcoming"
     : "Unknown";
 
+  // TODO: this kind of formatting could be done on the backend side to reduce frontend overhead.
   const getFormattedDate = (date) => {
     const dateObject = new Date(date);
     return dateObject.toLocaleDateString('en-US', {
