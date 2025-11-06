@@ -37,8 +37,8 @@ const ScoreCard = ({ game }) => {
     const dateObject = new Date(epoch*1000);
     return dateObject.toLocaleTimeString('en-US', {
       hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+      minute: 'numeric',
+      timeZoneName: 'short',
     })
   }
   
