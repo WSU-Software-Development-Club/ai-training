@@ -1,32 +1,95 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import ScoreCard from "../components/ScoreCard";
 import { appConfig } from "../constants";
-import { mockScores } from "../utils/mockData";
+import api from "../services/api";
 import styles from "../styles/pages/HomePage.module.css";
+import { getCurrentWeek } from "../utils/helpers";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 const HomePage = () => {
   const [selectedConference, setSelectedConference] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
+  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeek());
+  const [gameData, setGameData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const handleSearch = (searchTerm) => {
     // TODO: Replace with API call to /api/search
     console.log("Searching for:", searchTerm);
   };
 
-  // Get unique conferences from mock data
+  useEffect(() => {
+    const fetchGameData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await api.getScoreboardByWeek(selectedWeek);
+
+        if (response.success) {
+          setGameData(response.data);
+        } else {
+          setError("No scoreboard data available.");
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Unable to load scoreboard data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGameData();
+  }, [selectedWeek]);
+
+  if (loading) {
+    return (
+      <div className={styles.homePage}>
+        <Header title={appConfig.name} onSearch={handleSearch} />
+        <main className={styles.homePageMain}>
+          <div className={styles.loadingContainer}>
+            <LoadingSpinner />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.homePage}>
+        <Header title={appConfig.name} onSearch={handleSearch} />
+        <main className={styles.homePageMain}>
+          <div className={styles.errorContainer}>
+            <p>{error}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   const conferences = [
     "All",
-    ...new Set(mockScores.map((game) => game.conference)),
+    ...new Set(gameData.games.flatMap((game) => [
+      game.away.conference.charAt(0).toUpperCase() + game.away.conference.slice(1),
+      game.home.conference.charAt(0).toUpperCase() + game.home.conference.slice(1),
+  ])),
   ];
+
   const statuses = ["All", "Final", "Live", "Upcoming"];
 
+  const weeks = Array.from({ length: 14}, (_, i) => i + 1);
+
   // Filter scores based on selected filters
-  const filteredScores = mockScores.filter((game) => {
+  const filteredScores = gameData.games.filter(game => {
     const conferenceMatch =
-      selectedConference === "All" || game.conference === selectedConference;
+      selectedConference === "All" || game.away.conference === selectedConference || game.home.conference === selectedConference;
     const statusMatch =
-      selectedStatus === "All" || game.status === selectedStatus;
+      selectedStatus === "All" || (game.game_state.isUpcoming && selectedStatus === "Upcoming") ||
+      (game.game_state.isLive && selectedStatus === "Live") || 
+      (game.game_state.isFinished && selectedStatus === "Final");
     return conferenceMatch && statusMatch;
   });
 
@@ -44,6 +107,21 @@ const HomePage = () => {
           </div>
 
           <div className={styles.homePageFilters}>
+            {/* Week Dropdown */}
+            <div className={styles.homePageFilterGroup}>
+              <label className={styles.homePageFilterLabel}>Week:</label>
+              <select
+                className={styles.homePageFilterSelect}
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(Number(e.target.value))}
+              >
+                {weeks.map((weekNumber) => (
+                  <option key={weekNumber} value={weekNumber}>
+                    Week {weekNumber}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className={styles.homePageFilterGroup}>
               <label className={styles.homePageFilterLabel}>Conference:</label>
               <select
@@ -78,8 +156,12 @@ const HomePage = () => {
           {/* Recent Scores Section */}
           <section className={styles.homePageSection}>
             <div className={styles.homePageScoresGrid}>
+              {error && <p className="error">{error}</p>}
               {filteredScores.slice(0, 6).map((game) => (
-                <ScoreCard key={game.id} game={game} />
+                <ScoreCard 
+                key={`${game.home?.names?.char6}-${game.away?.names?.char6}`}
+                game={game} 
+                />
               ))}
             </div>
 
@@ -89,8 +171,6 @@ const HomePage = () => {
               </div>
             )}
 
-            {/* TODO: Replace mockScores with API call to /api/scores */}
-            {/* Hint: Use useState, useEffect, and fetch API */}
           </section>
         </div>
       </main>

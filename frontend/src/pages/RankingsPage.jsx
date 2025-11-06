@@ -14,6 +14,7 @@ const RankingsPage = () => {
   const handleSearch = (searchTerm) => {
     console.log("Searching for:", searchTerm);
   };
+  
   useEffect(() => {
     const fetchRanking = async () => {
       try {
@@ -22,7 +23,7 @@ const RankingsPage = () => {
         if (response.success) {
           setRanking(response.data);
         } else {
-          setError("No rankings available");
+          setError("No rankings available.");
         }
       } catch (err) {
         console.error(err);

@@ -25,7 +25,7 @@ def process_games(raw_data: dict):
                 'names': away_team.get('names', {}),
                 'rank': None if away_team.get('rank') in ('', None) else int(away_team.get('rank')),
                 'conference': (
-                    away_team.get('conferences', [{}])[0].get('conferenceSeo')
+                    away_team.get('conferences', [{}])[0].get('conferenceName')
                     if away_team.get('conferences') else None
                 )
                 },
@@ -35,10 +35,12 @@ def process_games(raw_data: dict):
                 'names': home_team.get('names', {}),
                 'rank': None if home_team.get('rank') in ('', None) else int(home_team.get('rank')),
                 'conference': (
-                    home_team.get('conferences', [{}])[0].get('conferenceSeo')
+                    home_team.get('conferences', [{}])[0].get('conferenceName')
                     if home_team.get('conferences') else None
                 )
-                }
+                },
+            'date': game.get('startDate'),
+            'time': game.get('startTime')
         }
         processed_games.append(game_data)
 
