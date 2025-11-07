@@ -39,8 +39,9 @@ def process_games(raw_data: dict):
                     if home_team.get('conferences') else None
                 )
                 },
-            'date': game.get('startDate'),
-            'time': game.get('startTime')
+            'epoch': game.get('startTimeEpoch')
+            # 'date': game.get('startDate'),
+            # 'time': game.get('startTimeEpoch')
         }
         processed_games.append(game_data)
 

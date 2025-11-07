@@ -7,8 +7,7 @@ const ScoreCard = ({ game }) => {
     home,
     away,
     game_state,
-    date,
-    time
+    epoch
   } = game;
 
   const homeTeam = home?.names?.short || "Home";
@@ -25,8 +24,8 @@ const ScoreCard = ({ game }) => {
     : "Unknown";
 
   // TODO: this kind of formatting could be done on the backend side to reduce frontend overhead.
-  const getFormattedDate = (date) => {
-    const dateObject = new Date(date);
+  const getFormattedDate = (epoch) => {
+    const dateObject = new Date(epoch*1000);
     return dateObject.toLocaleDateString('en-US', {
       year: '2-digit',
       month: 'short',
@@ -34,6 +33,15 @@ const ScoreCard = ({ game }) => {
     });
   };
 
+  const getFormattedTime = (epoch) => {
+    const dateObject = new Date(epoch*1000);
+    return dateObject.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: 'numeric',
+      timeZoneName: 'short',
+    })
+  }
+  
   const getStatusClass = (game_state) => {
     if (game_state.isFinished) return styles.scoreCardStatusFinal;
     if (game_state.isLive) return styles.scoreCardStatusLive;
@@ -51,7 +59,7 @@ const ScoreCard = ({ game }) => {
       </div>
 
       <div className={styles.scoreCardDate}>
-        {date ? getFormattedDate(date) : "TBD"} • {time || ""}
+        {epoch ? getFormattedDate(epoch) : "TBD"} • {getFormattedTime(epoch) || ""}
       </div>
 
       <div className={styles.scoreCardTeams}>
