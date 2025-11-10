@@ -18,6 +18,17 @@ team_bp = Blueprint("team", __name__, url_prefix="/team")
 def get_team_record_route(team_name: str):
     """Route to get a single team's record."""
     record = get_team_record(team_name)
-    raise NotImplementedError
+    
+    if record is None:
+        return jsonify({
+            "success": False,
+            "error": "Failed to fetch record"
+        }), 500
+    
+    return jsonify({
+        "success": True,
+        "data": record,
+        "data_type": "Team record"
+    })
 
 
