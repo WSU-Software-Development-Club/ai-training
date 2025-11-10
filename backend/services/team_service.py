@@ -32,9 +32,11 @@ def get_team_record(team_name):
                 school = row.get("School", "")
                 if school == team_name:
                     return row
+        return None
 
     except requests.exceptions.HTTPError as e:
         print(f"HTTP error occurred: {e}")
+        return None
     except requests.exceptions.RequestException as e:
         print(f"Request error occurred: {e}")
-    return None
+        return None

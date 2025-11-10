@@ -22,8 +22,8 @@ def get_team_record_route(team_name: str):
     if record is None:
         return jsonify({
             "success": False,
-            "error": "Failed to fetch record"
-        }), 500
+            "error": f"Failed to fetch record for team '{team_name}'."
+        }), 404
     
     return jsonify({
         "success": True,
