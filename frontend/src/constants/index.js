@@ -14,9 +14,9 @@ export const appConfig = {
     health: "/api/health",
     scores: "/scoreboard/week/",
     rankings: "/rankings/ap-top25",
-    teams: "teams",
+    team: "/team/",
     search: "search",
-    stats: "stats",
+    stats: "/stats",
     totalOffense: "/stats/offense",
   },
 };
