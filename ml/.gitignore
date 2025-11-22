@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+
+training_data/training_data_checkpoint_*.csv
