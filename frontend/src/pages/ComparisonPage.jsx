@@ -85,25 +85,56 @@ const ComparisonPage = () => {
             </p>
           </div>
 
+          {/* Team Filter Section */}
           <div className={styles.comparisonPageFilters}>
-            <div className={styles.comparisonPageFilterGroup}>
-              <label className={styles.comparisonPageFilterLabel}>
-                Team:
-              </label>
-              <select
-                className={styles.comparisonPageFilterSelect}
-                value={selectedTeam}
-                onChange={(e) => setSelectedTeam(e.target.value)}
-              >
-                {teams.map((teamNumber) => (
-                  <option key={teamNumber} value = {teamNumber}>
-                    Team {teamNumber}
-                  </option>
-                ))}
+            <h2> Team Filters </h2>
 
-              </select>
+            <div className={styles.comparisonPageGrid}>
+              {/* Team Dropdown */}
+              <div className={styles.comparisonPageFilterGroup}>
+                <label className={styles.comparisonPageFilterLabel}>
+                  Team:
+                </label>
+                <select
+                  className={styles.comparisonPageFilterSelect}
+                  value={selectedTeam}
+                  onChange={(e) => setSelectedTeam(e.target.value)}
+                >
+                  {teams.map((team) => (
+                    <option key={team} value={team}>
+                      Team {team}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            
+              {/* Team 2 Dropdown */}
+              <div className={styles.comparisonPageFilterGroup}>
+                  <label className={styles.comparisonPageFilterLabel}>
+                    Team:
+                  </label>
+                  <select
+                    className={styles.comparisonPageFilterSelect}
+                    value={selectedTeam}
+                    onChange={(e) => setSelectedTeam(e.target.value)}
+                  >
+                    {teams.map((team) => (
+                      <option key={team} value={team}>
+                        Team {team}
+                      </option>
+                    ))}
+                  </select>
+                </div>
             </div>
           </div>
+          <section className={styles.comparisonPageSection}>
+            <div className={styles.comparisonPageGrid}>
+              {error && <p className="error">{error}</p>}
+              {
+                
+              }
+            </div>
+          </section>
         </div>
       </main>
     </div>
