@@ -37,7 +37,12 @@
 }
 
 .comparisonPageSection {
+  gap: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
 }
 
 .comparisonPageFilters {
@@ -47,6 +52,12 @@
   background-color: var(--color-surface);
   border: 1px solid var(--color-secondary);
   border-radius: var(--border-radius-lg);
+}
+
+.comparisonPageFilterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--spacing-lg);
 }
 
 .comparisonPageFilterGroup {
@@ -75,13 +86,14 @@
 
 .comparisonPageGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-rows: repeat(auto-fit, minmax(350px, 1fr));
   gap: var(--spacing-lg);
 }
 
 .comparisonPageContent {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: space-between;
   gap: var(--spacing-lg);
 }
 
@@ -118,6 +130,9 @@
   margin: 0;
 }
 
+.comparisonPageFlexWrapper {
+  flex-direction: column;
+}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
