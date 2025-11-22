@@ -1,6 +1,5 @@
 import React from "react";
 import { useState, useEffect } from "react";
-import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
@@ -10,12 +9,6 @@ import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const ComparisonPage = () => {
-  const [selectedTeam, setSelectedTeam] = useState(null); 
-  const [selectedTeamA, setSelectedTeamA] = useState(null);
-  const [selectedTeamB, setSelectedTeamB] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
   const [selectedTeam, setSelectedTeam] = useState(null); 
   const [selectedTeamA, setSelectedTeamA] = useState(null);
   const [selectedTeamB, setSelectedTeamB] = useState(null);
