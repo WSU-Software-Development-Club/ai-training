@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
 import api from "../services/api";
+import { teamNames } from "../utils/mockData";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const ComparisonPage = () => {
@@ -19,25 +20,28 @@ const ComparisonPage = () => {
     console.log("Searching for:", searchTerm);
   };
 
-  const teams = [
-    "Select Team", "Georgia", "Alabama", "Washington State", "Arizona"
-  ]
-
   useEffect(() => {
-    if (!selectedTeamA || selectedTeamA === "Select Team") return; // case no selection
+    if (!selectedTeamA || selectedTeamA === "Select Team" || selectedTeamB === "Select Team"|| !selectedTeamB) return; // case no selection
 
-      const fetchTeamData = async () => {
+      const fetchData = async () => {
         setLoading(true);
         setError(null);
 
         try {
-          const response = await api.getTeamData(selectedTeamA);
-          if (response.success) {
-            setTeamAData(response.data);    
-            console.log(response.data); // debugging purposes
-          } else {
-            setError("No team data available.");
-          }
+          const [responseA, responseB] = await Promise.all([
+            api.getTeamData(selectedTeamA),
+            api.getTeamData(selectedTeamB)]);
+
+          if (responseA.success) {
+            setTeamAData(responseA.data);    
+            console.log(responseA.data); // debugging purposes
+          } else setError("Team A data not available.");
+          
+          if (responseB.success) {
+            setTeamBData(responseB.data);
+            console.log(responseB.data); // debugging purposes
+          } else setError("Team B data not available.");
+
         } catch (err) {
           console.error(err);
           setError("Unable to load team data.");
@@ -46,35 +50,8 @@ const ComparisonPage = () => {
         }
       };
   
-      fetchTeamData();
-    }, [selectedTeamA]);  
-  
-
-  useEffect(() => {
-    if (!selectedTeamB || selectedTeamB === "Select Team") return; // case no selection
-
-      const fetchTeamData = async () => {
-        setLoading(true);
-        setError(null);
-
-        try {
-          const response = await api.getTeamData(selectedTeamB);
-          if (response.success) {
-            setTeamBData(response.data);    
-            console.log(response.data); // debugging purposes
-          } else {
-            setError("No team data available.");
-          }
-        } catch (err) {
-          console.error(err);
-          setError("Unable to load team data.");
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchTeamData();
-    }, [selectedTeamB]); 
+      fetchData();
+    }, [selectedTeamA, selectedTeamB]);  
 
     if (loading) {
     return (
@@ -130,7 +107,7 @@ const ComparisonPage = () => {
                   value={selectedTeamA}
                   onChange={(e) => setSelectedTeamA(e.target.value)}
                 >
-                  {teams.map((team) => (
+                  {teamNames.map((team) => (
                     <option key={team} value={team}>
                       {team}
                     </option>
@@ -148,7 +125,7 @@ const ComparisonPage = () => {
                     value={selectedTeamB}
                     onChange={(e) => setSelectedTeamB(e.target.value)}
                   >
-                    {teams.map((team) => (
+                    {teamNames.map((team) => (
                       <option key={team} value={team}>
                         {team}
                       </option>
@@ -158,7 +135,7 @@ const ComparisonPage = () => {
 
             </div>
           </div>
-
+          
           {/* Comparison Section */}
           {teamAData != null && teamBData != null && (
           <section className={styles.comparisonPageSection}>
