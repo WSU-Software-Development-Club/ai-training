@@ -1,0 +1,77 @@
+name: Weekly College Football Predictions
+
+on:
+  # Run every Tuesday at 9 AM UTC
+  # Tuesday is ideal because:
+  # - Most games are on Saturday
+  # - Previous week's games are complete by Tuesday
+  # - Gives time to prepare predictions for upcoming week
+  # To change: cron format is 'minute hour day-of-month month day-of-week'
+  # Examples: '0 9 * * 1' = Monday 9 AM, '0 14 * * 3' = Wednesday 2 PM
+  schedule:
+    - cron: "0 9 * * 2"
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      year:
+        description: "Season year (leave empty for auto-detect)"
+        required: false
+        type: string
+      week:
+        description: "Week number (leave empty for auto-detect next week)"
+        required: false
+        type: string
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ml/requirements.txt
+          pip install supabase
+
+      - name: Run prediction script
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          cd ml/m1
+          if [ -n "${{ github.event.inputs.year }}" ] && [ -n "${{ github.event.inputs.week }}" ]; then
+            echo "Running with manual inputs: year=${{ github.event.inputs.year }}, week=${{ github.event.inputs.week }}"
+            python predict_upcoming.py ${{ github.event.inputs.year }} ${{ github.event.inputs.week }}
+          else
+            echo "Running with auto-detection"
+            python predict_upcoming.py
+          fi
+
+      - name: Upload predictions artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: predictions-${{ github.run_number }}
+          path: ml/m1/predictions_*.json
+          if-no-files-found: ignore
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Weekly predictions failed! Check the logs above for details."
+          echo "Common issues:"
+          echo "- API rate limit exceeded (should not happen with ~10 calls/week)"
+          echo "- Invalid week number (off-season or invalid date)"
+          echo "- Supabase connection error"
+          echo "- Missing environment variables"

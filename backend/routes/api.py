@@ -2,6 +2,7 @@
 
 from flask import Blueprint, jsonify
 from datetime import datetime, timezone
+from utils.supabase_client import get_supabase_client
 
 # Create API blueprint
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -18,9 +19,13 @@ def health():
 @api_bp.route('/status', methods=['GET'])
 def status():
     """Application status endpoint"""
+    supabase = get_supabase_client()
     return jsonify({
         'name': 'React Flask Web App',
         'version': '1.0.0',
         'status': 'running',
-        'uptime': 'active'
+        'uptime': 'active',
+        'supabase': {
+            'connected': supabase.is_connected
+        }
     })
