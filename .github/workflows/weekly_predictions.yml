@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload predictions artifact
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: predictions-${{ github.run_number }}
           path: ml/m1/predictions_*.json
