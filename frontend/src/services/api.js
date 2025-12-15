@@ -67,7 +67,10 @@ export const api = {
   getRankings: () => apiRequest(appConfig.endpoints.rankings),
 
   // Get scoreboard by a given week
-  getScoreboardByWeek: (week) => apiRequest(appConfig.endpoints.scores + week)
+  getScoreboardByWeek: (week) => apiRequest(appConfig.endpoints.scores + week),
+
+  // Get a given team's current season data
+  getTeamData : (team) => apiRequest(appConfig.endpoints.team + team + "/record")
 };
 
 export default api;

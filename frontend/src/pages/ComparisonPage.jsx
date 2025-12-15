@@ -1,18 +1,72 @@
 import React from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
+import api from "../services/api";
+import { teamNames } from "../utils/mockData";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 const ComparisonPage = () => {
+  const [selectedTeamA, setSelectedTeamA] = useState(null);
+  const [selectedTeamB, setSelectedTeamB] = useState(null);
+  const [teamAData, setTeamAData] = useState(null);
+  const [teamBData, setTeamBData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const handleSearch = (searchTerm) => {
     // MOCK FUNCTIONALITY - Replace with actual search API call
     console.log("Searching for:", searchTerm);
   };
 
+  useEffect(() => {
+    if (!selectedTeamA || selectedTeamA === "Select Team" || selectedTeamB === "Select Team"|| !selectedTeamB) return; // case no selection
+
+      const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+          const [responseA, responseB] = await Promise.all([
+            api.getTeamData(selectedTeamA),
+            api.getTeamData(selectedTeamB)]);
+
+          if (responseA.success) {
+            setTeamAData(responseA.data);    
+          } else setError("Encountered error fetching team data.");
+          
+          if (responseB.success) {
+            setTeamBData(responseB.data);
+          } else setError("Encountered error fetching team data.");
+
+        } catch (err) {
+          console.error(err);
+          setError("Unable to load team data.");
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchData();
+    }, [selectedTeamA, selectedTeamB]);  
+
+    if (loading) {
+    return (
+      <div className={styles.comparisonPage}>
+        <Header title={appConfig.name} onSearch={handleSearch} />
+        <main className={styles.comparisonPageMain}>
+          <div className={styles.loadingContainer}>
+            <LoadingSpinner />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.comparisonPage}>
       <Header title={appConfig.name} onSearch={handleSearch} />
-
       <main className={styles.comparisonPageMain}>
         <div className={styles.comparisonPageContainer}>
           <div className={styles.comparisonPageHeader}>
@@ -21,40 +75,94 @@ const ComparisonPage = () => {
               Compare statistics between college football teams
             </p>
           </div>
-
-          <div className={styles.comparisonPageContent}>
-            <div className={styles.comparisonPagePlaceholder}>
-              <div className={styles.comparisonPagePlaceholderIcon}>
-                <svg
-                  width="64"
-                  height="64"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+          {/* Team Filter Section */}
+          <div className={styles.comparisonPageFilters}>
+            <div className={styles.comparisonPageFilterGrid}>
+              {/* Team A Dropdown */}
+              <div className={styles.comparisonPageFilterGroup}>
+                <label className={styles.comparisonPageFilterLabel}>
+                  Team A:
+                </label>
+                <select
+                  className={styles.comparisonPageFilterSelect}
+                  value={selectedTeamA}
+                  onChange={(e) => setSelectedTeamA(e.target.value)}
                 >
-                  <path
-                    d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                  <option value="Select Team">Select Team</option>
+                  {teamNames.map((team) => (
+                    <option key={team} value={team}>
+                      {team}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <h2 className={styles.comparisonPagePlaceholderTitle}>
-                Coming Soon
-              </h2>
-              <p className={styles.comparisonPagePlaceholderText}>
-                Team comparison feature is under development. This will allow
-                you to compare statistics, records, and performance metrics
-                between different college football teams.
-              </p>
+            
+              {/* Team B Dropdown */}
+              <div className={styles.comparisonPageFilterGroup}>
+                  <label className={styles.comparisonPageFilterLabel}>
+                    Team B:
+                  </label>
+                  <select
+                    className={styles.comparisonPageFilterSelect}
+                    value={selectedTeamB}
+                    onChange={(e) => setSelectedTeamB(e.target.value)}
+                  >
+                    <option value="Select Team">Select Team</option>
+                    {teamNames.map((team) => (
+                      <option key={team} value={team}>
+                        {team}
+                      </option>
+                    ))}
+                  </select>
+              </div>
 
-              {/* TODO: Implement team comparison functionality */}
-              {/* Hint: Team selection, comparison layout, stats table, charts */}
-              {/* Backend: /api/teams, /api/teams/:id/stats, /api/teams/:id1/vs/:id2 */}
             </div>
           </div>
+          
+          {/* Error State */}
+          {error && (
+            <div className={styles.errorContainer}>
+              <p>{error}</p>
+            </div>
+          )}
+
+          {/* Comparison Section */}
+          {!error && teamAData != null && teamBData != null && (
+          <section className={styles.comparisonPageSection}>
+            <h2> Team Comparison </h2>
+            <div className={styles.comparisonPageContent}>
+
+              {/* TODO: implement these as components */}
+              {/* Team A */}
+              <div>
+              <h3>{teamAData["School"]}</h3>
+              <div><strong>Conference L:</strong> {teamAData["Conference L"]}</div>
+              <div><strong>Conference W:</strong> {teamAData["Conference W"]}</div>
+              <div><strong>Overall Away:</strong> {teamAData["Overall AWAY"]}</div>
+              <div><strong>Overall Home:</strong> {teamAData["Overall HOME"]}</div>
+              <div><strong>Overall L:</strong> {teamAData["Overall L"]}</div>
+              <div><strong>Overall W:</strong> {teamAData["Overall W"]}</div>
+              <div><strong>Overall PA:</strong> {teamAData["Overall PA"]}</div>
+              <div><strong>Overall PF:</strong> {teamAData["Overall PF"]}</div>
+              <div><strong>Overall Streak:</strong> {teamAData["Overall STREAK"]}</div>
+              </div>
+
+              {/* Team B */}
+              <div>
+              <h3>{teamBData["School"]}</h3>
+              <div><strong>Conference L:</strong> {teamBData["Conference L"]}</div>
+              <div><strong>Conference W:</strong> {teamBData["Conference W"]}</div>
+              <div><strong>Overall Away:</strong> {teamBData["Overall AWAY"]}</div>
+              <div><strong>Overall Home:</strong> {teamBData["Overall HOME"]}</div>
+              <div><strong>Overall L:</strong> {teamBData["Overall L"]}</div>
+              <div><strong>Overall W:</strong> {teamBData["Overall W"]}</div>
+              <div><strong>Overall PA:</strong> {teamBData["Overall PA"]}</div>
+              <div><strong>Overall PF:</strong> {teamBData["Overall PF"]}</div>
+              <div><strong>Overall Streak:</strong> {teamBData["Overall STREAK"]}</div>
+              </div>
+            </div>
+          </section>
+          )}
         </div>
       </main>
     </div>

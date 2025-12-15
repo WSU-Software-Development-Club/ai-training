@@ -36,9 +36,64 @@
   margin: 0;
 }
 
-.comparisonPageContent {
+.comparisonPageSection {
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
+}
+
+.comparisonPageFilters {
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
+}
+
+.comparisonPageFilterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.comparisonPageFilterGroup {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.comparisonPageFilterLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.comparisonPageFilterSelect
+{
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.comparisonPageGrid {
+  display: grid;
+  grid-template-rows: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.comparisonPageContent {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
   gap: var(--spacing-lg);
 }
 
@@ -73,6 +128,20 @@
   line-height: var(--line-height-relaxed);
   max-width: 600px;
   margin: 0;
+}
+
+.comparisonPageFlexWrapper {
+  flex-direction: column;
+}
+
+.errorContainer {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
 }
 
 /* Responsive adjustments */
