@@ -5,6 +5,8 @@ import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
+import TeamLogo from "../components/TeamLogo";
+import { useTeamBranding } from "../hooks/useTeamBranding";
 
 const ComparisonPage = () => {
   const [teams, setTeams] = useState([]);
@@ -247,70 +249,17 @@ const ComparisonPage = () => {
               <h2>Team Comparison</h2>
               <div className={styles.comparisonPageContent}>
                 {/* Team A */}
-                <div className={styles.teamComparisonCard}>
-                  <h3 className={styles.teamComparisonTitle}>
-                    {teamAData["School"]}
-                  </h3>
-                  <div className={styles.teamComparisonStats}>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Conference Record:</strong>{" "}
-                      {teamAData["Conference W"]}-{teamAData["Conference L"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Overall Record:</strong> {teamAData["Overall W"]}-
-                      {teamAData["Overall L"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Points For:</strong> {teamAData["Overall PF"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Points Against:</strong> {teamAData["Overall PA"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Home Record:</strong> {teamAData["Overall HOME"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Away Record:</strong> {teamAData["Overall AWAY"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Current Streak:</strong>{" "}
-                      {teamAData["Overall STREAK"]}
-                    </div>
-                  </div>
-                </div>
-
+                <TeamComparisonCard
+                  teamData={teamAData}
+                  teamName={teamAData["School"]}
+                  className={styles.teamComparisonCard}
+                />
                 {/* Team B */}
-                <div className={styles.teamComparisonCard}>
-                  <h3 className={styles.teamComparisonTitle}>
-                    {teamBData["School"]}
-                  </h3>
-                  <div className={styles.teamComparisonStats}>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Conference Record:</strong>{" "}
-                      {teamBData["Conference W"]}-{teamBData["Conference L"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Overall Record:</strong> {teamBData["Overall W"]}-
-                      {teamBData["Overall L"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Points For:</strong> {teamBData["Overall PF"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Points Against:</strong> {teamBData["Overall PA"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Home Record:</strong> {teamBData["Overall HOME"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Away Record:</strong> {teamBData["Overall AWAY"]}
-                    </div>
-                    <div className={styles.teamComparisonStatRow}>
-                      <strong>Current Streak:</strong>{" "}
-                      {teamBData["Overall STREAK"]}
-                    </div>
-                  </div>
-                </div>
+                <TeamComparisonCard
+                  teamData={teamBData}
+                  teamName={teamBData["School"]}
+                  className={styles.teamComparisonCard}
+                />
               </div>
             </section>
           )}
@@ -330,6 +279,57 @@ const ComparisonPage = () => {
             )}
         </div>
       </main>
+    </div>
+  );
+};
+
+// Team Comparison Card Component
+const TeamComparisonCard = ({ teamData, teamName, className }) => {
+  const { branding } = useTeamBranding(teamName);
+
+  const cardStyle = branding?.primaryColor
+    ? {
+        borderTopColor: branding.primaryColor,
+        borderTopWidth: "4px",
+        borderTopStyle: "solid",
+      }
+    : {};
+
+  return (
+    <div className={className} style={cardStyle}>
+      <div className={styles.teamComparisonHeader}>
+        <TeamLogo
+          teamName={teamName}
+          size="large"
+          className={styles.teamComparisonLogo}
+        />
+        <h3 className={styles.teamComparisonTitle}>{teamData["School"]}</h3>
+      </div>
+      <div className={styles.teamComparisonStats}>
+        <div className={styles.teamComparisonStatRow}>
+          <strong>Conference Record:</strong> {teamData["Conference W"]}-
+          {teamData["Conference L"]}
+        </div>
+        <div className={styles.teamComparisonStatRow}>
+          <strong>Overall Record:</strong> {teamData["Overall W"]}-
+          {teamData["Overall L"]}
+        </div>
+        <div className={styles.teamComparisonStatRow}>
+          <strong>Points For:</strong> {teamData["Overall PF"]}
+        </div>
+        <div className={styles.teamComparisonStatRow}>
+          <strong>Points Against:</strong> {teamData["Overall PA"]}
+        </div>
+        <div className={styles.teamComparisonStatRow}>
+          <strong>Home Record:</strong> {teamData["Overall HOME"]}
+        </div>
+        <div className={styles.teamComparisonStatRow}>
+          <strong>Away Record:</strong> {teamData["Overall AWAY"]}
+        </div>
+        <div className={styles.teamComparisonStatRow}>
+          <strong>Current Streak:</strong> {teamData["Overall STREAK"]}
+        </div>
+      </div>
     </div>
   );
 };

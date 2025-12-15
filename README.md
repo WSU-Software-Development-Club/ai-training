@@ -144,6 +144,35 @@ Use the development compose file for the best experience:
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
+#### Adding New Packages
+
+**You don't need to rebuild containers when adding packages!** After adding a package to `package.json` (frontend) or `requirements.txt` (backend), install it inside the running container:
+
+**Frontend (npm packages):**
+
+1. Add the package to `package.json` (or use `npm install <package>` locally)
+2. Install inside the running container:
+   ```bash
+   docker-compose -f docker-compose.dev.yml exec frontend npm install
+   ```
+3. The React dev server will automatically reload
+
+**Backend (pip packages):**
+
+1. Add the package to `requirements.txt`
+2. Install inside the running container:
+   ```bash
+   docker-compose -f docker-compose.dev.yml exec backend pip install -r requirements.txt
+   ```
+3. Flask will automatically restart with the new package
+
+**Note:** You only need to rebuild (`--build` flag) when:
+
+- First setting up the project
+- Dockerfile changes
+- Base image updates
+- Major dependency changes that require a fresh install
+
 #### Running Services Individually
 
 For development, you can also run the services individually (Not Recommended):

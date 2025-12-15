@@ -1,20 +1,34 @@
 import React from "react";
 import styles from "../styles/components/TeamCard.module.css";
+import TeamLogo from "./TeamLogo";
+import { useTeamBranding } from "../hooks/useTeamBranding";
 
 const TeamCard = ({ team }) => {
   const { name, conference, record, stats } = team;
+  const { branding } = useTeamBranding(name);
 
   const handleTeamClick = () => {
     // TODO: Navigate to team detail page
     console.log(`Navigate to ${name} team page`);
   };
 
+  const cardStyle = branding?.primaryColor 
+    ? { 
+        borderLeftColor: branding.primaryColor,
+        borderLeftWidth: '4px',
+        borderLeftStyle: 'solid'
+      } 
+    : {};
+
   return (
-    <div className={styles.teamCard} onClick={handleTeamClick}>
+    <div 
+      className={styles.teamCard} 
+      onClick={handleTeamClick}
+      style={cardStyle}
+    >
       <div className={styles.teamCardHeader}>
         <div className={styles.teamCardLogo}>
-          {/* Placeholder for team logo */}
-          <div className={styles.teamCardLogoPlaceholder}>{name.charAt(0)}</div>
+          <TeamLogo teamName={name} size="medium" />
         </div>
         <div className={styles.teamCardInfo}>
           <h3 className={styles.teamCardName}>{name}</h3>

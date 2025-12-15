@@ -4,6 +4,7 @@ import { appConfig } from "../constants";
 import api from "../services/api";
 import styles from "../styles/pages/TeamsPage.module.css";
 import LoadingSpinner from "../components/LoadingSpinner";
+import TeamLogo from "../components/TeamLogo";
 
 const TeamsPage = () => {
   const [selectedConference, setSelectedConference] = useState("All");
@@ -194,13 +195,10 @@ const TeamsPage = () => {
                               <td className={styles.teamsPageTableCellTeam}>
                                 <div className={styles.teamsPageTeamInfo}>
                                   <div className={styles.teamsPageTeamLogo}>
-                                    <div
-                                      className={
-                                        styles.teamsPageTeamLogoPlaceholder
-                                      }
-                                    >
-                                      {team.name.charAt(0)}
-                                    </div>
+                                    <TeamLogo
+                                      teamName={team.name}
+                                      size="small"
+                                    />
                                   </div>
                                   <div className={styles.teamsPageTeamDetails}>
                                     <span className={styles.teamsPageTeamName}>
