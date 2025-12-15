@@ -41,6 +41,14 @@
   transition: var(--transition-colors);
 }
 
+.rankingsTableRow:nth-child(even) {
+  background-color: var(--color-background);
+}
+
+.rankingsTableRow:nth-child(odd) {
+  background-color: var(--color-surface);
+}
+
 .rankingsTableRow:hover {
   background-color: var(--color-background-secondary);
 }

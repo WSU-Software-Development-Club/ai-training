@@ -15,6 +15,7 @@ export const appConfig = {
     scores: "/scoreboard/week/",
     rankings: "/rankings/ap-top25",
     team: "/team/",
+    teams: "/team",
     search: "search",
     stats: "/stats",
     totalOffense: "/stats/offense",

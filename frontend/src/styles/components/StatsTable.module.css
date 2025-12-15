@@ -41,6 +41,14 @@
   transition: var(--transition-colors);
 }
 
+.statsTableRow:nth-child(even) {
+  background-color: var(--color-background);
+}
+
+.statsTableRow:nth-child(odd) {
+  background-color: var(--color-surface);
+}
+
 .statsTableRow:hover {
   background-color: var(--color-background-secondary);
 }

@@ -8,6 +8,7 @@ Endpoints will expose team-centric data, such as:
 from flask import Blueprint, jsonify
 from services.team_service import (
     get_team_record,
+    get_all_teams,
 )
 
 
@@ -29,6 +30,26 @@ def get_team_record_route(team_name: str):
         "success": True,
         "data": record,
         "data_type": "Team record"
+    })
+
+
+@team_bp.route("", methods=["GET"])
+@team_bp.route("/", methods=["GET"])
+def get_all_teams_route():
+    """Route to get all teams with their conferences and stats."""
+    teams = get_all_teams()
+    
+    if teams is None:
+        return jsonify({
+            "success": False,
+            "error": "Failed to fetch teams data."
+        }), 500
+    
+    return jsonify({
+        "success": True,
+        "data": teams,
+        "data_type": "Teams list",
+        "count": len(teams)
     })
 
 
