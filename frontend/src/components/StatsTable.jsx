@@ -13,11 +13,36 @@ const StatsTable = ({ stats, title, statCategory }) => {
     );
   }
 
-  // Get the first stat to determine column structure
-  const firstStat = stats[0];
-  const columns = Object.keys(firstStat).filter(
-    (key) => key !== "rank" && key !== "Rank"
+  // Get all unique columns from all stats to ensure we capture all data columns
+  const allColumns = new Set();
+  stats.forEach((stat) => {
+    Object.keys(stat).forEach((key) => {
+      allColumns.add(key);
+    });
+  });
+
+  // Filter out Rank and Team columns since they're displayed separately
+  const columns = Array.from(allColumns).filter(
+    (key) =>
+      key !== "rank" && key !== "Rank" && key !== "team" && key !== "Team"
   );
+
+  // Helper function to format column header, handling <br/> tags
+  const formatColumnHeader = (columnName) => {
+    // Check if column name contains <br/> tags
+    if (columnName.includes("<br/>") || columnName.includes("<br>")) {
+      // Return JSX with HTML rendering to display line breaks
+      return (
+        <span
+          dangerouslySetInnerHTML={{
+            __html: columnName.replace(/<br\s*\/?>/gi, "<br/>"),
+          }}
+        />
+      );
+    }
+    // Otherwise, display column name as-is from the API
+    return columnName;
+  };
 
   return (
     <div className={styles.statsTable}>
@@ -31,8 +56,7 @@ const StatsTable = ({ stats, title, statCategory }) => {
               <th className={styles.statsTableHeader}>Team</th>
               {columns.map((column) => (
                 <th key={column} className={styles.statsTableHeader}>
-                  {column.charAt(0).toUpperCase() +
-                    column.slice(1).replace(/([A-Z])/g, " $1")}
+                  {formatColumnHeader(column)}
                 </th>
               ))}
             </tr>

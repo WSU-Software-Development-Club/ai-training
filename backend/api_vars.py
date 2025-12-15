@@ -41,7 +41,7 @@ STAT_CATEGORIES = {
     704: "Red Zone Defense",
     705: "Time Of Possession",
     741: "Passing Yards Per Completion",
-    742: "Winnning Percentage",
+    742: "Winning Percentage",
     756: "Completion Percentage",
     785: "Blocked Kicks",
     786: "Blocked Kicks Allowed",

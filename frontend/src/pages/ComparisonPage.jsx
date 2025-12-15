@@ -4,7 +4,7 @@ import Header from "../components/Header";
 import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
 import api from "../services/api";
-import { teamNames } from "../utils/mockData";
+import { teamNames } from "../utils/appData";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const ComparisonPage = () => {
@@ -21,37 +21,43 @@ const ComparisonPage = () => {
   };
 
   useEffect(() => {
-    if (!selectedTeamA || selectedTeamA === "Select Team" || selectedTeamB === "Select Team"|| !selectedTeamB) return; // case no selection
+    if (
+      !selectedTeamA ||
+      selectedTeamA === "Select Team" ||
+      selectedTeamB === "Select Team" ||
+      !selectedTeamB
+    )
+      return; // case no selection
 
-      const fetchData = async () => {
-        setLoading(true);
-        setError(null);
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
 
-        try {
-          const [responseA, responseB] = await Promise.all([
-            api.getTeamData(selectedTeamA),
-            api.getTeamData(selectedTeamB)]);
+      try {
+        const [responseA, responseB] = await Promise.all([
+          api.getTeamData(selectedTeamA),
+          api.getTeamData(selectedTeamB),
+        ]);
 
-          if (responseA.success) {
-            setTeamAData(responseA.data);    
-          } else setError("Encountered error fetching team data.");
-          
-          if (responseB.success) {
-            setTeamBData(responseB.data);
-          } else setError("Encountered error fetching team data.");
+        if (responseA.success) {
+          setTeamAData(responseA.data);
+        } else setError("Encountered error fetching team data.");
 
-        } catch (err) {
-          console.error(err);
-          setError("Unable to load team data.");
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchData();
-    }, [selectedTeamA, selectedTeamB]);  
+        if (responseB.success) {
+          setTeamBData(responseB.data);
+        } else setError("Encountered error fetching team data.");
+      } catch (err) {
+        console.error(err);
+        setError("Unable to load team data.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (loading) {
+    fetchData();
+  }, [selectedTeamA, selectedTeamB]);
+
+  if (loading) {
     return (
       <div className={styles.comparisonPage}>
         <Header title={appConfig.name} onSearch={handleSearch} />
@@ -96,29 +102,28 @@ const ComparisonPage = () => {
                   ))}
                 </select>
               </div>
-            
+
               {/* Team B Dropdown */}
               <div className={styles.comparisonPageFilterGroup}>
-                  <label className={styles.comparisonPageFilterLabel}>
-                    Team B:
-                  </label>
-                  <select
-                    className={styles.comparisonPageFilterSelect}
-                    value={selectedTeamB}
-                    onChange={(e) => setSelectedTeamB(e.target.value)}
-                  >
-                    <option value="Select Team">Select Team</option>
-                    {teamNames.map((team) => (
-                      <option key={team} value={team}>
-                        {team}
-                      </option>
-                    ))}
-                  </select>
+                <label className={styles.comparisonPageFilterLabel}>
+                  Team B:
+                </label>
+                <select
+                  className={styles.comparisonPageFilterSelect}
+                  value={selectedTeamB}
+                  onChange={(e) => setSelectedTeamB(e.target.value)}
+                >
+                  <option value="Select Team">Select Team</option>
+                  {teamNames.map((team) => (
+                    <option key={team} value={team}>
+                      {team}
+                    </option>
+                  ))}
+                </select>
               </div>
-
             </div>
           </div>
-          
+
           {/* Error State */}
           {error && (
             <div className={styles.errorContainer}>
@@ -128,40 +133,77 @@ const ComparisonPage = () => {
 
           {/* Comparison Section */}
           {!error && teamAData != null && teamBData != null && (
-          <section className={styles.comparisonPageSection}>
-            <h2> Team Comparison </h2>
-            <div className={styles.comparisonPageContent}>
+            <section className={styles.comparisonPageSection}>
+              <h2> Team Comparison </h2>
+              <div className={styles.comparisonPageContent}>
+                {/* TODO: implement these as components */}
+                {/* Team A */}
+                <div>
+                  <h3>{teamAData["School"]}</h3>
+                  <div>
+                    <strong>Conference L:</strong> {teamAData["Conference L"]}
+                  </div>
+                  <div>
+                    <strong>Conference W:</strong> {teamAData["Conference W"]}
+                  </div>
+                  <div>
+                    <strong>Overall Away:</strong> {teamAData["Overall AWAY"]}
+                  </div>
+                  <div>
+                    <strong>Overall Home:</strong> {teamAData["Overall HOME"]}
+                  </div>
+                  <div>
+                    <strong>Overall L:</strong> {teamAData["Overall L"]}
+                  </div>
+                  <div>
+                    <strong>Overall W:</strong> {teamAData["Overall W"]}
+                  </div>
+                  <div>
+                    <strong>Overall PA:</strong> {teamAData["Overall PA"]}
+                  </div>
+                  <div>
+                    <strong>Overall PF:</strong> {teamAData["Overall PF"]}
+                  </div>
+                  <div>
+                    <strong>Overall Streak:</strong>{" "}
+                    {teamAData["Overall STREAK"]}
+                  </div>
+                </div>
 
-              {/* TODO: implement these as components */}
-              {/* Team A */}
-              <div>
-              <h3>{teamAData["School"]}</h3>
-              <div><strong>Conference L:</strong> {teamAData["Conference L"]}</div>
-              <div><strong>Conference W:</strong> {teamAData["Conference W"]}</div>
-              <div><strong>Overall Away:</strong> {teamAData["Overall AWAY"]}</div>
-              <div><strong>Overall Home:</strong> {teamAData["Overall HOME"]}</div>
-              <div><strong>Overall L:</strong> {teamAData["Overall L"]}</div>
-              <div><strong>Overall W:</strong> {teamAData["Overall W"]}</div>
-              <div><strong>Overall PA:</strong> {teamAData["Overall PA"]}</div>
-              <div><strong>Overall PF:</strong> {teamAData["Overall PF"]}</div>
-              <div><strong>Overall Streak:</strong> {teamAData["Overall STREAK"]}</div>
+                {/* Team B */}
+                <div>
+                  <h3>{teamBData["School"]}</h3>
+                  <div>
+                    <strong>Conference L:</strong> {teamBData["Conference L"]}
+                  </div>
+                  <div>
+                    <strong>Conference W:</strong> {teamBData["Conference W"]}
+                  </div>
+                  <div>
+                    <strong>Overall Away:</strong> {teamBData["Overall AWAY"]}
+                  </div>
+                  <div>
+                    <strong>Overall Home:</strong> {teamBData["Overall HOME"]}
+                  </div>
+                  <div>
+                    <strong>Overall L:</strong> {teamBData["Overall L"]}
+                  </div>
+                  <div>
+                    <strong>Overall W:</strong> {teamBData["Overall W"]}
+                  </div>
+                  <div>
+                    <strong>Overall PA:</strong> {teamBData["Overall PA"]}
+                  </div>
+                  <div>
+                    <strong>Overall PF:</strong> {teamBData["Overall PF"]}
+                  </div>
+                  <div>
+                    <strong>Overall Streak:</strong>{" "}
+                    {teamBData["Overall STREAK"]}
+                  </div>
+                </div>
               </div>
-
-              {/* Team B */}
-              <div>
-              <h3>{teamBData["School"]}</h3>
-              <div><strong>Conference L:</strong> {teamBData["Conference L"]}</div>
-              <div><strong>Conference W:</strong> {teamBData["Conference W"]}</div>
-              <div><strong>Overall Away:</strong> {teamBData["Overall AWAY"]}</div>
-              <div><strong>Overall Home:</strong> {teamBData["Overall HOME"]}</div>
-              <div><strong>Overall L:</strong> {teamBData["Overall L"]}</div>
-              <div><strong>Overall W:</strong> {teamBData["Overall W"]}</div>
-              <div><strong>Overall PA:</strong> {teamBData["Overall PA"]}</div>
-              <div><strong>Overall PF:</strong> {teamBData["Overall PF"]}</div>
-              <div><strong>Overall Streak:</strong> {teamBData["Overall STREAK"]}</div>
-              </div>
-            </div>
-          </section>
+            </section>
           )}
         </div>
       </main>

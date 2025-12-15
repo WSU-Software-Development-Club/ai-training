@@ -29,27 +29,69 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
-// Category to endpoint mapping
-const STAT_CATEGORY_ENDPOINTS = {
-  "Total Offense": "/stats/offense",
-  "Total Defense": "/stats/defense",
-  "Rushing Offense": "/stats/offense/rushing",
-  "Rushing Defense": "/stats/defense/rushing",
-  // Add more categories as backend endpoints become available
+// Stat name to stat ID mapping (matches backend/api_vars.py STAT_CATEGORIES)
+const STAT_NAME_TO_ID = {
+  "3rd Down Conversion Pct": 699,
+  "3rd Down Conversion Pct Defense": 701,
+  "4th Down Conversion Pct": 700,
+  "4th Down Conversion Pct Defense": 702,
+  "Blocked Kicks": 785,
+  "Blocked Kicks Allowed": 786,
+  "Blocked Punts": 790,
+  "Blocked Punts Allowed": 791,
+  "Completion Percentage": 756,
+  "Defensive TDs": 926,
+  "Fewest Penalties": 876,
+  "Fewest Penalties Per Game": 697,
+  "Fewest Penalty Yards": 877,
+  "Fewest Penalty Yards Per Game": 698,
+  "First Downs Defense": 694,
+  "First Downs Offense": 693,
+  "Fumbles Lost": 458,
+  "Fumbles Recovered": 456,
+  "Kickoff Return Defense": 463,
+  "Kickoff Returns": 96,
+  "Net Punting": 98,
+  "Passes Had Intercepted": 459,
+  "Passes Intercepted": 457,
+  "Passing Offense": 25,
+  "Passing Yards Allowed": 695,
+  "Passing Yards per Completion": 741,
+  "Punt Return Defense": 462,
+  "Punt Returns": 97,
+  "Red Zone Defense": 704,
+  "Red Zone Offense": 703,
+  "Rushing Defense": 24,
+  "Rushing Offense": 23,
+  "Sacks Allowed": 468,
+  "Scoring Defense": 28,
+  "Scoring Offense": 27,
+  "Tackles for Loss Allowed": 696,
+  "Team Passing Efficiency": 465,
+  "Team Passing Efficiency Defense": 40,
+  "Team Sacks": 466,
+  "Team Tackles for Loss": 467,
+  "Time of Possession": 705,
+  "Total Defense": 22,
+  "Total Offense": 21,
+  "Turnover Margin": 29,
+  "Turnovers Gained": 460,
+  "Turnovers Lost": 461,
+  "Winning Percentage": 742,
 };
 
 // Check if a category has backend support
 export const hasBackendSupport = (category) => {
-  return STAT_CATEGORY_ENDPOINTS.hasOwnProperty(category);
+  return STAT_NAME_TO_ID.hasOwnProperty(category);
 };
 
 // Generic function to get stats for any category
 export const getStats = async (category) => {
-  const endpoint = STAT_CATEGORY_ENDPOINTS[category];
-  if (!endpoint) {
+  const statId = STAT_NAME_TO_ID[category];
+  if (!statId) {
     throw new Error(`No backend support for category: ${category}`);
   }
-  return apiRequest(endpoint);
+  return apiRequest(`/stats/stat/${statId}`);
 };
 
 // Specific API functions
