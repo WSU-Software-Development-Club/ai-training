@@ -512,7 +512,6 @@ export const statCategories = [
 ];
 
 export const teamNames = [
-"Select Team",
 "Georgia Tech",
 "Virginia",
 "SMU",

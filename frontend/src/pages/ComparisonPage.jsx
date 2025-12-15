@@ -34,13 +34,11 @@ const ComparisonPage = () => {
 
           if (responseA.success) {
             setTeamAData(responseA.data);    
-            console.log(responseA.data); // debugging purposes
-          } else setError("Team A data not available.");
+          } else setError("Encountered error fetching team data.");
           
           if (responseB.success) {
             setTeamBData(responseB.data);
-            console.log(responseB.data); // debugging purposes
-          } else setError("Team B data not available.");
+          } else setError("Encountered error fetching team data.");
 
         } catch (err) {
           console.error(err);
@@ -66,23 +64,9 @@ const ComparisonPage = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className={styles.comparisonPage}>
-        <Header title={appConfig.name} onSearch={handleSearch} />
-        <main className={styles.comparisonPageMain}>
-          <div className={styles.errorContainer}>
-            <p>{error}</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.comparisonPage}>
       <Header title={appConfig.name} onSearch={handleSearch} />
-
       <main className={styles.comparisonPageMain}>
         <div className={styles.comparisonPageContainer}>
           <div className={styles.comparisonPageHeader}>
@@ -91,12 +75,9 @@ const ComparisonPage = () => {
               Compare statistics between college football teams
             </p>
           </div>
-
           {/* Team Filter Section */}
           <div className={styles.comparisonPageFilters}>
-            <h2> Team Filters </h2>
             <div className={styles.comparisonPageFilterGrid}>
-
               {/* Team A Dropdown */}
               <div className={styles.comparisonPageFilterGroup}>
                 <label className={styles.comparisonPageFilterLabel}>
@@ -107,6 +88,7 @@ const ComparisonPage = () => {
                   value={selectedTeamA}
                   onChange={(e) => setSelectedTeamA(e.target.value)}
                 >
+                  <option value="Select Team">Select Team</option>
                   {teamNames.map((team) => (
                     <option key={team} value={team}>
                       {team}
@@ -125,6 +107,7 @@ const ComparisonPage = () => {
                     value={selectedTeamB}
                     onChange={(e) => setSelectedTeamB(e.target.value)}
                   >
+                    <option value="Select Team">Select Team</option>
                     {teamNames.map((team) => (
                       <option key={team} value={team}>
                         {team}
@@ -136,12 +119,20 @@ const ComparisonPage = () => {
             </div>
           </div>
           
+          {/* Error State */}
+          {error && (
+            <div className={styles.errorContainer}>
+              <p>{error}</p>
+            </div>
+          )}
+
           {/* Comparison Section */}
-          {teamAData != null && teamBData != null && (
+          {!error && teamAData != null && teamBData != null && (
           <section className={styles.comparisonPageSection}>
             <h2> Team Comparison </h2>
             <div className={styles.comparisonPageContent}>
 
+              {/* TODO: implement these as components */}
               {/* Team A */}
               <div>
               <h3>{teamAData["School"]}</h3>

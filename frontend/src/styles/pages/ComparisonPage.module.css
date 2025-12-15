@@ -134,6 +134,16 @@
   flex-direction: column;
 }
 
+.errorContainer {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .comparisonPageMain {
