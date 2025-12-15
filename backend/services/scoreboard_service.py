@@ -26,13 +26,19 @@ def process_games(raw_data: dict, predictions_map: dict = None):
         away_team = game.get('away', {}) or {}
         home_team = game.get('home', {}) or {}
         
-        # Get team names for prediction lookup
-        home_team_name = home_team.get('names', {}).get('full', '')
-        away_team_name = away_team.get('names', {}).get('full', '')
+        # Get NCAA gameID for prediction lookup (ensure it's an integer)
+        ncaa_game_id = game.get('gameID')
+        if ncaa_game_id is not None:
+            ncaa_game_id = int(ncaa_game_id)
         
-        # Debug: Print team names
+        # Debug: Print game info
         if predictions_map:  # Only print if we have predictions to match
-            print(f"Debug: Scoreboard game - {away_team_name} @ {home_team_name}")
+            # Use 'short' if 'full' is empty
+            home_names = home_team.get('names', {})
+            away_names = away_team.get('names', {})
+            home_team_name = home_names.get('full') or home_names.get('short', '')
+            away_team_name = away_names.get('full') or away_names.get('short', '')
+            print(f"Debug: Scoreboard game - {away_team_name} @ {home_team_name} (NCAA ID: {ncaa_game_id})")
 
         game_data = {
             'game_state':  { 
@@ -62,10 +68,9 @@ def process_games(raw_data: dict, predictions_map: dict = None):
             'epoch': game.get('startTimeEpoch')
         }
         
-        # Add prediction if available (match by both team names)
-        prediction_key = f"{home_team_name}|{away_team_name}"
-        if prediction_key in predictions_map:
-            prediction = predictions_map[prediction_key]
+        # Add prediction if available (match by NCAA game ID)
+        if ncaa_game_id and ncaa_game_id in predictions_map:
+            prediction = predictions_map[ncaa_game_id]
             game_data['prediction'] = {
                 'home_score': prediction.get('predicted_home_score'),
                 'away_score': prediction.get('predicted_away_score'),
@@ -73,6 +78,9 @@ def process_games(raw_data: dict, predictions_map: dict = None):
                 'margin': prediction.get('predicted_margin'),
                 'predicted_at': prediction.get('prediction_made_at')
             }
+            print(f"Debug: ✓ Prediction found for NCAA game ID: {ncaa_game_id}")
+        elif ncaa_game_id:
+            print(f"Debug: ⚠ No prediction found for NCAA game ID: {ncaa_game_id}")
         
         processed_games.append(game_data)
 
@@ -104,11 +112,17 @@ def get_scoreboard_data(week, year = date.today().year):
                 predictions = supabase.get_predictions_by_week(year, week)
                 print(f"Debug: Found {len(predictions)} predictions in database for week {week}, year {year}")
                 
-                # Create a map for quick lookup: "home_team|away_team" -> prediction
+                # Create a map for quick lookup: ncaa_game_id (int) -> prediction
                 for pred in predictions:
-                    key = f"{pred.get('home_team')}|{pred.get('away_team')}"
-                    predictions_map[key] = pred
-                    print(f"Debug: Added prediction key: {key}")
+                    ncaa_game_id = pred.get('ncaa_game_id')
+                    if ncaa_game_id:
+                        # Ensure gameID is an integer for consistent lookup
+                        ncaa_game_id = int(ncaa_game_id)
+                        predictions_map[ncaa_game_id] = pred
+                        print(f"Debug: Added prediction with NCAA game ID: {ncaa_game_id}")
+                    else:
+                        # Legacy predictions without NCAA game ID
+                        print(f"Debug: Skipping prediction without NCAA game ID (game_id: {pred.get('game_id')})")
         except Exception as e:
             print(f"Warning: Could not fetch predictions: {e}")
             # Continue without predictions
