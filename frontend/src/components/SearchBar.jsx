@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import styles from "../styles/components/SearchBar.module.css";
 
-const SearchBar = ({ onSearch, placeholder = "Search teams, games..." }) => {
+const SearchBar = ({ onSearch, placeholder = "Search teams" }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const handleSubmit = (e) => {
