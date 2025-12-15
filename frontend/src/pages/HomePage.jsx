@@ -70,25 +70,42 @@ const HomePage = () => {
     );
   }
 
+  // Extract unique conferences, preserving original case for filtering
+  const conferenceSet = new Set(
+    gameData.games
+      .flatMap((game) => [game.away.conference, game.home.conference])
+      .filter(Boolean) // Remove null/undefined values
+  );
+
   const conferences = [
-    "All",
-    ...new Set(gameData.games.flatMap((game) => [
-      game.away.conference.charAt(0).toUpperCase() + game.away.conference.slice(1),
-      game.home.conference.charAt(0).toUpperCase() + game.home.conference.slice(1),
-  ])),
+    { value: "All", label: "All" },
+    ...Array.from(conferenceSet)
+      .sort()
+      .map((conf) => ({
+        value: conf,
+        label: conf.charAt(0).toUpperCase() + conf.slice(1),
+      })),
   ];
 
   const statuses = ["All", "Final", "Live", "Upcoming"];
 
-  const weeks = Array.from({ length: 14}, (_, i) => i + 1);
+  // Supports all possible weeks returned by getCurrentWeek (1–16)
+  const weeks = Array.from({ length: 16 }, (_, i) => i + 1);
 
   // Filter scores based on selected filters
-  const filteredScores = gameData.games.filter(game => {
+  const filteredScores = gameData.games.filter((game) => {
     const conferenceMatch =
-      selectedConference === "All" || game.away.conference === selectedConference || game.home.conference === selectedConference;
+      selectedConference === "All" ||
+      (game.away.conference &&
+        game.away.conference.toLowerCase() ===
+          selectedConference.toLowerCase()) ||
+      (game.home.conference &&
+        game.home.conference.toLowerCase() ===
+          selectedConference.toLowerCase());
     const statusMatch =
-      selectedStatus === "All" || (game.game_state.isUpcoming && selectedStatus === "Upcoming") ||
-      (game.game_state.isLive && selectedStatus === "Live") || 
+      selectedStatus === "All" ||
+      (game.game_state.isUpcoming && selectedStatus === "Upcoming") ||
+      (game.game_state.isLive && selectedStatus === "Live") ||
       (game.game_state.isFinished && selectedStatus === "Final");
     return conferenceMatch && statusMatch;
   });
@@ -130,8 +147,8 @@ const HomePage = () => {
                 onChange={(e) => setSelectedConference(e.target.value)}
               >
                 {conferences.map((conference) => (
-                  <option key={conference} value={conference}>
-                    {conference}
+                  <option key={conference.value} value={conference.value}>
+                    {conference.label}
                   </option>
                 ))}
               </select>
@@ -153,17 +170,9 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Recent Scores Section */}
+          {/* Scores grouped by date to make it easier to scan */}
           <section className={styles.homePageSection}>
-            <div className={styles.homePageScoresGrid}>
-              {error && <p className="error">{error}</p>}
-              {filteredScores.slice(0, 6).map((game) => (
-                <ScoreCard 
-                key={`${game.home?.names?.char6}-${game.away?.names?.char6}`}
-                game={game} 
-                />
-              ))}
-            </div>
+            {error && <p className="error">{error}</p>}
 
             {filteredScores.length === 0 && (
               <div className={styles.homePageNoResults}>
@@ -171,6 +180,61 @@ const HomePage = () => {
               </div>
             )}
 
+            {filteredScores.length > 0 &&
+              Object.entries(
+                filteredScores.reduce((groups, game) => {
+                  const { epoch } = game;
+
+                  // Use the same base epoch field we use in ScoreCard for consistency
+                  if (!epoch) {
+                    const label = "TBD";
+                    if (!groups[label]) {
+                      groups[label] = {
+                        sortKey: Number.MAX_SAFE_INTEGER,
+                        games: [],
+                      };
+                    }
+                    groups[label].games.push(game);
+                    return groups;
+                  }
+
+                  const date = new Date(epoch * 1000);
+                  const label = date.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  });
+                  const sortKey = date.setHours(0, 0, 0, 0);
+
+                  if (!groups[label]) {
+                    groups[label] = { sortKey, games: [] };
+                  }
+
+                  // Keep games collected under the same label
+                  groups[label].games.push(game);
+
+                  // Always store the earliest sortKey for that date label
+                  if (sortKey < groups[label].sortKey) {
+                    groups[label].sortKey = sortKey;
+                  }
+
+                  return groups;
+                }, {})
+              )
+                .sort(([, aData], [, bData]) => aData.sortKey - bData.sortKey)
+                .map(([dateLabel, { games }]) => (
+                  <div key={dateLabel} className={styles.homePageDateGroup}>
+                    <h2 className={styles.homePageDateHeading}>{dateLabel}</h2>
+                    <div className={styles.homePageScoresGrid}>
+                      {games.map((game) => (
+                        <ScoreCard
+                          key={`${game.home?.names?.char6}-${game.away?.names?.char6}-${game.epoch}`}
+                          game={game}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
           </section>
         </div>
       </main>

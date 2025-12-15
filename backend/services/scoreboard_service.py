@@ -51,7 +51,7 @@ def process_games(raw_data: dict, predictions_map: dict = None):
                 'names': away_team.get('names', {}),
                 'rank': None if away_team.get('rank') in ('', None) else int(away_team.get('rank')),
                 'conference': (
-                    away_team.get('conferences', [{}])[0].get('conferenceName')
+                    away_team.get('conferences', [{}])[0].get('conferenceSeo')
                     if away_team.get('conferences') else None
                 )
                 },
@@ -61,7 +61,7 @@ def process_games(raw_data: dict, predictions_map: dict = None):
                 'names': home_team.get('names', {}),
                 'rank': None if home_team.get('rank') in ('', None) else int(home_team.get('rank')),
                 'conference': (
-                    home_team.get('conferences', [{}])[0].get('conferenceName')
+                    home_team.get('conferences', [{}])[0].get('conferenceSeo')
                     if home_team.get('conferences') else None
                 )
                 },
