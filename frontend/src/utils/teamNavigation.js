@@ -29,3 +29,19 @@ export const getTeamPageUrl = (teamName) => {
   const encodedTeamName = encodeURIComponent(teamName);
   return `/team/${encodedTeamName}`;
 };
+
+/**
+ * Navigate to comparison page with two teams pre-selected
+ *
+ * @param {Function} navigate - React Router navigate function
+ * @param {string} teamA - The first team name
+ * @param {string} teamB - The second team name
+ */
+export const navigateToComparison = (navigate, teamA, teamB) => {
+  if (!teamA || !teamB) return;
+
+  // Encode team names for URL
+  const encodedTeamA = encodeURIComponent(teamA);
+  const encodedTeamB = encodeURIComponent(teamB);
+  navigate(`/comparison?teamA=${encodedTeamA}&teamB=${encodedTeamB}`);
+};

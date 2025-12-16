@@ -1,6 +1,6 @@
 import React from "react";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
@@ -11,6 +11,7 @@ import { useTeamBranding } from "../hooks/useTeamBranding";
 import { navigateToTeam } from "../utils/teamNavigation";
 
 const ComparisonPage = () => {
+  const [searchParams] = useSearchParams();
   const [teams, setTeams] = useState([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [selectedTeamA, setSelectedTeamA] = useState("Select Team");
@@ -39,6 +40,29 @@ const ComparisonPage = () => {
             a.name.localeCompare(b.name)
           );
           setTeams(sortedTeams);
+
+          // Check for URL parameters to pre-select teams
+          const teamAFromUrl = searchParams.get("teamA");
+          const teamBFromUrl = searchParams.get("teamB");
+
+          if (teamAFromUrl && teamBFromUrl) {
+            // Decode team names from URL
+            const decodedTeamA = decodeURIComponent(teamAFromUrl);
+            const decodedTeamB = decodeURIComponent(teamBFromUrl);
+
+            // Verify teams exist in the list
+            const teamAExists = sortedTeams.some(
+              (t) => t.name === decodedTeamA
+            );
+            const teamBExists = sortedTeams.some(
+              (t) => t.name === decodedTeamB
+            );
+
+            if (teamAExists && teamBExists && decodedTeamA !== decodedTeamB) {
+              setSelectedTeamA(decodedTeamA);
+              setSelectedTeamB(decodedTeamB);
+            }
+          }
         } else {
           console.error("Failed to fetch teams:", response.error);
           // Fallback to empty array - will show error in UI
@@ -53,7 +77,7 @@ const ComparisonPage = () => {
     };
 
     fetchTeams();
-  }, []);
+  }, [searchParams]);
 
   // Fetch team A data when selected
   useEffect(() => {

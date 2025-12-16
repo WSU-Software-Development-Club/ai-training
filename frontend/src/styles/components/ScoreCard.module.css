@@ -81,35 +81,73 @@
 
 .scoreCardTeam {
   flex: 1;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
 }
 
-.scoreCardTeamAway {
+.scoreCardTeamInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.scoreCardTeamAway .scoreCardTeamInfo {
+  flex-direction: row;
+}
+
+.scoreCardTeamHome .scoreCardTeamInfo {
+  flex-direction: row-reverse;
+}
+
+.scoreCardTeamLogo {
+  flex-shrink: 0;
+}
+
+.scoreCardTeamDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.scoreCardTeamAway .scoreCardTeamDetails {
+  align-items: flex-start;
   text-align: left;
 }
 
-.scoreCardTeamHome {
+.scoreCardTeamHome .scoreCardTeamDetails {
+  align-items: flex-end;
   text-align: right;
 }
 
 .scoreCardTeamName {
   font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-  margin-bottom: var(--spacing-xs);
+  transition: var(--transition-colors);
+}
+
+.scoreCardTeamName:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
 }
 
 .scoreCardTeamScore {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-primary);
+  line-height: 1;
 }
 
 .scoreCardVs {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text-muted);
   flex-shrink: 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--color-background-secondary);
+  border-radius: var(--border-radius);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Responsive adjustments */
@@ -128,5 +166,14 @@
 
   .scoreCardTeams {
     gap: var(--spacing-sm);
+  }
+
+  .scoreCardTeamInfo {
+    gap: var(--spacing-xs);
+  }
+
+  .scoreCardVs {
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-xs);
   }
 }
