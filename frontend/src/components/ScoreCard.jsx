@@ -1,8 +1,10 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import styles from "../styles/components/ScoreCard.module.css";
-
+import { navigateToTeam } from "../utils/teamNavigation";
 
 const ScoreCard = ({ game }) => {
+  const navigate = useNavigate();
   const {
     home,
     away,
@@ -12,6 +14,10 @@ const ScoreCard = ({ game }) => {
 
   const homeTeam = home?.names?.short || "Home";
   const awayTeam = away?.names?.short || "Away";
+  
+  // Get full team names for navigation (prefer full name, fallback to short)
+  const homeTeamFull = home?.names?.full || home?.names?.short || homeTeam;
+  const awayTeamFull = away?.names?.full || away?.names?.short || awayTeam;
   const homeScore = home?.score ?? "-";
   const awayScore = away?.score ?? "-";
   const conference = home?.conference || away?.conference || "N/A";
@@ -64,14 +70,28 @@ const ScoreCard = ({ game }) => {
 
       <div className={styles.scoreCardTeams}>
         <div className={`${styles.scoreCardTeam} ${styles.scoreCardTeamAway}`}>
-          <div className={styles.scoreCardTeamName}>{awayTeam}</div>
+          <div 
+            className={styles.scoreCardTeamName}
+            onClick={() => navigateToTeam(navigate, awayTeamFull)}
+            style={{ cursor: "pointer" }}
+            title={`View ${awayTeamFull} team page`}
+          >
+            {awayTeam}
+          </div>
           <div className={styles.scoreCardTeamScore}>{awayScore}</div>
         </div>
 
         <div className={styles.scoreCardVs}>@</div>
 
         <div className={`${styles.scoreCardTeam} ${styles.scoreCardTeamHome}`}>
-          <div className={styles.scoreCardTeamName}>{homeTeam}</div>
+          <div 
+            className={styles.scoreCardTeamName}
+            onClick={() => navigateToTeam(navigate, homeTeamFull)}
+            style={{ cursor: "pointer" }}
+            title={`View ${homeTeamFull} team page`}
+          >
+            {homeTeam}
+          </div>
           <div className={styles.scoreCardTeamScore}>{homeScore}</div>
         </div>
       </div>

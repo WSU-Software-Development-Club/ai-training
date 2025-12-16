@@ -1,15 +1,41 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { findTeamByName } from "../matching/teamMatcher";
 import styles from "../styles/components/SearchBar.module.css";
 
 const SearchBar = ({ onSearch, placeholder = "Search teams" }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Replace with API call to /api/search
-    console.log("Search term:", searchTerm);
-    if (onSearch) {
-      onSearch(searchTerm);
+
+    if (!searchTerm.trim()) {
+      return;
+    }
+
+    // Try to find the team using the team matcher
+    try {
+      const team = await findTeamByName(searchTerm.trim());
+
+      if (team) {
+        // Navigate to the team page
+        const encodedTeamName = encodeURIComponent(team.school);
+        navigate(`/team/${encodedTeamName}`);
+        setSearchTerm(""); // Clear search after navigation
+      } else {
+        // If team not found, call the onSearch callback (for any custom handling)
+        if (onSearch) {
+          onSearch(searchTerm);
+        }
+        // Optionally show a message that team wasn't found
+        console.log("Team not found:", searchTerm);
+      }
+    } catch (error) {
+      console.error("Error searching for team:", error);
+      if (onSearch) {
+        onSearch(searchTerm);
+      }
     }
   };
 

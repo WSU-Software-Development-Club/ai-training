@@ -6,6 +6,7 @@ import StatsPage from "./pages/StatsPage";
 import TeamsPage from "./pages/TeamsPage";
 import ComparisonPage from "./pages/ComparisonPage";
 import PredictionPage from "./pages/PredictionPage";
+import TeamPage from "./pages/TeamPage";
 import { preloadTeamData } from "./branding/teamBranding";
 import "./App.css";
 
@@ -27,6 +28,7 @@ function App() {
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/comparison" element={<ComparisonPage />} />
           <Route path="/prediction" element={<PredictionPage />} />
+          <Route path="/team/:teamName" element={<TeamPage />} />
         </Routes>
       </div>
     </Router>

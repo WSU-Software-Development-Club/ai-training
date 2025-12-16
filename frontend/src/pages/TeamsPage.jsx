@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { appConfig } from "../constants";
 import api from "../services/api";
 import styles from "../styles/pages/TeamsPage.module.css";
 import LoadingSpinner from "../components/LoadingSpinner";
 import TeamLogo from "../components/TeamLogo";
+import { navigateToTeam } from "../utils/teamNavigation";
 
 const TeamsPage = () => {
+  const navigate = useNavigate();
   const [selectedConference, setSelectedConference] = useState("All");
   const [teams, setTeams] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -185,12 +188,10 @@ const TeamsPage = () => {
                             <tr
                               key={team.id}
                               className={styles.teamsPageTableRow}
-                              onClick={() => {
-                                // TODO: Navigate to team detail page
-                                console.log(
-                                  `Navigate to ${team.name} team page`
-                                );
-                              }}
+                              onClick={() =>
+                                navigateToTeam(navigate, team.name)
+                              }
+                              style={{ cursor: "pointer" }}
                             >
                               <td className={styles.teamsPageTableCellTeam}>
                                 <div className={styles.teamsPageTeamInfo}>
@@ -201,7 +202,14 @@ const TeamsPage = () => {
                                     />
                                   </div>
                                   <div className={styles.teamsPageTeamDetails}>
-                                    <span className={styles.teamsPageTeamName}>
+                                    <span
+                                      className={styles.teamsPageTeamName}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigateToTeam(navigate, team.name);
+                                      }}
+                                      style={{ cursor: "pointer" }}
+                                    >
                                       {team.name}
                                     </span>
                                     <span

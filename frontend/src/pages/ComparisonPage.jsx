@@ -1,5 +1,6 @@
 import React from "react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
@@ -7,6 +8,7 @@ import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import TeamLogo from "../components/TeamLogo";
 import { useTeamBranding } from "../hooks/useTeamBranding";
+import { navigateToTeam } from "../utils/teamNavigation";
 
 const ComparisonPage = () => {
   const [teams, setTeams] = useState([]);
@@ -285,6 +287,7 @@ const ComparisonPage = () => {
 
 // Team Comparison Card Component
 const TeamComparisonCard = ({ teamData, teamName, className }) => {
+  const navigate = useNavigate();
   const { branding } = useTeamBranding(teamName);
 
   const cardStyle = branding?.primaryColor
@@ -295,6 +298,10 @@ const TeamComparisonCard = ({ teamData, teamName, className }) => {
       }
     : {};
 
+  const handleTeamClick = () => {
+    navigateToTeam(navigate, teamData["School"]);
+  };
+
   return (
     <div className={className} style={cardStyle}>
       <div className={styles.teamComparisonHeader}>
@@ -303,7 +310,13 @@ const TeamComparisonCard = ({ teamData, teamName, className }) => {
           size="large"
           className={styles.teamComparisonLogo}
         />
-        <h3 className={styles.teamComparisonTitle}>{teamData["School"]}</h3>
+        <h3
+          className={styles.teamComparisonTitle}
+          onClick={handleTeamClick}
+          style={{ cursor: "pointer" }}
+        >
+          {teamData["School"]}
+        </h3>
       </div>
       <div className={styles.teamComparisonStats}>
         <div className={styles.teamComparisonStatRow}>

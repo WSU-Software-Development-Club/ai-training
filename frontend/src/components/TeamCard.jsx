@@ -1,15 +1,17 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import styles from "../styles/components/TeamCard.module.css";
 import TeamLogo from "./TeamLogo";
 import { useTeamBranding } from "../hooks/useTeamBranding";
+import { navigateToTeam } from "../utils/teamNavigation";
 
 const TeamCard = ({ team }) => {
+  const navigate = useNavigate();
   const { name, conference, record, stats } = team;
   const { branding } = useTeamBranding(name);
 
   const handleTeamClick = () => {
-    // TODO: Navigate to team detail page
-    console.log(`Navigate to ${name} team page`);
+    navigateToTeam(navigate, name);
   };
 
   const cardStyle = branding?.primaryColor 
