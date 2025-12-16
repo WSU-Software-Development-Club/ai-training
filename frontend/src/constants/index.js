@@ -6,7 +6,7 @@ export { css } from "./css";
 
 // App-specific constants
 export const appConfig = {
-  name: "NCAA Football",
+  name: "CFB Analytics & Predictions",
   version: "1.0.0",
   apiUrl: process.env.REACT_APP_API_URL || "http://localhost:5000",
   endpoints: {

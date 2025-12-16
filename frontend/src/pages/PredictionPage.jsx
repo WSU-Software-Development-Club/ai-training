@@ -1,4 +1,5 @@
 import React from "react";
+import { FiBarChart2 } from "react-icons/fi";
 import Header from "../components/Header";
 import { appConfig } from "../constants";
 import styles from "../styles/pages/PredictionPage.module.css";
@@ -25,35 +26,7 @@ const PredictionPage = () => {
           <div className={styles.predictionPageContent}>
             <div className={styles.predictionPagePlaceholder}>
               <div className={styles.predictionPagePlaceholderIcon}>
-                <svg
-                  width="64"
-                  height="64"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M9.663 17H4.337C3.603 17 3 16.397 3 15.663V8.337C3 7.603 3.603 7 4.337 7H9.663C10.397 7 11 7.603 11 8.337V15.663C11 16.397 10.397 17 9.663 17Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M21 17H15.337C14.603 17 14 16.397 14 15.663V8.337C14 7.603 14.603 7 15.337 7H21"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M21 13H15"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <FiBarChart2 size={64} />
               </div>
               <h2 className={styles.predictionPagePlaceholderTitle}>
                 Coming Soon

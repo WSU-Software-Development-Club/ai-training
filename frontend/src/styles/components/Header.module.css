@@ -16,6 +16,30 @@
 
 .headerBranding {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.swdcLogoLink {
+  display: flex;
+  align-items: center;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.swdcLogoLink:hover {
+  opacity: 0.8;
+}
+
+.swdcLogo {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+}
+
+.headerTitleContainer {
+  flex: 1;
 }
 
 .headerTitle {
@@ -51,7 +75,18 @@
   }
 
   .headerBranding {
+    flex-direction: column;
+    align-items: center;
     text-align: center;
+  }
+
+  .swdcLogo {
+    height: 40px;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .headerTitleContainer {
+    width: 100%;
   }
 
   .headerTitle {

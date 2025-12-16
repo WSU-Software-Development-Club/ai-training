@@ -130,6 +130,8 @@ def normalize_team_name(name: str) -> str:
         "eastern mich": "eastern michigan",
         "central mich.": "central michigan",
         "central mich": "central michigan",
+        "army west point": "army",
+        "army west pt": "army",
     }
     
     # Check for exact matches or substring matches in abbreviation dictionary

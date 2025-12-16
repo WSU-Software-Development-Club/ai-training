@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { FiSearch } from "react-icons/fi";
 import { findTeamByName } from "../matching/teamMatcher";
 import api from "../services/api";
 import TeamLogo from "./TeamLogo";
@@ -183,21 +184,7 @@ const SearchBar = ({ onSearch, placeholder = "Search teams" }) => {
       <form className={styles.searchBar} onSubmit={handleSubmit}>
         <div className={styles.searchBarContainer}>
           <div className={styles.searchBarIcon}>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <FiSearch size={20} />
           </div>
           <input
             type="text"
