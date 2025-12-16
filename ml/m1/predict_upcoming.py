@@ -396,12 +396,14 @@ def load_models() -> tuple:
     
     # Load home score model
     home_model_path = MODEL_DIR / 'home_score_model.json'
-    home_model = xgb.XGBRegressor(model=str(home_model_path))
+    home_model = xgb.XGBRegressor(objective='reg:squarederror')
+    home_model.load_model(home_model_path)
     print(f"[OK] Loaded home score model from {home_model_path}")
     
     # Load away score model
     away_model_path = MODEL_DIR / 'away_score_model.json'
-    away_model = xgb.XGBRegressor(model=str(away_model_path))
+    away_model = xgb.XGBRegressor(objective='reg:squarederror')
+    away_model.load_model(away_model_path)
     print(f"[OK] Loaded away score model from {away_model_path}")
     
     # Load feature lists
