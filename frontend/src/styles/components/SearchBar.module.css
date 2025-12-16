@@ -1,6 +1,11 @@
-.searchBar {
+.searchBarWrapper {
+  position: relative;
   width: 100%;
   max-width: 400px;
+}
+
+.searchBar {
+  width: 100%;
 }
 
 .searchBarContainer {
@@ -47,9 +52,60 @@
   outline: none;
 }
 
+/* Suggestions dropdown */
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: var(--spacing-xs);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.suggestionItem {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.suggestionItem:last-child {
+  border-bottom: none;
+}
+
+.suggestionItem:hover,
+.suggestionItemSelected {
+  background-color: var(--color-primary-light, rgba(152, 30, 50, 0.1));
+}
+
+.suggestionLogo {
+  margin-right: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.suggestionName {
+  flex: 1;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+}
+
+.suggestionName strong {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .searchBar {
+  .searchBarWrapper {
     max-width: 100%;
   }
 
@@ -58,6 +114,10 @@
   }
 
   .searchBarInput {
+    font-size: var(--font-size-sm);
+  }
+
+  .suggestionName {
     font-size: var(--font-size-sm);
   }
 }
