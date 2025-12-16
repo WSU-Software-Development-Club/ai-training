@@ -8,13 +8,16 @@ from datetime import date
 from api_vars import NCAA_API_BASE_URL
 from utils.supabase_client import get_supabase_client
 
-def process_games(raw_data: dict, predictions_map: dict = None):
+def process_games(raw_data: dict, predictions_map: dict = None, season: int = None, week: int = None, supabase=None):
     """
     Process games and include predictions if available
     
     Args:
         raw_data: Raw game data from NCAA API
-        predictions_map: Dictionary mapping team names to predictions
+        predictions_map: Dictionary mapping ncaa_game_id to predictions (for quick lookup)
+        season: Season year for precise prediction matching
+        week: Week number for precise prediction matching
+        supabase: Supabase client instance for direct lookups if needed
     """
     processed_games = []
     
@@ -68,19 +71,46 @@ def process_games(raw_data: dict, predictions_map: dict = None):
             'epoch': game.get('startTimeEpoch')
         }
         
-        # Add prediction if available (match by NCAA game ID)
-        if ncaa_game_id and ncaa_game_id in predictions_map:
-            prediction = predictions_map[ncaa_game_id]
+        # Add prediction if available - match by NCAA game ID, season, and week
+        prediction = None
+        if ncaa_game_id and season and week:
+            # First try quick lookup from predictions_map
+            if ncaa_game_id in predictions_map:
+                pred = predictions_map[ncaa_game_id]
+                # Verify season and week match for accuracy
+                if pred.get('season') == season and pred.get('week') == week:
+                    prediction = pred
+                    print(f"Debug: ✓ Prediction found in map for NCAA game ID: {ncaa_game_id}")
+                else:
+                    print(f"Debug: ⚠ Prediction in map doesn't match season/week for NCAA game ID: {ncaa_game_id}")
+            
+            # If not found in map, try direct lookup (fallback)
+            if prediction is None and supabase and supabase.is_connected:
+                prediction = supabase.get_prediction_by_ncaa_game_id(ncaa_game_id, season, week)
+                if prediction:
+                    print(f"Debug: ✓ Prediction found via direct lookup for NCAA game ID: {ncaa_game_id}")
+        
+        # Add complete prediction data if found
+        if prediction:
             game_data['prediction'] = {
+                'id': prediction.get('id'),
+                'game_id': prediction.get('game_id'),
+                'ncaa_game_id': prediction.get('ncaa_game_id'),
+                'season': prediction.get('season'),
+                'week': prediction.get('week'),
+                'game_date': prediction.get('game_date'),
+                'home_team': prediction.get('home_team'),
+                'away_team': prediction.get('away_team'),
                 'home_score': prediction.get('predicted_home_score'),
                 'away_score': prediction.get('predicted_away_score'),
                 'winner': prediction.get('predicted_winner'),
                 'margin': prediction.get('predicted_margin'),
-                'predicted_at': prediction.get('prediction_made_at')
+                'neutral_site': prediction.get('neutral_site', False),
+                'predicted_at': prediction.get('prediction_made_at'),
+                'created_at': prediction.get('created_at')
             }
-            print(f"Debug: ✓ Prediction found for NCAA game ID: {ncaa_game_id}")
         elif ncaa_game_id:
-            print(f"Debug: ⚠ No prediction found for NCAA game ID: {ncaa_game_id}")
+            print(f"Debug: ⚠ No prediction found for NCAA game ID: {ncaa_game_id}, season: {season}, week: {week}")
         
         processed_games.append(game_data)
 
@@ -106,6 +136,7 @@ def get_scoreboard_data(week, year = date.today().year):
         
         # Fetch predictions from Supabase
         predictions_map = {}
+        supabase = None
         try:
             supabase = get_supabase_client()
             if supabase.is_connected:
@@ -113,13 +144,20 @@ def get_scoreboard_data(week, year = date.today().year):
                 print(f"Debug: Found {len(predictions)} predictions in database for week {week}, year {year}")
                 
                 # Create a map for quick lookup: ncaa_game_id (int) -> prediction
+                # Only include predictions that match the season and week
                 for pred in predictions:
                     ncaa_game_id = pred.get('ncaa_game_id')
-                    if ncaa_game_id:
+                    pred_season = pred.get('season')
+                    pred_week = pred.get('week')
+                    
+                    # Verify season and week match before adding to map
+                    if ncaa_game_id and pred_season == year and pred_week == week:
                         # Ensure gameID is an integer for consistent lookup
                         ncaa_game_id = int(ncaa_game_id)
                         predictions_map[ncaa_game_id] = pred
-                        print(f"Debug: Added prediction with NCAA game ID: {ncaa_game_id}")
+                        print(f"Debug: Added prediction with NCAA game ID: {ncaa_game_id}, season: {pred_season}, week: {pred_week}")
+                    elif ncaa_game_id:
+                        print(f"Debug: Skipping prediction - season/week mismatch (NCAA ID: {ncaa_game_id}, season: {pred_season}, week: {pred_week})")
                     else:
                         # Legacy predictions without NCAA game ID
                         print(f"Debug: Skipping prediction without NCAA game ID (game_id: {pred.get('game_id')})")
@@ -127,8 +165,8 @@ def get_scoreboard_data(week, year = date.today().year):
             print(f"Warning: Could not fetch predictions: {e}")
             # Continue without predictions
         
-        # Process games with predictions
-        processed_games = process_games(raw_data, predictions_map)
+        # Process games with predictions, passing season, week, and supabase for precise matching
+        processed_games = process_games(raw_data, predictions_map, season=year, week=week, supabase=supabase)
 
         game_data = {
             'week': week,

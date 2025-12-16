@@ -144,6 +144,37 @@ class SupabaseClient:
             print(f"Error fetching predictions for week {week}: {e}")
             return []
     
+    def get_prediction_by_ncaa_game_id(self, ncaa_game_id: int, season: int, week: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a prediction by NCAA game ID, season, and week for precise matching
+        
+        Args:
+            ncaa_game_id: NCAA game ID
+            season: Season year
+            week: Week number
+        
+        Returns:
+            Prediction dictionary or None if not found
+        """
+        if not self.is_connected:
+            return None
+        
+        try:
+            response = self._client.table('predictions')\
+                .select('*')\
+                .eq('ncaa_game_id', ncaa_game_id)\
+                .eq('season', season)\
+                .eq('week', week)\
+                .order('prediction_made_at', desc=True)\
+                .limit(1)\
+                .execute()
+            
+            return response.data[0] if response.data else None
+        
+        except Exception as e:
+            print(f"Error fetching prediction for NCAA game {ncaa_game_id}, season {season}, week {week}: {e}")
+            return None
+    
     def get_predictions_by_team(self, team_name: str, season: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Get all predictions involving a specific team

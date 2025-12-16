@@ -59,9 +59,8 @@ const PredictionPage = () => {
                 Coming Soon
               </h2>
               <p className={styles.predictionPagePlaceholderText}>
-                Win prediction feature is under development. This will use
-                machine learning algorithms and historical data to predict game
-                outcomes with confidence percentages.
+                This page is under development. It will show how the prediciton
+                model works.
               </p>
 
               {/* TODO: Implement win prediction functionality */}

@@ -132,10 +132,37 @@
   text-decoration: underline;
 }
 
+.scoreCardScoreContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.scoreCardScoreGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.scoreCardScoreLabel {
+  font-size: var(--font-size-xxs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .scoreCardTeamScore {
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   line-height: 1;
+}
+
+.scoreCardPredictedScore {
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-text-muted);
 }
 
 .scoreCardVs {
@@ -162,6 +189,14 @@
 
   .scoreCardTeamScore {
     font-size: var(--font-size-lg);
+  }
+
+  .scoreCardPredictedScore {
+    font-size: var(--font-size-lg);
+  }
+
+  .scoreCardScoreLabel {
+    font-size: var(--font-size-xxs);
   }
 
   .scoreCardTeams {

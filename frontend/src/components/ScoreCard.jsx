@@ -7,7 +7,7 @@ import { useTeamBranding } from "../hooks/useTeamBranding";
 
 const ScoreCard = ({ game }) => {
   const navigate = useNavigate();
-  const { home, away, game_state, epoch } = game;
+  const { home, away, game_state, epoch, prediction } = game;
 
   const homeTeam = home?.names?.short || "Home";
   const awayTeam = away?.names?.short || "Away";
@@ -15,8 +15,17 @@ const ScoreCard = ({ game }) => {
   // Get full team names for navigation (prefer full name, fallback to short)
   const homeTeamFull = home?.names?.full || home?.names?.short || homeTeam;
   const awayTeamFull = away?.names?.full || away?.names?.short || awayTeam;
-  const homeScore = home?.score ?? "-";
-  const awayScore = away?.score ?? "-";
+
+  // Get actual scores (from game data)
+  const homeScore = home?.score ?? null;
+  const awayScore = away?.score ?? null;
+
+  // Get predicted scores (from prediction data) and round to nearest integer
+  const predictedHomeScore =
+    prediction?.home_score != null ? Math.round(prediction.home_score) : null;
+  const predictedAwayScore =
+    prediction?.away_score != null ? Math.round(prediction.away_score) : null;
+
   const conference = home?.conference || away?.conference || "N/A";
   const status = game_state?.isLive
     ? "Live"
@@ -117,15 +126,25 @@ const ScoreCard = ({ game }) => {
               >
                 {awayTeam}
               </div>
-              <div
-                className={styles.scoreCardTeamScore}
-                style={
-                  awayBranding?.primaryColor
-                    ? { color: awayBranding.primaryColor }
-                    : {}
-                }
-              >
-                {awayScore}
+              <div className={styles.scoreCardScoreContainer}>
+                <div className={styles.scoreCardScoreGroup}>
+                  <div
+                    className={styles.scoreCardTeamScore}
+                    style={
+                      awayBranding?.primaryColor
+                        ? { color: awayBranding.primaryColor }
+                        : {}
+                    }
+                  >
+                    {awayScore ?? "-"}
+                  </div>
+                </div>
+                <div className={styles.scoreCardScoreGroup}>
+                  <div className={styles.scoreCardScoreLabel}>Predicted</div>
+                  <div className={styles.scoreCardPredictedScore}>
+                    {predictedAwayScore ?? "-"}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -144,15 +163,25 @@ const ScoreCard = ({ game }) => {
               >
                 {homeTeam}
               </div>
-              <div
-                className={styles.scoreCardTeamScore}
-                style={
-                  homeBranding?.primaryColor
-                    ? { color: homeBranding.primaryColor }
-                    : {}
-                }
-              >
-                {homeScore}
+              <div className={styles.scoreCardScoreContainer}>
+                <div className={styles.scoreCardScoreGroup}>
+                  <div
+                    className={styles.scoreCardTeamScore}
+                    style={
+                      homeBranding?.primaryColor
+                        ? { color: homeBranding.primaryColor }
+                        : {}
+                    }
+                  >
+                    {homeScore ?? "-"}
+                  </div>
+                </div>
+                <div className={styles.scoreCardScoreGroup}>
+                  <div className={styles.scoreCardScoreLabel}>Predicted</div>
+                  <div className={styles.scoreCardPredictedScore}>
+                    {predictedHomeScore ?? "-"}
+                  </div>
+                </div>
               </div>
             </div>
             <div className={styles.scoreCardTeamLogo}>
