@@ -273,20 +273,10 @@ const ComparisonPage = () => {
           {teamAData && teamBData && !errorA && !errorB && (
             <section className={styles.comparisonPageSection}>
               <h2>Team Comparison</h2>
-              <div className={styles.comparisonPageContent}>
-                {/* Team A */}
-                <TeamComparisonCard
-                  teamData={teamAData}
-                  teamName={teamAData["School"]}
-                  className={styles.teamComparisonCard}
-                />
-                {/* Team B */}
-                <TeamComparisonCard
-                  teamData={teamBData}
-                  teamName={teamBData["School"]}
-                  className={styles.teamComparisonCard}
-                />
-              </div>
+              <TeamComparisonTable
+                teamAData={teamAData}
+                teamBData={teamBData}
+              />
             </section>
           )}
 
@@ -309,63 +299,282 @@ const ComparisonPage = () => {
   );
 };
 
-// Team Comparison Card Component
-const TeamComparisonCard = ({ teamData, teamName, className }) => {
-  const navigate = useNavigate();
-  const { branding } = useTeamBranding(teamName);
+// Helper function to parse win-loss record
+const parseRecord = (record) => {
+  if (!record || typeof record !== "string") return { wins: 0, losses: 0 };
+  const parts = record.split("-");
+  return {
+    wins: parseInt(parts[0]) || 0,
+    losses: parseInt(parts[1]) || 0,
+  };
+};
 
-  const cardStyle = branding?.primaryColor
+// Helper function to parse streak (e.g., "W3", "L2", "W1")
+const parseStreak = (streak) => {
+  if (!streak || typeof streak !== "string") return { isWin: false, count: 0 };
+  const trimmed = streak.trim().toUpperCase();
+  const isWin = trimmed.startsWith("W");
+  const count = parseInt(trimmed.substring(1)) || 0;
+  return { isWin, count };
+};
+
+// Helper function to compare records and return win percentage
+const compareRecords = (recordA, recordB) => {
+  const parsedA = parseRecord(recordA);
+  const parsedB = parseRecord(recordB);
+
+  const totalA = parsedA.wins + parsedA.losses;
+  const totalB = parsedB.wins + parsedB.losses;
+
+  if (totalA === 0 && totalB === 0) return null;
+  if (totalA === 0) return "B";
+  if (totalB === 0) return "A";
+
+  const winPctA = parsedA.wins / totalA;
+  const winPctB = parsedB.wins / totalB;
+
+  if (winPctA > winPctB) return "A";
+  if (winPctB > winPctA) return "B";
+
+  // If win percentage is equal, prefer more wins
+  if (parsedA.wins > parsedB.wins) return "A";
+  if (parsedB.wins > parsedA.wins) return "B";
+
+  return null; // Tie
+};
+
+// Helper function to compare streaks
+const compareStreaks = (streakA, streakB) => {
+  const parsedA = parseStreak(streakA);
+  const parsedB = parseStreak(streakB);
+
+  // Win streaks are better than loss streaks
+  if (parsedA.isWin && !parsedB.isWin) return "A";
+  if (!parsedA.isWin && parsedB.isWin) return "B";
+
+  // If both are wins or both are losses, compare count
+  if (parsedA.isWin && parsedB.isWin) {
+    // Longer win streak is better
+    if (parsedA.count > parsedB.count) return "A";
+    if (parsedB.count > parsedA.count) return "B";
+  } else {
+    // Shorter loss streak is better (less losses)
+    if (parsedA.count < parsedB.count) return "A";
+    if (parsedB.count < parsedA.count) return "B";
+  }
+
+  return null; // Tie
+};
+
+// Helper function to determine which team has better stat
+const getBetterTeam = (valueA, valueB, higherIsBetter = true) => {
+  const numA = typeof valueA === "string" ? parseFloat(valueA) : valueA;
+  const numB = typeof valueB === "string" ? parseFloat(valueB) : valueB;
+
+  if (isNaN(numA) || isNaN(numB)) return null;
+
+  if (higherIsBetter) {
+    if (numA > numB) return "A";
+    if (numB > numA) return "B";
+  } else {
+    if (numA < numB) return "A";
+    if (numB < numA) return "B";
+  }
+  return null; // Tie
+};
+
+// Team Comparison Table Component
+const TeamComparisonTable = ({ teamAData, teamBData }) => {
+  const navigate = useNavigate();
+  const { branding: brandingA } = useTeamBranding(teamAData["School"]);
+  const { branding: brandingB } = useTeamBranding(teamBData["School"]);
+
+  const handleTeamClick = (teamName) => {
+    navigateToTeam(navigate, teamName);
+  };
+
+  // Calculate win percentages for records
+  const confRecordA = parseRecord(
+    `${teamAData["Conference W"]}-${teamAData["Conference L"]}`
+  );
+  const confRecordB = parseRecord(
+    `${teamBData["Conference W"]}-${teamBData["Conference L"]}`
+  );
+  const overallRecordA = parseRecord(
+    `${teamAData["Overall W"]}-${teamAData["Overall L"]}`
+  );
+  const overallRecordB = parseRecord(
+    `${teamBData["Overall W"]}-${teamBData["Overall L"]}`
+  );
+
+  const confWinPctA =
+    confRecordA.wins + confRecordA.losses > 0
+      ? confRecordA.wins / (confRecordA.wins + confRecordA.losses)
+      : 0;
+  const confWinPctB =
+    confRecordB.wins + confRecordB.losses > 0
+      ? confRecordB.wins / (confRecordB.wins + confRecordB.losses)
+      : 0;
+  const overallWinPctA =
+    overallRecordA.wins + overallRecordA.losses > 0
+      ? overallRecordA.wins / (overallRecordA.wins + overallRecordA.losses)
+      : 0;
+  const overallWinPctB =
+    overallRecordB.wins + overallRecordB.losses > 0
+      ? overallRecordB.wins / (overallRecordB.wins + overallRecordB.losses)
+      : 0;
+
+  const teamAStyle = brandingA?.primaryColor
     ? {
-        borderTopColor: branding.primaryColor,
-        borderTopWidth: "4px",
-        borderTopStyle: "solid",
+        backgroundColor: `${brandingA.primaryColor}15`,
+        borderColor: brandingA.primaryColor,
       }
     : {};
 
-  const handleTeamClick = () => {
-    navigateToTeam(navigate, teamData["School"]);
-  };
+  const teamBStyle = brandingB?.primaryColor
+    ? {
+        backgroundColor: `${brandingB.primaryColor}15`,
+        borderColor: brandingB.primaryColor,
+      }
+    : {};
+
+  const teamAHeaderStyle = brandingA?.primaryColor
+    ? {
+        backgroundColor: brandingA.primaryColor,
+        color: "#ffffff",
+      }
+    : {};
+
+  const teamBHeaderStyle = brandingB?.primaryColor
+    ? {
+        backgroundColor: brandingB.primaryColor,
+        color: "#ffffff",
+      }
+    : {};
+
+  const comparisonRows = [
+    {
+      label: "Conference Record",
+      valueA: `${teamAData["Conference W"]}-${teamAData["Conference L"]}`,
+      valueB: `${teamBData["Conference W"]}-${teamBData["Conference L"]}`,
+      betterTeam: getBetterTeam(confWinPctA, confWinPctB),
+    },
+    {
+      label: "Overall Record",
+      valueA: `${teamAData["Overall W"]}-${teamAData["Overall L"]}`,
+      valueB: `${teamBData["Overall W"]}-${teamBData["Overall L"]}`,
+      betterTeam: getBetterTeam(overallWinPctA, overallWinPctB),
+    },
+    {
+      label: "Points For",
+      valueA: teamAData["Overall PF"],
+      valueB: teamBData["Overall PF"],
+      betterTeam: getBetterTeam(
+        teamAData["Overall PF"],
+        teamBData["Overall PF"]
+      ),
+    },
+    {
+      label: "Points Against",
+      valueA: teamAData["Overall PA"],
+      valueB: teamBData["Overall PA"],
+      betterTeam: getBetterTeam(
+        teamAData["Overall PA"],
+        teamBData["Overall PA"],
+        false
+      ),
+    },
+    {
+      label: "Home Record",
+      valueA: teamAData["Overall HOME"],
+      valueB: teamBData["Overall HOME"],
+      betterTeam: compareRecords(
+        teamAData["Overall HOME"],
+        teamBData["Overall HOME"]
+      ),
+    },
+    {
+      label: "Away Record",
+      valueA: teamAData["Overall AWAY"],
+      valueB: teamBData["Overall AWAY"],
+      betterTeam: compareRecords(
+        teamAData["Overall AWAY"],
+        teamBData["Overall AWAY"]
+      ),
+    },
+    {
+      label: "Current Streak",
+      valueA: teamAData["Overall STREAK"],
+      valueB: teamBData["Overall STREAK"],
+      betterTeam: compareStreaks(
+        teamAData["Overall STREAK"],
+        teamBData["Overall STREAK"]
+      ),
+    },
+  ];
 
   return (
-    <div className={className} style={cardStyle}>
-      <div className={styles.teamComparisonHeader}>
-        <TeamLogo
-          teamName={teamName}
-          size="large"
-          className={styles.teamComparisonLogo}
-        />
-        <h3
-          className={styles.teamComparisonTitle}
-          onClick={handleTeamClick}
-          style={{ cursor: "pointer" }}
-        >
-          {teamData["School"]}
-        </h3>
+    <div className={styles.comparisonTable}>
+      <div className={styles.comparisonTableHeader}>
+        <div className={styles.comparisonTeamHeader} style={teamAHeaderStyle}>
+          <TeamLogo
+            teamName={teamAData["School"]}
+            size="medium"
+            className={styles.comparisonHeaderLogo}
+          />
+          <h3
+            className={styles.comparisonTeamName}
+            onClick={() => handleTeamClick(teamAData["School"])}
+            style={{ cursor: "pointer" }}
+          >
+            {teamAData["School"]}
+          </h3>
+        </div>
+        <div className={styles.comparisonVs}>VS</div>
+        <div className={styles.comparisonTeamHeader} style={teamBHeaderStyle}>
+          <TeamLogo
+            teamName={teamBData["School"]}
+            size="medium"
+            className={styles.comparisonHeaderLogo}
+          />
+          <h3
+            className={styles.comparisonTeamName}
+            onClick={() => handleTeamClick(teamBData["School"])}
+            style={{ cursor: "pointer" }}
+          >
+            {teamBData["School"]}
+          </h3>
+        </div>
       </div>
-      <div className={styles.teamComparisonStats}>
-        <div className={styles.teamComparisonStatRow}>
-          <strong>Conference Record:</strong> {teamData["Conference W"]}-
-          {teamData["Conference L"]}
-        </div>
-        <div className={styles.teamComparisonStatRow}>
-          <strong>Overall Record:</strong> {teamData["Overall W"]}-
-          {teamData["Overall L"]}
-        </div>
-        <div className={styles.teamComparisonStatRow}>
-          <strong>Points For:</strong> {teamData["Overall PF"]}
-        </div>
-        <div className={styles.teamComparisonStatRow}>
-          <strong>Points Against:</strong> {teamData["Overall PA"]}
-        </div>
-        <div className={styles.teamComparisonStatRow}>
-          <strong>Home Record:</strong> {teamData["Overall HOME"]}
-        </div>
-        <div className={styles.teamComparisonStatRow}>
-          <strong>Away Record:</strong> {teamData["Overall AWAY"]}
-        </div>
-        <div className={styles.teamComparisonStatRow}>
-          <strong>Current Streak:</strong> {teamData["Overall STREAK"]}
-        </div>
+
+      <div className={styles.comparisonTableBody}>
+        {comparisonRows.map((row, index) => (
+          <div key={index} className={styles.comparisonRow}>
+            <div className={styles.comparisonRowLabel}>{row.label}</div>
+            <div
+              className={`${styles.comparisonRowValue} ${
+                row.betterTeam === "A" ? styles.comparisonRowWinner : ""
+              }`}
+              style={row.betterTeam === "A" ? teamAStyle : {}}
+            >
+              {row.valueA}
+              {row.betterTeam === "A" && (
+                <span className={styles.comparisonWinnerBadge}>✓</span>
+              )}
+            </div>
+            <div
+              className={`${styles.comparisonRowValue} ${
+                row.betterTeam === "B" ? styles.comparisonRowWinner : ""
+              }`}
+              style={row.betterTeam === "B" ? teamBStyle : {}}
+            >
+              {row.valueB}
+              {row.betterTeam === "B" && (
+                <span className={styles.comparisonWinnerBadge}>✓</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

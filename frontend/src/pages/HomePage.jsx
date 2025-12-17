@@ -89,8 +89,8 @@ const HomePage = () => {
 
   const statuses = ["All", "Final", "Live", "Upcoming"];
 
-  // Supports all possible weeks returned by getCurrentWeek (1–16)
-  const weeks = Array.from({ length: 16 }, (_, i) => i + 1);
+  // Supports all possible weeks returned by getCurrentWeek (1–18)
+  const weeks = Array.from({ length: 19 }, (_, i) => i + 1);
 
   // Filter scores based on selected filters
   const filteredScores = gameData.games.filter((game) => {

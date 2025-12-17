@@ -53,6 +53,7 @@ const Navigation = () => {
           >
             Team Comparison
           </Link>
+          {/**
           <Link
             to="/prediction"
             className={`${styles.navigationTab} ${
@@ -61,6 +62,7 @@ const Navigation = () => {
           >
             Win Prediction
           </Link>
+          */}
         </div>
       </div>
     </nav>
