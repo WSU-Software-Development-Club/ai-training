@@ -6,7 +6,6 @@ load_dotenv()
 
 class Config:
     """Base configuration class"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
     HOST = os.environ.get('FLASK_RUN_HOST', '0.0.0.0')
     PORT = int(os.environ.get('FLASK_RUN_PORT', 5000))
