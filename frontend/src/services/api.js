@@ -3,6 +3,45 @@ import { appConfig } from "../constants";
 // Base API configuration
 const API_BASE_URL = appConfig.apiUrl;
 
+// Timeout utility - wraps fetch with a timeout
+const fetchWithTimeout = (url, options = {}, timeout = 90000) => {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), timeout)
+    ),
+  ]);
+};
+
+// Retry utility with exponential backoff
+const fetchWithRetry = async (
+  url,
+  options = {},
+  retries = 3,
+  timeout = 90000
+) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetchWithTimeout(url, options, timeout);
+      return response;
+    } catch (error) {
+      const isLastRetry = i === retries - 1;
+      if (isLastRetry) {
+        throw error;
+      }
+
+      // Exponential backoff: wait 2^i seconds before retry
+      const waitTime = Math.min(1000 * Math.pow(2, i), 10000);
+      console.log(
+        `Request failed, retrying in ${waitTime}ms... (attempt ${
+          i + 1
+        }/${retries})`
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+    }
+  }
+};
+
 // Generic API request function
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -16,7 +55,8 @@ const apiRequest = async (endpoint, options = {}) => {
   const config = { ...defaultOptions, ...options };
 
   try {
-    const response = await fetch(url, config);
+    // Use 90 second timeout and 3 retries to handle Render spin-up
+    const response = await fetchWithRetry(url, config, 3, 90000);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
