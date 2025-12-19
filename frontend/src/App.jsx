@@ -9,12 +9,16 @@ import PredictionPage from "./pages/PredictionPage";
 import TeamPage from "./pages/TeamPage";
 import { preloadTeamData } from "./branding/teamBranding";
 import "./App.css";
+import { api } from "./services/api";
 
 function App() {
   // Preload team branding data on app initialization
   useEffect(() => {
     preloadTeamData().catch((error) => {
       console.error("Failed to preload team data:", error);
+    });
+    api.getHealthStatus().catch(() => {
+      console.log("Backend warming up...");
     });
   }, []);
 
