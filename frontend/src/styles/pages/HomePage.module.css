@@ -109,6 +109,13 @@
   font-style: italic;
 }
 
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-md);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .homePageMain {

@@ -20,6 +20,7 @@ const HomePage = () => {
     console.log("Searching for:", searchTerm);
   };
 
+  // Fetch weekly game data on component mount
   useEffect(() => {
     const fetchGameData = async () => {
       setLoading(true);
@@ -49,8 +50,16 @@ const HomePage = () => {
       <div className={styles.homePage}>
         <Header title={appConfig.name} onSearch={handleSearch} />
         <main className={styles.homePageMain}>
-          <div className={styles.loadingContainer}>
-            <LoadingSpinner />
+          <div className={styles.homePageContainer}>
+            <div className={styles.homePageHeader}>
+            <h1 className={styles.homePageTitle}>College Football Scores</h1>
+            <p className={styles.homePageSubtitle}>
+              Latest scores from across all conferences
+            </p>
+          </div>
+            <div className={styles.loadingContainer}>
+              <LoadingSpinner />
+            </div>
           </div>
         </main>
       </div>

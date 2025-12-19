@@ -49,9 +49,17 @@ const TeamsPage = () => {
       <div className={styles.teamsPage}>
         <Header title={appConfig.name} onSearch={handleSearch} />
         <main className={styles.teamsPageMain}>
-          <div className={styles.loadingContainer}>
-            <LoadingSpinner />
-          </div>
+           <div className={styles.teamsPageContainer}>
+              <div className={styles.teamsPageHeader}>
+                <h1 className={styles.teamsPageTitle}>College Football Teams</h1>
+                <p className={styles.teamsPageSubtitle}>
+                Browse all FBS college football teams
+                </p>
+              </div>
+              <div className={styles.loadingContainer}>
+                <LoadingSpinner />
+              </div>
+            </div>
         </main>
       </div>
     );
