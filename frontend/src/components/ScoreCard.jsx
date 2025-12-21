@@ -130,11 +130,6 @@ const ScoreCard = ({ game }) => {
                 <div className={styles.scoreCardScoreGroup}>
                   <div
                     className={styles.scoreCardTeamScore}
-                    style={
-                      awayBranding?.primaryColor
-                        ? { color: awayBranding.primaryColor }
-                        : {}
-                    }
                   >
                     {awayScore ?? "-"}
                   </div>
@@ -167,11 +162,6 @@ const ScoreCard = ({ game }) => {
                 <div className={styles.scoreCardScoreGroup}>
                   <div
                     className={styles.scoreCardTeamScore}
-                    style={
-                      homeBranding?.primaryColor
-                        ? { color: homeBranding.primaryColor }
-                        : {}
-                    }
                   >
                     {homeScore ?? "-"}
                   </div>

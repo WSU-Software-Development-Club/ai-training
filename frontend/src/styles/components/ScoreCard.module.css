@@ -153,6 +153,7 @@
 }
 
 .scoreCardTeamScore {
+  color: #FFFF;
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   line-height: 1;
