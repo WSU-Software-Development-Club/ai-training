@@ -451,21 +451,26 @@ def fetch_ncaa_games(year: int, week: Optional[int] = None, season_type: str = "
     return games, ncaa_week
 
 
-def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = False) -> tuple:
+def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = False, 
+                       used_ncaa_ids: Optional[Dict] = None, cfbd_game_id: Optional[int] = None) -> tuple:
     """
-    Match a CFBD game to an NCAA game using date-based matching with single team validation.
+    Match a CFBD game to an NCAA game using date-based matching with dual team validation.
     
-    Strategy: If a team plays on the same date in both APIs, it's the same game.
-    A team cannot play two games on the same day, so date + one team match = unique identifier.
+    Strategy: BOTH teams must match between CFBD and NCAA on the same date.
+    Prevents duplicate NCAA game IDs by tracking already-matched games.
     
     Args:
         cfbd_game: Game data from CFBD API
         ncaa_games: List of games from NCAA API
         debug: If True, print debug information about matching attempts
+        used_ncaa_ids: Dictionary tracking already-matched NCAA game IDs to prevent duplicates
+        cfbd_game_id: CFBD game ID for logging purposes
     
     Returns:
         Tuple of (NCAA gameID (integer), NCAA week number) if match found, (None, None) otherwise
     """
+    if used_ncaa_ids is None:
+        used_ncaa_ids = {}
     cfbd_home = cfbd_game.get('homeTeam', '')
     cfbd_away = cfbd_game.get('awayTeam', '')
     cfbd_date = cfbd_game.get('startDate', '')
@@ -534,75 +539,96 @@ def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = Fa
         if debug:
             print(f"    NCAA game on {ncaa_game_date}: {ncaa_away} ({norm_ncaa_away}) @ {ncaa_home} ({norm_ncaa_home})")
         
-        # VERY LENIENT MATCHING: Check if ANY team from CFBD appears in NCAA on same date
-        # Since teams can't play twice on same day, ANY match = same game
-        cfbd_teams_list = [norm_cfbd_home, norm_cfbd_away]
-        ncaa_teams_list = [norm_ncaa_home, norm_ncaa_away]
+        # STRICT MATCHING: BOTH teams must match between CFBD and NCAA
+        # This prevents false positives when multiple games happen on same day with shared teams
+        # (e.g., Arizona vs ASU and Arizona vs UCLA on same day)
         
         match_found = False
         matched_pairs = []
+        match_type_description = ""
         
-        # Check exact matches first
-        for cfbd_team in cfbd_teams_list:
-            for ncaa_team in ncaa_teams_list:
-                if cfbd_team == ncaa_team:
-                    match_found = True
-                    matched_pairs.append((cfbd_team, ncaa_team, "exact"))
+        # Helper function to check if two team names match
+        def teams_match(cfbd_team: str, ncaa_team: str) -> tuple:
+            """Returns (is_match, match_type)"""
+            # Exact match
+            if cfbd_team == ncaa_team:
+                return True, "exact"
+            
+            # Partial/word overlap matching
+            if len(cfbd_team) > 0 and len(ncaa_team) > 0:
+                cfbd_words = set(cfbd_team.split())
+                ncaa_words = set(ncaa_team.split())
+                
+                # Remove common filler words
+                filler_words = {'state', 'university', 'college', 'of', 'the'}
+                cfbd_sig_words = cfbd_words - filler_words
+                ncaa_sig_words = ncaa_words - filler_words
+                
+                # If they share significant words, it's a match
+                shared_words = cfbd_sig_words & ncaa_sig_words
+                if len(shared_words) > 0:
+                    return True, f"partial:{shared_words}"
+            
+            # Substring containment (for cases like "boise" in "boise state")
+            if len(cfbd_team) >= 4 and len(ncaa_team) >= 4:
+                if cfbd_team in ncaa_team or ncaa_team in cfbd_team:
+                    return True, "substring"
+            
+            return False, ""
         
-        # If no exact match, try partial/substring matching
-        # This handles cases where one API has "Army" and other has "Army West Point"
+        # Check if BOTH teams match in CORRECT positions
+        # Case 1: Normal matching (home-to-home, away-to-away)
+        home_match, home_type = teams_match(norm_cfbd_home, norm_ncaa_home)
+        away_match, away_type = teams_match(norm_cfbd_away, norm_ncaa_away)
+        
+        if home_match and away_match:
+            match_found = True
+            matched_pairs.append((norm_cfbd_home, norm_ncaa_home, home_type))
+            matched_pairs.append((norm_cfbd_away, norm_ncaa_away, away_type))
+            match_type_description = "normal (home↔home, away↔away)"
+        
+        # Case 2: Reversed matching (APIs have home/away swapped)
         if not match_found:
-            for cfbd_team in cfbd_teams_list:
-                for ncaa_team in ncaa_teams_list:
-                    # Check if one team name contains the other (longer contains shorter)
-                    if len(cfbd_team) > 0 and len(ncaa_team) > 0:
-                        # Split into words and check for significant word overlap
-                        cfbd_words = set(cfbd_team.split())
-                        ncaa_words = set(ncaa_team.split())
-                        
-                        # Remove common filler words
-                        filler_words = {'state', 'university', 'college', 'of', 'the'}
-                        cfbd_sig_words = cfbd_words - filler_words
-                        ncaa_sig_words = ncaa_words - filler_words
-                        
-                        # If they share significant words, it's a match
-                        shared_words = cfbd_sig_words & ncaa_sig_words
-                        if len(shared_words) > 0:
-                            # At least one significant word in common
-                            match_found = True
-                            matched_pairs.append((cfbd_team, ncaa_team, f"partial: {shared_words}"))
-                            break
-                if match_found:
-                    break
-        
-        # If still no match, try aggressive substring containment
-        # Check if one name is contained in the other (for cases like "boise" in "boise state")
-        if not match_found:
-            for cfbd_team in cfbd_teams_list:
-                for ncaa_team in ncaa_teams_list:
-                    # Try substring containment (either direction)
-                    # Require minimum length to avoid "USC" matching "Syracuse"
-                    if len(cfbd_team) >= 4 and len(ncaa_team) >= 4:
-                        if cfbd_team in ncaa_team or ncaa_team in cfbd_team:
-                            match_found = True
-                            matched_pairs.append((cfbd_team, ncaa_team, "substring"))
-                            break
-                if match_found:
-                    break
+            home_to_away_match, home_to_away_type = teams_match(norm_cfbd_home, norm_ncaa_away)
+            away_to_home_match, away_to_home_type = teams_match(norm_cfbd_away, norm_ncaa_home)
+            
+            if home_to_away_match and away_to_home_match:
+                match_found = True
+                matched_pairs.append((norm_cfbd_home, norm_ncaa_away, home_to_away_type))
+                matched_pairs.append((norm_cfbd_away, norm_ncaa_home, away_to_home_type))
+                match_type_description = "reversed (home↔away, away↔home)"
         
         if match_found:
             game_id = ncaa_game.get('gameID')
             ncaa_week = ncaa_game.get('ncaa_week')  # Get the NCAA week stored in the game
             if game_id is not None:
+                # Check if this NCAA game ID has already been matched
+                if game_id in used_ncaa_ids:
+                    if debug:
+                        prev_match = used_ncaa_ids[game_id]
+                        print(f"      ✗ DUPLICATE DETECTED!")
+                        print(f"        NCAA gameID {game_id} already matched to:")
+                        print(f"        CFBD game {prev_match['cfbd_game_id']}: {prev_match['matchup']}")
+                        print(f"        Current game: CFBD {cfbd_game_id}: {cfbd_away} @ {cfbd_home}")
+                        print(f"        Skipping this NCAA game and continuing search...")
+                    continue  # Skip this NCAA game, try next one
+                
                 if debug:
-                    print(f"      ✓ MATCH FOUND!")
+                    print(f"      ✓ MATCH FOUND! ({match_type_description})")
                     for cfbd_t, ncaa_t, match_type in matched_pairs:
                         print(f"        {cfbd_t} ↔ {ncaa_t} ({match_type})")
                     print(f"      NCAA gameID: {game_id}, Week: {ncaa_week}")
+                
+                # Register this NCAA game ID as used
+                used_ncaa_ids[game_id] = {
+                    'cfbd_game_id': cfbd_game_id,
+                    'matchup': f"{cfbd_away} @ {cfbd_home}"
+                }
+                
                 return int(game_id), ncaa_week
         else:
             if debug:
-                print(f"      ✗ No match: CFBD={cfbd_teams_list}, NCAA={ncaa_teams_list}")
+                print(f"      ✗ No match: Both teams must match (CFBD home={norm_cfbd_home}, away={norm_cfbd_away}; NCAA home={norm_ncaa_home}, away={norm_ncaa_away})")
     
     if debug:
         print(f"    No match found for this game")
@@ -810,7 +836,7 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
         year: Season year
         ncaa_games: Optional list of NCAA games for matching
     
-    Returns: Tuple of (predictions list, skipped_count, matched_count)
+    Returns: Tuple of (predictions list, skipped_count, matched_count, used_ncaa_game_ids dict)
     """
     print("\n" + "="*70)
     print(f"GENERATING PREDICTIONS FOR {len(games)} GAMES")
@@ -850,6 +876,8 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
     predictions = []
     skipped_count = 0
     matched_count = 0
+    duplicate_attempts = 0
+    used_ncaa_game_ids = {}  # Track NCAA game IDs to prevent duplicates
     
     for idx, game in enumerate(games, 1):
         game_id = game.get("id")
@@ -890,7 +918,19 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
         if ncaa_games:
             # Enable debug for first 3 games to see what's happening
             debug_mode = (idx <= 3)
-            ncaa_game_id, ncaa_week = match_cfbd_to_ncaa(game, ncaa_games, debug=debug_mode)
+            initial_duplicate_count = len([gid for gid, info in used_ncaa_game_ids.items()])
+            
+            ncaa_game_id, ncaa_week = match_cfbd_to_ncaa(
+                game, ncaa_games, 
+                debug=debug_mode, 
+                used_ncaa_ids=used_ncaa_game_ids,
+                cfbd_game_id=game_id
+            )
+            
+            # Check if we encountered duplicates during matching
+            # The matching function will log duplicates, we just need to count them
+            # Note: used_ncaa_game_ids is updated inside match_cfbd_to_ncaa when a match is found
+            
             if ncaa_game_id:
                 print(f"  [OK] Matched to NCAA gameID: {ncaa_game_id}, Week: {ncaa_week}")
                 matched_count += 1
@@ -934,12 +974,15 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
         print(f"  Prediction: {home_team} {home_score_pred:.1f} - {away_team} {away_score_pred:.1f}")
         print(f"  Winner: {predicted_winner} by {predicted_margin:.1f}")
     
-    return predictions, skipped_count, matched_count
+    return predictions, skipped_count, matched_count, used_ncaa_game_ids
 
 
 def save_to_supabase(predictions: List[Dict]) -> bool:
     """
-    Save predictions to Supabase database
+    Save predictions to Supabase database using upsert.
+    If a prediction with the same ncaa_game_id exists, it will be updated.
+    This allows re-running predictions for the same week without creating duplicates.
+    
     Returns: True if successful, False otherwise
     """
     
@@ -948,9 +991,14 @@ def save_to_supabase(predictions: List[Dict]) -> bool:
     print("="*70)
     
     try:
-        # Insert predictions into database
-        response = supabase.table('predictions').insert(predictions).execute()
-        print(f"[OK] Successfully saved {len(predictions)} predictions to Supabase")
+        # Upsert predictions into database (update if ncaa_game_id exists, insert if new)
+        # The 'on_conflict' parameter specifies which column to use for conflict resolution
+        response = supabase.table('predictions').upsert(
+            predictions,
+            on_conflict='ncaa_game_id'
+        ).execute()
+        print(f"[OK] Successfully upserted {len(predictions)} predictions to Supabase")
+        print(f"     (Existing predictions with same NCAA game IDs were updated)")
         return True
     except Exception as e:
         print(f"[WARNING] Error saving to Supabase: {e}")
@@ -1234,7 +1282,7 @@ def main():
         print(f"  [WARNING] No NCAA games found - predictions will not have NCAA game IDs")
     
     # Generate predictions with NCAA matching
-    predictions, skipped_count, matched_count = predict_games(upcoming_games, year, season_type, ncaa_games)
+    predictions, skipped_count, matched_count, used_ncaa_game_ids = predict_games(upcoming_games, year, season_type, ncaa_games)
     
     if not predictions:
         print("\n[WARNING] No predictions generated (all games skipped due to no NCAA match)")
@@ -1270,6 +1318,30 @@ def main():
             print(f"  [NOTE] Match rate below 90% - some games may have name mismatches")
         elif match_rate >= 95:
             print(f"  [SUCCESS] Excellent match rate!")
+    
+    # Duplicate prevention report
+    print(f"\nDuplicate Prevention:")
+    unique_ncaa_ids = len(used_ncaa_game_ids)
+    print(f"  Unique NCAA game IDs matched: {unique_ncaa_ids}")
+    print(f"  Predictions with NCAA IDs: {len(predictions)}")
+    
+    # Check for any duplicate NCAA IDs in predictions (should be zero with our fix)
+    ncaa_ids_in_predictions = [p.get('ncaa_game_id') for p in predictions if p.get('ncaa_game_id')]
+    duplicate_count = len(ncaa_ids_in_predictions) - len(set(ncaa_ids_in_predictions))
+    
+    if duplicate_count > 0:
+        print(f"  [ERROR] {duplicate_count} DUPLICATE NCAA IDs FOUND IN PREDICTIONS!")
+        # List the duplicates
+        from collections import Counter
+        id_counts = Counter(ncaa_ids_in_predictions)
+        duplicates = {ncaa_id: count for ncaa_id, count in id_counts.items() if count > 1}
+        for ncaa_id, count in duplicates.items():
+            games_with_id = [p for p in predictions if p.get('ncaa_game_id') == ncaa_id]
+            print(f"    NCAA ID {ncaa_id} appears {count} times:")
+            for game in games_with_id:
+                print(f"      - CFBD {game['game_id']}: {game['away_team']} @ {game['home_team']}")
+    else:
+        print(f"  [SUCCESS] No duplicate NCAA game IDs detected! All IDs are unique.")
     
     print(f"\nAPI calls made: {api_call_count}")
     print(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")

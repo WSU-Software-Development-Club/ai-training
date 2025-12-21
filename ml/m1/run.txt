@@ -1,0 +1,5 @@
+# predict games from a specified week
+python predict_upcoming.py year week
+
+# auto predict next 7 days (no parameters)
+python predict_upcoming.py 
