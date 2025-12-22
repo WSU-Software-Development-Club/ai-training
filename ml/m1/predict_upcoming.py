@@ -12,6 +12,7 @@ import requests
 import pandas as pd
 import numpy as np
 import xgboost as xgb
+from scipy.stats import norm
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from pathlib import Path
@@ -734,6 +735,70 @@ def load_models() -> tuple:
     return home_model, away_model, home_features, away_features
 
 
+def load_model_metrics() -> float:
+    """
+    Load model performance metrics and calculate combined MAE for over/under predictions
+    Returns: Combined MAE for total score predictions
+    """
+    # Load home score metrics
+    home_metrics_path = MODEL_DIR / 'home_score_metrics.json'
+    with open(home_metrics_path, 'r') as f:
+        home_metrics = json.load(f)
+    home_mae = home_metrics['test']['mae']
+    
+    # Load away score metrics
+    away_metrics_path = MODEL_DIR / 'away_score_metrics.json'
+    with open(away_metrics_path, 'r') as f:
+        away_metrics = json.load(f)
+    away_mae = away_metrics['test']['mae']
+    
+    # Calculate combined MAE for total score using error propagation
+    # For independent errors: combined_error = sqrt(error1^2 + error2^2)
+    combined_mae = np.sqrt(home_mae**2 + away_mae**2)
+    
+    print(f"[OK] Model MAE - Home: {home_mae:.2f}, Away: {away_mae:.2f}, Combined: {combined_mae:.2f}")
+    
+    return combined_mae
+
+
+def calculate_over_under_probability(predicted_total: float, over_under_line: Optional[float], 
+                                     model_mae: float) -> tuple:
+    """
+    Calculate probability that a game goes over or under the betting line
+    
+    Uses a normal distribution centered at the predicted total with standard deviation
+    equal to the model's MAE to estimate prediction uncertainty.
+    
+    Args:
+        predicted_total: Predicted total points (home + away)
+        over_under_line: Betting line for over/under
+        model_mae: Combined model MAE (standard deviation of prediction error)
+    
+    Returns:
+        Tuple of (over_probability, under_probability) as percentages (0-100)
+        Returns (None, None) if over_under_line is None
+    """
+    if over_under_line is None:
+        return None, None
+    
+    # Model prediction uncertainty as a normal distribution
+    # Mean = predicted total, Standard deviation = MAE
+    # P(X > line) = 1 - CDF(line)
+    # P(X < line) = CDF(line)
+    
+    # Calculate cumulative probability up to the line (probability of under)
+    under_prob = norm.cdf(over_under_line, loc=predicted_total, scale=model_mae)
+    
+    # Probability of over is complement
+    over_prob = 1.0 - under_prob
+    
+    # Convert to percentages
+    over_prob_pct = over_prob * 100.0
+    under_prob_pct = under_prob * 100.0
+    
+    return over_prob_pct, under_prob_pct
+
+
 def build_prediction_features(game: Dict, team_lookup: Dict[str, Dict],
                               all_completed_games: List[Dict],
                               betting_lines: Dict[int, Dict],
@@ -845,6 +910,9 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
     # Load models
     home_model, away_model, home_features, away_features = load_models()
     
+    # Load model metrics for over/under probability calculations
+    model_mae = load_model_metrics()
+    
     # Fetch current season data (bulk API calls)
     print("\n" + "="*70)
     print(f"FETCHING SEASON DATA FOR {year} (seasonType={season_type})")
@@ -857,7 +925,7 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
     srs_ratings = fetch_season_srs_ratings(year)
     elo_ratings = fetch_season_elo_ratings(year)
     fpi_ratings = fetch_season_fpi_ratings(year)
-    betting_lines = fetch_betting_lines(year)
+    betting_lines = fetch_betting_lines(year, season_type)
     recruiting = fetch_recruiting_rankings(year)
     
     # Build team lookup
@@ -912,6 +980,23 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
             predicted_winner = away_team
             predicted_margin = away_score_pred - home_score_pred
         
+        # Calculate over/under predictions
+        predicted_total = home_score_pred + away_score_pred
+        over_under_line = None
+        over_probability = None
+        under_probability = None
+        
+        # Get betting line if available
+        if game_id in betting_lines:
+            betting_data = betting_lines[game_id]
+            over_under_line = betting_data.get("overUnder")
+            
+            # Calculate probabilities if line exists
+            if over_under_line is not None:
+                over_probability, under_probability = calculate_over_under_probability(
+                    predicted_total, over_under_line, model_mae
+                )
+        
         # Match to NCAA game if NCAA games provided
         ncaa_game_id = None
         ncaa_week = None
@@ -965,7 +1050,10 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
             'predicted_away_score': float(away_score_pred),
             'predicted_winner': predicted_winner,
             'predicted_margin': float(round(predicted_margin, 1)),
-            'neutral_site': game.get('neutralSite', False),
+            'predicted_total': float(round(predicted_total, 1)),
+            'betting_over_under': float(over_under_line) if over_under_line is not None else None,
+            'over_probability': float(round(over_probability, 1)) if over_probability is not None else None,
+            'under_probability': float(round(under_probability, 1)) if under_probability is not None else None,
             'prediction_made_at': datetime.now(timezone.utc).isoformat()
         }
         
@@ -973,6 +1061,12 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
         
         print(f"  Prediction: {home_team} {home_score_pred:.1f} - {away_team} {away_score_pred:.1f}")
         print(f"  Winner: {predicted_winner} by {predicted_margin:.1f}")
+        
+        # Display over/under information if available
+        if over_under_line is not None and over_probability is not None:
+            print(f"  Total: {predicted_total:.1f} (O/U: {over_under_line:.1f}, Over: {over_probability:.1f}%, Under: {under_probability:.1f}%)")
+        else:
+            print(f"  Total: {predicted_total:.1f} (No O/U line available)")
     
     return predictions, skipped_count, matched_count, used_ncaa_game_ids
 

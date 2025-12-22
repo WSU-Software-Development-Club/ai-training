@@ -288,7 +288,7 @@ def fetch_season_fpi_ratings(year: int) -> Dict[str, Dict]:
     return ratings_lookup
 
 
-def fetch_betting_lines(year: int) -> Dict[int, Dict]:
+def fetch_betting_lines(year: int, season_type: str = "regular") -> Dict[int, Dict]:
     """
     Fetch betting lines for all games in a season
     Endpoint: GET /lines
@@ -297,7 +297,7 @@ def fetch_betting_lines(year: int) -> Dict[int, Dict]:
     url = f"{CFBD_API_BASE_URL}/lines"
     params = {
         "year": year,
-        "seasonType": "regular"
+        "seasonType": season_type
     }
     
     print(f"  Fetching betting lines... (Call #{api_call_count + 1})")
