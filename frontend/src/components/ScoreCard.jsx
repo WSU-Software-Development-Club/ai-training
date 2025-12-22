@@ -20,6 +20,11 @@ const ScoreCard = ({ game }) => {
   const homeScore = home?.score ?? null;
   const awayScore = away?.score ?? null;
 
+  // Determine winner (only if game is finished or live and scores are available)
+  const isGameFinished = game_state?.isFinished || game_state?.isLive;
+  const homeWins = isGameFinished && homeScore !== null && awayScore !== null && homeScore > awayScore;
+  const awayWins = isGameFinished && homeScore !== null && awayScore !== null && awayScore > homeScore;
+
   // Get predicted scores (from prediction data) and round to nearest integer
   const predictedHomeScore =
     prediction?.home_score != null ? Math.round(prediction.home_score) : null;
@@ -129,7 +134,9 @@ const ScoreCard = ({ game }) => {
               <div className={styles.scoreCardScoreContainer}>
                 <div className={styles.scoreCardScoreGroup}>
                   <div
-                    className={styles.scoreCardTeamScore}
+                    className={`${styles.scoreCardTeamScore} ${
+                      awayWins ? styles.scoreCardTeamScoreWinning : homeWins ? styles.scoreCardTeamScoreLosing : ""
+                    }`}
                   >
                     {awayScore ?? "-"}
                   </div>
@@ -161,7 +168,9 @@ const ScoreCard = ({ game }) => {
               <div className={styles.scoreCardScoreContainer}>
                 <div className={styles.scoreCardScoreGroup}>
                   <div
-                    className={styles.scoreCardTeamScore}
+                    className={`${styles.scoreCardTeamScore} ${
+                      homeWins ? styles.scoreCardTeamScoreWinning : awayWins ? styles.scoreCardTeamScoreLosing : ""
+                    }`}
                   >
                     {homeScore ?? "-"}
                   </div>

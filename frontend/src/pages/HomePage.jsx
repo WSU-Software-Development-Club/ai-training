@@ -11,6 +11,7 @@ const HomePage = () => {
   const [selectedConference, setSelectedConference] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeek());
+  const [selectedDate, setSelectedDate] = useState("All");
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,6 +20,11 @@ const HomePage = () => {
     // TODO: Replace with API call to /api/search
     console.log("Searching for:", searchTerm);
   };
+
+  // Reset date filter when week changes
+  useEffect(() => {
+    setSelectedDate("All");
+  }, [selectedWeek]);
 
   // Fetch weekly game data on component mount
   useEffect(() => {
@@ -52,11 +58,11 @@ const HomePage = () => {
         <main className={styles.homePageMain}>
           <div className={styles.homePageContainer}>
             <div className={styles.homePageHeader}>
-            <h1 className={styles.homePageTitle}>College Football Scores</h1>
-            <p className={styles.homePageSubtitle}>
-              Latest scores from across all conferences
-            </p>
-          </div>
+              <h1 className={styles.homePageTitle}>College Football Scores</h1>
+              <p className={styles.homePageSubtitle}>
+                Latest scores from across all conferences
+              </p>
+            </div>
             <div className={styles.loadingContainer}>
               <LoadingSpinner />
             </div>
@@ -101,6 +107,31 @@ const HomePage = () => {
   // Supports all possible weeks returned by getCurrentWeek (1–18)
   const weeks = Array.from({ length: 19 }, (_, i) => i + 1);
 
+  // Extract unique dates from games
+  const dateSet = new Map();
+  gameData.games.forEach((game) => {
+    if (game.epoch) {
+      const date = new Date(game.epoch * 1000);
+      const dateKey = date.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+      // Use YYYY-MM-DD as the value for easy comparison
+      const dateValue = date.toISOString().split("T")[0];
+      if (!dateSet.has(dateKey)) {
+        dateSet.set(dateKey, dateValue);
+      }
+    }
+  });
+
+  const dates = [
+    { value: "All", label: "All Dates" },
+    ...Array.from(dateSet.entries())
+      .sort(([, a], [, b]) => a.localeCompare(b))
+      .map(([label, value]) => ({ value, label })),
+  ];
+
   // Filter scores based on selected filters
   const filteredScores = gameData.games.filter((game) => {
     const conferenceMatch =
@@ -116,7 +147,11 @@ const HomePage = () => {
       (game.game_state.isUpcoming && selectedStatus === "Upcoming") ||
       (game.game_state.isLive && selectedStatus === "Live") ||
       (game.game_state.isFinished && selectedStatus === "Final");
-    return conferenceMatch && statusMatch;
+    const dateMatch =
+      selectedDate === "All" ||
+      !game.epoch ||
+      new Date(game.epoch * 1000).toISOString().split("T")[0] === selectedDate;
+    return conferenceMatch && statusMatch && dateMatch;
   });
 
   return (
@@ -173,6 +208,21 @@ const HomePage = () => {
                 {statuses.map((status) => (
                   <option key={status} value={status}>
                     {status}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.homePageFilterGroup}>
+              <label className={styles.homePageFilterLabel}>Date:</label>
+              <select
+                className={styles.homePageFilterSelect}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              >
+                {dates.map((date) => (
+                  <option key={date.value} value={date.value}>
+                    {date.label}
                   </option>
                 ))}
               </select>

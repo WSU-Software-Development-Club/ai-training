@@ -159,6 +159,15 @@
   line-height: 1;
 }
 
+.scoreCardTeamScoreWinning {
+  color: #FFFF;
+  opacity: 1;
+}
+
+.scoreCardTeamScoreLosing {
+  opacity: 0.6;
+}
+
 .scoreCardPredictedScore {
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
