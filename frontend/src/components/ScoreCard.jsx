@@ -22,14 +22,32 @@ const ScoreCard = ({ game }) => {
 
   // Determine winner (only if game is finished or live and scores are available)
   const isGameFinished = game_state?.isFinished || game_state?.isLive;
-  const homeWins = isGameFinished && homeScore !== null && awayScore !== null && homeScore > awayScore;
-  const awayWins = isGameFinished && homeScore !== null && awayScore !== null && awayScore > homeScore;
+  const homeWins =
+    isGameFinished &&
+    homeScore !== null &&
+    awayScore !== null &&
+    homeScore > awayScore;
+  const awayWins =
+    isGameFinished &&
+    homeScore !== null &&
+    awayScore !== null &&
+    awayScore > homeScore;
 
   // Get predicted scores (from prediction data) and round to nearest integer
   const predictedHomeScore =
     prediction?.home_score != null ? Math.round(prediction.home_score) : null;
   const predictedAwayScore =
     prediction?.away_score != null ? Math.round(prediction.away_score) : null;
+
+  // Get over/under data
+  const predictedTotal = prediction?.predicted_total ?? null;
+  const overUnderLine = prediction?.betting_over_under ?? null;
+  const overProbability = prediction?.over_probability ?? null;
+  const underProbability = prediction?.under_probability ?? null;
+
+  // Calculate actual total if scores are available
+  const actualTotal =
+    homeScore !== null && awayScore !== null ? homeScore + awayScore : null;
 
   const conference = home?.conference || away?.conference || "N/A";
   const status = game_state?.isLive
@@ -135,7 +153,11 @@ const ScoreCard = ({ game }) => {
                 <div className={styles.scoreCardScoreGroup}>
                   <div
                     className={`${styles.scoreCardTeamScore} ${
-                      awayWins ? styles.scoreCardTeamScoreWinning : homeWins ? styles.scoreCardTeamScoreLosing : ""
+                      awayWins
+                        ? styles.scoreCardTeamScoreWinning
+                        : homeWins
+                        ? styles.scoreCardTeamScoreLosing
+                        : ""
                     }`}
                   >
                     {awayScore ?? "-"}
@@ -169,7 +191,11 @@ const ScoreCard = ({ game }) => {
                 <div className={styles.scoreCardScoreGroup}>
                   <div
                     className={`${styles.scoreCardTeamScore} ${
-                      homeWins ? styles.scoreCardTeamScoreWinning : awayWins ? styles.scoreCardTeamScoreLosing : ""
+                      homeWins
+                        ? styles.scoreCardTeamScoreWinning
+                        : awayWins
+                        ? styles.scoreCardTeamScoreLosing
+                        : ""
                     }`}
                   >
                     {homeScore ?? "-"}
@@ -189,6 +215,46 @@ const ScoreCard = ({ game }) => {
           </div>
         </div>
       </div>
+
+      {/* Over/Under Section */}
+      {overUnderLine !== null &&
+        overProbability !== null &&
+        underProbability !== null && (
+          <div className={styles.scoreCardOverUnder}>
+            <div className={styles.scoreCardOverUnderContent}>
+              <div className={styles.scoreCardOverUnderItem}>
+                <span className={styles.scoreCardOverUnderLabel}>O/U:</span>
+                <span className={styles.scoreCardOverUnderValue}>
+                  {overUnderLine}
+                </span>
+              </div>
+              <div className={styles.scoreCardOverUnderProb}>
+                <span className={styles.scoreCardOverUnderLabel}>O:</span>
+                <span
+                  className={`${styles.scoreCardOverUnderValue} ${
+                    overProbability > 50
+                      ? styles.scoreCardOverUnderProbFavored
+                      : ""
+                  }`}
+                >
+                  {Math.round(overProbability)}%
+                </span>
+              </div>
+              <div className={styles.scoreCardOverUnderProb}>
+                <span className={styles.scoreCardOverUnderLabel}>U:</span>
+                <span
+                  className={`${styles.scoreCardOverUnderValue} ${
+                    underProbability > 50
+                      ? styles.scoreCardOverUnderProbFavored
+                      : ""
+                  }`}
+                >
+                  {Math.round(underProbability)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };

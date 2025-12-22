@@ -105,6 +105,10 @@ def process_games(raw_data: dict, predictions_map: dict = None, season: int = No
                 'away_score': prediction.get('predicted_away_score'),
                 'winner': prediction.get('predicted_winner'),
                 'margin': prediction.get('predicted_margin'),
+                'predicted_total': prediction.get('predicted_total'),
+                'betting_over_under': prediction.get('betting_over_under'),
+                'over_probability': prediction.get('over_probability'),
+                'under_probability': prediction.get('under_probability'),
                 'neutral_site': prediction.get('neutral_site', False),
                 'predicted_at': prediction.get('prediction_made_at'),
                 'created_at': prediction.get('created_at')
