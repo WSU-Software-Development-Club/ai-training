@@ -468,7 +468,8 @@ def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = Fa
         cfbd_game_id: CFBD game ID for logging purposes
     
     Returns:
-        Tuple of (NCAA gameID (integer), NCAA week number) if match found, (None, None) otherwise
+        Tuple of (NCAA gameID (integer), NCAA week number, is_reversed (bool)) if match found, 
+        (None, None, False) otherwise. is_reversed=True when home/away are swapped between APIs.
     """
     if used_ncaa_ids is None:
         used_ncaa_ids = {}
@@ -545,6 +546,7 @@ def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = Fa
         # (e.g., Arizona vs ASU and Arizona vs UCLA on same day)
         
         match_found = False
+        is_reversed = False
         matched_pairs = []
         match_type_description = ""
         
@@ -584,6 +586,7 @@ def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = Fa
         
         if home_match and away_match:
             match_found = True
+            is_reversed = False
             matched_pairs.append((norm_cfbd_home, norm_ncaa_home, home_type))
             matched_pairs.append((norm_cfbd_away, norm_ncaa_away, away_type))
             match_type_description = "normal (home↔home, away↔away)"
@@ -595,9 +598,10 @@ def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = Fa
             
             if home_to_away_match and away_to_home_match:
                 match_found = True
+                is_reversed = True
                 matched_pairs.append((norm_cfbd_home, norm_ncaa_away, home_to_away_type))
                 matched_pairs.append((norm_cfbd_away, norm_ncaa_home, away_to_home_type))
-                match_type_description = "reversed (home↔away, away↔home)"
+                match_type_description = "reversed (home↔away, away↔home) ⚠️ TEAMS SWAPPED"
         
         if match_found:
             game_id = ncaa_game.get('gameID')
@@ -619,6 +623,8 @@ def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = Fa
                     for cfbd_t, ncaa_t, match_type in matched_pairs:
                         print(f"        {cfbd_t} ↔ {ncaa_t} ({match_type})")
                     print(f"      NCAA gameID: {game_id}, Week: {ncaa_week}")
+                    if is_reversed:
+                        print(f"      ⚠️  Home/Away teams are REVERSED between CFBD and NCAA APIs")
                 
                 # Register this NCAA game ID as used
                 used_ncaa_ids[game_id] = {
@@ -626,7 +632,7 @@ def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = Fa
                     'matchup': f"{cfbd_away} @ {cfbd_home}"
                 }
                 
-                return int(game_id), ncaa_week
+                return int(game_id), ncaa_week, is_reversed
         else:
             if debug:
                 print(f"      ✗ No match: Both teams must match (CFBD home={norm_cfbd_home}, away={norm_cfbd_away}; NCAA home={norm_ncaa_home}, away={norm_ncaa_away})")
@@ -634,7 +640,7 @@ def match_cfbd_to_ncaa(cfbd_game: Dict, ncaa_games: List[Dict], debug: bool = Fa
     if debug:
         print(f"    No match found for this game")
     
-    return None, None
+    return None, None, False
 
 
 def fetch_upcoming_games(year: int, week: Optional[int] = None, season_type: str = "both") -> List[Dict]:
@@ -1000,12 +1006,13 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
         # Match to NCAA game if NCAA games provided
         ncaa_game_id = None
         ncaa_week = None
+        is_reversed = False
         if ncaa_games:
             # Enable debug for first 3 games to see what's happening
             debug_mode = (idx <= 3)
             initial_duplicate_count = len([gid for gid, info in used_ncaa_game_ids.items()])
             
-            ncaa_game_id, ncaa_week = match_cfbd_to_ncaa(
+            ncaa_game_id, ncaa_week, is_reversed = match_cfbd_to_ncaa(
                 game, ncaa_games, 
                 debug=debug_mode, 
                 used_ncaa_ids=used_ncaa_game_ids,
@@ -1017,7 +1024,10 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
             # Note: used_ncaa_game_ids is updated inside match_cfbd_to_ncaa when a match is found
             
             if ncaa_game_id:
-                print(f"  [OK] Matched to NCAA gameID: {ncaa_game_id}, Week: {ncaa_week}")
+                status_msg = f"  [OK] Matched to NCAA gameID: {ncaa_game_id}, Week: {ncaa_week}"
+                if is_reversed:
+                    status_msg += " (⚠️ REVERSED - home/away will be swapped)"
+                print(status_msg)
                 matched_count += 1
             else:
                 print(f"  [SKIPPED] No NCAA match found - prediction not saved")
@@ -1037,6 +1047,24 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
                 # Postseason week 1 → week 16, week 2 → week 17, etc.
                 game_week = game_week + 15
         
+        # If home/away are reversed between CFBD and NCAA, swap them to match NCAA
+        # (NCAA API is used for scoreboard display, so predictions must match NCAA's home/away)
+        if is_reversed:
+            # Swap team names
+            final_home_team = away_team
+            final_away_team = home_team
+            # Swap predicted scores
+            final_home_score = away_score_pred
+            final_away_score = home_score_pred
+            print(f"  ⚠️  Swapping home/away to match NCAA API:")
+            print(f"      NCAA Home: {final_home_team} (predicted: {final_home_score:.1f})")
+            print(f"      NCAA Away: {final_away_team} (predicted: {final_away_score:.1f})")
+        else:
+            final_home_team = home_team
+            final_away_team = away_team
+            final_home_score = home_score_pred
+            final_away_score = away_score_pred
+        
         # Only create prediction if we have NCAA match (or NCAA games not provided)
         prediction = {
             'game_id': game_id,
@@ -1044,10 +1072,10 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
             'season': game.get('season'),
             'week': game_week,
             'game_date': game.get('startDate'),
-            'home_team': home_team,
-            'away_team': away_team,
-            'predicted_home_score': float(home_score_pred),
-            'predicted_away_score': float(away_score_pred),
+            'home_team': final_home_team,
+            'away_team': final_away_team,
+            'predicted_home_score': float(final_home_score),
+            'predicted_away_score': float(final_away_score),
             'predicted_winner': predicted_winner,
             'predicted_margin': float(round(predicted_margin, 1)),
             'predicted_total': float(round(predicted_total, 1)),
@@ -1059,7 +1087,7 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
         
         predictions.append(prediction)
         
-        print(f"  Prediction: {home_team} {home_score_pred:.1f} - {away_team} {away_score_pred:.1f}")
+        print(f"  Prediction: {final_home_team} {final_home_score:.1f} - {final_away_team} {final_away_score:.1f}")
         print(f"  Winner: {predicted_winner} by {predicted_margin:.1f}")
         
         # Display over/under information if available
