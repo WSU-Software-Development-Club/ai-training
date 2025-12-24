@@ -675,9 +675,18 @@ def fetch_upcoming_games(year: int, week: Optional[int] = None, season_type: str
     return data
 
 
-def fetch_completed_games(year: int, season_type: str = "both") -> List[Dict]:
+def fetch_completed_games(year: int, season_type: str = "both", max_week: Optional[int] = None) -> List[Dict]:
     """
     Fetch all completed games for the current season (for rolling features)
+    
+    Args:
+        year: Season year
+        season_type: Season type ("regular", "postseason", or "both")
+        max_week: Optional maximum week number to include. Games with week >= max_week will be excluded.
+                  This prevents data leakage when predicting past weeks.
+    
+    Returns:
+        List of completed games filtered by week if max_week is provided
     """
     url = f"{CFBD_API_BASE_URL}/games"
     # Keep season_type behavior aligned with fetch_upcoming_games:
@@ -688,7 +697,12 @@ def fetch_completed_games(year: int, season_type: str = "both") -> List[Dict]:
         "classification": "fbs"  # Only FBS games (not FCS/D2/D3)
     }
     
-    print(f"  Fetching completed games for {year}...")
+    print(f"  Fetching completed games for {year}...", end="")
+    if max_week is not None:
+        print(f" (excluding week {max_week} and later to prevent data leakage)")
+    else:
+        print()
+    
     data = fetch_with_retry(url, params)
     
     if data is None:
@@ -701,6 +715,17 @@ def fetch_completed_games(year: int, season_type: str = "both") -> List[Dict]:
            game.get("homePoints") is not None and 
            game.get("awayPoints") is not None
     ]
+    
+    # Additional safeguard: filter by week to prevent data leakage
+    if max_week is not None:
+        before_filter_count = len(completed_games)
+        completed_games = [
+            game for game in completed_games
+            if game.get("week") is not None and game.get("week") < max_week
+        ]
+        after_filter_count = len(completed_games)
+        if before_filter_count != after_filter_count:
+            print(f"  [SAFEGUARD] Filtered {before_filter_count - after_filter_count} games from week {max_week}+ to prevent data leakage")
     
     print(f"  [OK] Found {len(completed_games)} completed games")
     return completed_games
@@ -805,6 +830,118 @@ def calculate_over_under_probability(predicted_total: float, over_under_line: Op
     return over_prob_pct, under_prob_pct
 
 
+def calculate_matchup_features(home_features: Dict, away_features: Dict) -> Dict[str, Any]:
+    """
+    Calculate matchup-specific interaction features.
+    
+    These features capture how teams match up against each other, which is
+    more predictive than looking at team stats in isolation.
+    
+    Args:
+        home_features: Dictionary of home team features (prefixed with 'home_')
+        away_features: Dictionary of away team features (prefixed with 'away_')
+    
+    Returns:
+        Dictionary of matchup features
+    """
+    matchup = {}
+    
+    # Helper function to safely get numeric value
+    def safe_get(features: Dict, key: str, default: float = 0.0) -> float:
+        val = features.get(key)
+        return float(val) if val is not None else default
+    
+    # === Rating Differentials ===
+    matchup["matchup_sp_diff"] = safe_get(home_features, "home_sp_rating") - safe_get(away_features, "away_sp_rating")
+    matchup["matchup_elo_diff"] = safe_get(home_features, "home_elo_rating") - safe_get(away_features, "away_elo_rating")
+    matchup["matchup_fpi_diff"] = safe_get(home_features, "home_fpi_rating") - safe_get(away_features, "away_fpi_rating")
+    matchup["matchup_srs_diff"] = safe_get(home_features, "home_srs_rating") - safe_get(away_features, "away_srs_rating")
+    
+    # === Offense vs Defense Matchups ===
+    matchup["matchup_home_off_vs_away_def_ppa"] = (
+        safe_get(home_features, "home_offense_ppa") - safe_get(away_features, "away_defense_ppa")
+    )
+    matchup["matchup_home_off_vs_away_def_sp"] = (
+        safe_get(home_features, "home_sp_offense") + safe_get(away_features, "away_sp_defense")
+    )
+    matchup["matchup_away_off_vs_home_def_ppa"] = (
+        safe_get(away_features, "away_offense_ppa") - safe_get(home_features, "home_defense_ppa")
+    )
+    matchup["matchup_away_off_vs_home_def_sp"] = (
+        safe_get(away_features, "away_sp_offense") + safe_get(home_features, "home_sp_defense")
+    )
+    
+    # === Style Matchups ===
+    matchup["matchup_home_rush_vs_away_rush_def"] = (
+        safe_get(home_features, "home_offense_rushing_plays_ppa") - 
+        safe_get(away_features, "away_defense_rushing_plays_ppa")
+    )
+    matchup["matchup_home_pass_vs_away_pass_def"] = (
+        safe_get(home_features, "home_offense_passing_plays_ppa") - 
+        safe_get(away_features, "away_defense_passing_plays_ppa")
+    )
+    matchup["matchup_away_rush_vs_home_rush_def"] = (
+        safe_get(away_features, "away_offense_rushing_plays_ppa") - 
+        safe_get(home_features, "home_defense_rushing_plays_ppa")
+    )
+    matchup["matchup_away_pass_vs_home_pass_def"] = (
+        safe_get(away_features, "away_offense_passing_plays_ppa") - 
+        safe_get(home_features, "home_defense_passing_plays_ppa")
+    )
+    
+    # === Success Rate Matchups ===
+    matchup["matchup_home_success_vs_away_def_success"] = (
+        safe_get(home_features, "home_offense_success_rate") - 
+        safe_get(away_features, "away_defense_success_rate")
+    )
+    matchup["matchup_away_success_vs_home_def_success"] = (
+        safe_get(away_features, "away_offense_success_rate") - 
+        safe_get(home_features, "home_defense_success_rate")
+    )
+    
+    # === Explosiveness Matchups ===
+    matchup["matchup_home_explosiveness_vs_away_def"] = (
+        safe_get(home_features, "home_offense_explosiveness") - 
+        safe_get(away_features, "away_defense_explosiveness")
+    )
+    matchup["matchup_away_explosiveness_vs_home_def"] = (
+        safe_get(away_features, "away_offense_explosiveness") - 
+        safe_get(home_features, "home_defense_explosiveness")
+    )
+    
+    # === Recruiting/Talent Differential ===
+    matchup["matchup_recruiting_diff"] = (
+        safe_get(home_features, "home_recruiting_points") - 
+        safe_get(away_features, "away_recruiting_points")
+    )
+    
+    # === Rolling Performance Differentials ===
+    matchup["matchup_rolling_point_diff"] = (
+        safe_get(home_features, "home_rolling_point_diff") - 
+        safe_get(away_features, "away_rolling_point_diff")
+    )
+    matchup["matchup_rolling_win_pct_diff"] = (
+        safe_get(home_features, "home_rolling_win_pct") - 
+        safe_get(away_features, "away_rolling_win_pct")
+    )
+    
+    # === Weighted Rolling Performance Differentials ===
+    matchup["matchup_weighted_point_diff"] = (
+        safe_get(home_features, "home_rolling_weighted_point_diff") - 
+        safe_get(away_features, "away_rolling_weighted_point_diff")
+    )
+    
+    # === Streak Differential ===
+    matchup["matchup_streak_diff"] = (
+        safe_get(home_features, "home_rolling_win_streak") - 
+        safe_get(home_features, "home_rolling_loss_streak") -
+        safe_get(away_features, "away_rolling_win_streak") + 
+        safe_get(away_features, "away_rolling_loss_streak")
+    )
+    
+    return matchup
+
+
 def build_prediction_features(game: Dict, team_lookup: Dict[str, Dict],
                               all_completed_games: List[Dict],
                               betting_lines: Dict[int, Dict],
@@ -861,6 +998,12 @@ def build_prediction_features(game: Dict, team_lookup: Dict[str, Dict],
         features["betting_over_under"] = line.get("overUnder")
         features["betting_home_moneyline"] = line.get("homeMoneyline")
         features["betting_away_moneyline"] = line.get("awayMoneyline")
+    
+    # Calculate matchup-specific interaction features
+    home_feat_dict = {k: v for k, v in features.items() if k.startswith('home_')}
+    away_feat_dict = {k: v for k, v in features.items() if k.startswith('away_')}
+    matchup_features = calculate_matchup_features(home_feat_dict, away_feat_dict)
+    features.update(matchup_features)
     
     # Create DataFrames with proper feature alignment
     df = pd.DataFrame([features])
@@ -919,25 +1062,41 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
     # Load model metrics for over/under probability calculations
     model_mae = load_model_metrics()
     
-    # Fetch current season data (bulk API calls)
+    # Fetch season data (bulk API calls)
+    # Use PRIOR SEASON for ratings to match training data and prevent leakage
+    prior_year = year - 1
     print("\n" + "="*70)
-    print(f"FETCHING SEASON DATA FOR {year} (seasonType={season_type})")
+    print(f"FETCHING SEASON DATA")
+    print(f"  Current season ({year}): games, betting lines")
+    print(f"  Prior season ({prior_year}): team ratings (prevents data leakage)")
     print("="*70)
     
-    completed_games = fetch_completed_games(year, season_type)
-    advanced_stats = fetch_season_advanced_stats(year)
-    ppa_data = fetch_season_ppa(year)
-    sp_ratings = fetch_season_sp_ratings(year)
-    srs_ratings = fetch_season_srs_ratings(year)
-    elo_ratings = fetch_season_elo_ratings(year)
-    fpi_ratings = fetch_season_fpi_ratings(year)
-    betting_lines = fetch_betting_lines(year, season_type)
-    recruiting = fetch_recruiting_rankings(year)
+    # Determine minimum week from games being predicted to prevent data leakage
+    # Only use completed games from weeks BEFORE the week being predicted
+    game_weeks = [game.get("week") for game in games if game.get("week") is not None]
+    min_prediction_week = min(game_weeks) if game_weeks else None
     
-    # Build team lookup
-    print(f"\n  Building team lookup...")
+    if min_prediction_week is not None:
+        print(f"  [SAFEGUARD] Predicting week {min_prediction_week} - will exclude this week and later from rolling features")
+    
+    # Current season data (game-specific, available before games)
+    # Pass max_week to prevent using games from the prediction week or later
+    completed_games = fetch_completed_games(year, season_type, max_week=min_prediction_week)
+    betting_lines = fetch_betting_lines(year, season_type)
+    
+    # Prior season ratings (prevents using future aggregate stats)
+    advanced_stats = fetch_season_advanced_stats(prior_year)
+    ppa_data = fetch_season_ppa(prior_year)
+    sp_ratings = fetch_season_sp_ratings(prior_year)
+    srs_ratings = fetch_season_srs_ratings(prior_year)
+    elo_ratings = fetch_season_elo_ratings(prior_year)
+    fpi_ratings = fetch_season_fpi_ratings(prior_year)
+    recruiting = fetch_recruiting_rankings(prior_year)
+    
+    # Build team lookup using prior year ratings
+    print(f"\n  Building team lookup (from {prior_year} ratings)...")
     team_lookup = build_team_lookup(
-        year, advanced_stats, ppa_data, sp_ratings, srs_ratings,
+        prior_year, advanced_stats, ppa_data, sp_ratings, srs_ratings,
         elo_ratings, fpi_ratings, recruiting
     )
     print(f"  [OK] Team features prepared for {len(team_lookup)} teams")

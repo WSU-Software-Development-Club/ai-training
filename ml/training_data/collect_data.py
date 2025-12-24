@@ -1,7 +1,11 @@
 """
 Data collection script for College Football Data API
-Collects game data and team statistics from 2013-2023 for XGBoost model training
-Uses efficient bulk API calls to minimize request count (~100 calls total)
+Collects game data and team statistics from 2003-2024 for XGBoost model training
+Uses efficient bulk API calls to minimize request count (~200 calls total)
+
+Note: For proper time-series evaluation, it's recommended to split data by season
+rather than randomly. This prevents data leakage and better simulates real-world
+prediction scenarios where you train on past seasons and test on future seasons.
 """
 
 import os
@@ -457,12 +461,27 @@ def build_team_lookup(year: int, advanced_stats: Dict, ppa_data: Dict,
 
 
 def calculate_rolling_features(team: str, all_games: List[Dict], 
-                               current_date: str, window: int = 5) -> Dict[str, Any]:
+                               current_date: str, window: int = 5,
+                               decay: float = 0.85) -> Dict[str, Any]:
     """
-    Calculate rolling averages for last N games before current date
-    Only uses completed games that occurred before the current game
+    Calculate rolling averages for last N games before current date.
+    
+    Enhanced features include:
+    - Exponentially weighted averages (more recent games weighted higher)
+    - Separate home and away performance metrics
+    - Win streak tracking
+    
+    Args:
+        team: Team name
+        all_games: List of all games in the season
+        current_date: Date of current game (ISO format string)
+        window: Number of recent games to consider
+        decay: Weight decay factor (0.85 = most recent game has 100%, next has 85%, etc.)
+    
+    Returns:
+        Dictionary of rolling features
     """
-    # Filter games for this team that occurred before current date (using camelCase)
+    # Filter games for this team that occurred before current date
     team_games = []
     for game in all_games:
         game_date = game.get("startDate", "")
@@ -473,60 +492,285 @@ def calculate_rolling_features(team: str, all_games: List[Dict],
         away_team = game.get("awayTeam")
         
         if team == home_team or team == away_team:
-            team_games.append(game)
+            is_home = (team == home_team)
+            team_games.append({
+                'game': game,
+                'is_home': is_home,
+                'date': game_date
+            })
     
     # Sort by date (most recent first)
-    team_games.sort(key=lambda x: x.get("startDate", ""), reverse=True)
+    team_games.sort(key=lambda x: x['date'], reverse=True)
     
     # Take last N games
     recent_games = team_games[:window]
     
-    if not recent_games:
-        # Return zeros if no games played yet
-        return {
-            "rolling_games_played": 0,
-            "rolling_wins": 0,
-            "rolling_win_pct": 0.0,
-            "rolling_points_scored": 0.0,
-            "rolling_points_allowed": 0.0,
-            "rolling_point_diff": 0.0,
-            "rolling_total_points": 0.0
-        }
+    # Initialize default features
+    default_features = {
+        "rolling_games_played": 0,
+        "rolling_wins": 0,
+        "rolling_win_pct": 0.0,
+        "rolling_points_scored": 0.0,
+        "rolling_points_allowed": 0.0,
+        "rolling_point_diff": 0.0,
+        "rolling_total_points": 0.0,
+        # Weighted features
+        "rolling_weighted_points_scored": 0.0,
+        "rolling_weighted_points_allowed": 0.0,
+        "rolling_weighted_point_diff": 0.0,
+        # Home/Away splits
+        "rolling_home_games": 0,
+        "rolling_home_wins": 0,
+        "rolling_home_points_scored": 0.0,
+        "rolling_home_points_allowed": 0.0,
+        "rolling_away_games": 0,
+        "rolling_away_wins": 0,
+        "rolling_away_points_scored": 0.0,
+        "rolling_away_points_allowed": 0.0,
+        # Streak features
+        "rolling_win_streak": 0,
+        "rolling_loss_streak": 0,
+    }
     
-    # Calculate statistics (using camelCase from API)
+    if not recent_games:
+        return default_features
+    
+    # Calculate statistics
     wins = 0
     points_scored = []
     points_allowed = []
+    weights = []
     
-    for game in recent_games:
-        home_team = game.get("homeTeam")
-        home_points = game.get("homePoints", 0)
-        away_points = game.get("awayPoints", 0)
+    # Home/away tracking
+    home_games = 0
+    home_wins = 0
+    home_points_scored = []
+    home_points_allowed = []
+    away_games = 0
+    away_wins = 0
+    away_points_scored = []
+    away_points_allowed = []
+    
+    # Streak tracking
+    current_streak = 0
+    streak_type = None  # 'win' or 'loss'
+    
+    for i, game_info in enumerate(recent_games):
+        game = game_info['game']
+        is_home = game_info['is_home']
         
-        if team == home_team:
-            points_scored.append(home_points)
-            points_allowed.append(away_points)
-            if home_points > away_points:
-                wins += 1
-        else:  # team is away team
-            points_scored.append(away_points)
-            points_allowed.append(home_points)
-            if away_points > home_points:
-                wins += 1
+        home_points = game.get("homePoints", 0) or 0
+        away_points = game.get("awayPoints", 0) or 0
+        
+        # Calculate weight (exponential decay)
+        weight = decay ** i
+        weights.append(weight)
+        
+        if is_home:
+            team_scored = home_points
+            team_allowed = away_points
+            won = home_points > away_points
+            
+            home_games += 1
+            home_points_scored.append(home_points)
+            home_points_allowed.append(away_points)
+            if won:
+                home_wins += 1
+        else:
+            team_scored = away_points
+            team_allowed = home_points
+            won = away_points > home_points
+            
+            away_games += 1
+            away_points_scored.append(away_points)
+            away_points_allowed.append(home_points)
+            if won:
+                away_wins += 1
+        
+        points_scored.append(team_scored)
+        points_allowed.append(team_allowed)
+        
+        if won:
+            wins += 1
+        
+        # Track streak (only for most recent consecutive games)
+        if i == 0:
+            streak_type = 'win' if won else 'loss'
+            current_streak = 1
+        elif (streak_type == 'win' and won) or (streak_type == 'loss' and not won):
+            current_streak += 1
+        # Streak breaks once pattern changes (we only count from start)
     
     num_games = len(recent_games)
-    avg_scored = sum(points_scored) / num_games if num_games > 0 else 0
-    avg_allowed = sum(points_allowed) / num_games if num_games > 0 else 0
+    total_weight = sum(weights)
+    
+    # Simple averages
+    avg_scored = sum(points_scored) / num_games
+    avg_allowed = sum(points_allowed) / num_games
+    
+    # Weighted averages
+    weighted_scored = sum(s * w for s, w in zip(points_scored, weights)) / total_weight
+    weighted_allowed = sum(a * w for a, w in zip(points_allowed, weights)) / total_weight
+    
+    # Home averages
+    home_avg_scored = sum(home_points_scored) / home_games if home_games > 0 else 0.0
+    home_avg_allowed = sum(home_points_allowed) / home_games if home_games > 0 else 0.0
+    
+    # Away averages
+    away_avg_scored = sum(away_points_scored) / away_games if away_games > 0 else 0.0
+    away_avg_allowed = sum(away_points_allowed) / away_games if away_games > 0 else 0.0
     
     return {
+        # Basic rolling features
         "rolling_games_played": num_games,
         "rolling_wins": wins,
-        "rolling_win_pct": wins / num_games if num_games > 0 else 0,
+        "rolling_win_pct": wins / num_games,
         "rolling_points_scored": avg_scored,
         "rolling_points_allowed": avg_allowed,
         "rolling_point_diff": avg_scored - avg_allowed,
-        "rolling_total_points": avg_scored + avg_allowed
+        "rolling_total_points": avg_scored + avg_allowed,
+        # Weighted features (more recent games weighted higher)
+        "rolling_weighted_points_scored": weighted_scored,
+        "rolling_weighted_points_allowed": weighted_allowed,
+        "rolling_weighted_point_diff": weighted_scored - weighted_allowed,
+        # Home performance
+        "rolling_home_games": home_games,
+        "rolling_home_wins": home_wins,
+        "rolling_home_points_scored": home_avg_scored,
+        "rolling_home_points_allowed": home_avg_allowed,
+        # Away performance
+        "rolling_away_games": away_games,
+        "rolling_away_wins": away_wins,
+        "rolling_away_points_scored": away_avg_scored,
+        "rolling_away_points_allowed": away_avg_allowed,
+        # Streak features
+        "rolling_win_streak": current_streak if streak_type == 'win' else 0,
+        "rolling_loss_streak": current_streak if streak_type == 'loss' else 0,
     }
+
+
+def calculate_matchup_features(home_features: Dict, away_features: Dict) -> Dict[str, Any]:
+    """
+    Calculate matchup-specific interaction features.
+    
+    These features capture how teams match up against each other, which is
+    more predictive than looking at team stats in isolation.
+    
+    Args:
+        home_features: Dictionary of home team features (prefixed with 'home_')
+        away_features: Dictionary of away team features (prefixed with 'away_')
+    
+    Returns:
+        Dictionary of matchup features
+    """
+    matchup = {}
+    
+    # Helper function to safely get numeric value
+    def safe_get(features: Dict, key: str, default: float = 0.0) -> float:
+        val = features.get(key)
+        return float(val) if val is not None else default
+    
+    # === Rating Differentials ===
+    # Overall team strength differentials (home advantage is implicit in the diff)
+    matchup["matchup_sp_diff"] = safe_get(home_features, "home_sp_rating") - safe_get(away_features, "away_sp_rating")
+    matchup["matchup_elo_diff"] = safe_get(home_features, "home_elo_rating") - safe_get(away_features, "away_elo_rating")
+    matchup["matchup_fpi_diff"] = safe_get(home_features, "home_fpi_rating") - safe_get(away_features, "away_fpi_rating")
+    matchup["matchup_srs_diff"] = safe_get(home_features, "home_srs_rating") - safe_get(away_features, "away_srs_rating")
+    
+    # === Offense vs Defense Matchups ===
+    # Home offense vs Away defense (positive = home offense advantage)
+    matchup["matchup_home_off_vs_away_def_ppa"] = (
+        safe_get(home_features, "home_offense_ppa") - safe_get(away_features, "away_defense_ppa")
+    )
+    matchup["matchup_home_off_vs_away_def_sp"] = (
+        safe_get(home_features, "home_sp_offense") + safe_get(away_features, "away_sp_defense")  # Note: defensive SP+ is negative for good defense
+    )
+    
+    # Away offense vs Home defense (positive = away offense advantage)
+    matchup["matchup_away_off_vs_home_def_ppa"] = (
+        safe_get(away_features, "away_offense_ppa") - safe_get(home_features, "home_defense_ppa")
+    )
+    matchup["matchup_away_off_vs_home_def_sp"] = (
+        safe_get(away_features, "away_sp_offense") + safe_get(home_features, "home_sp_defense")
+    )
+    
+    # === Style Matchups (Rush vs Rush Defense, Pass vs Pass Defense) ===
+    # Home rushing attack vs away rush defense
+    matchup["matchup_home_rush_vs_away_rush_def"] = (
+        safe_get(home_features, "home_offense_rushing_plays_ppa") - 
+        safe_get(away_features, "away_defense_rushing_plays_ppa")
+    )
+    
+    # Home passing attack vs away pass defense
+    matchup["matchup_home_pass_vs_away_pass_def"] = (
+        safe_get(home_features, "home_offense_passing_plays_ppa") - 
+        safe_get(away_features, "away_defense_passing_plays_ppa")
+    )
+    
+    # Away rushing attack vs home rush defense
+    matchup["matchup_away_rush_vs_home_rush_def"] = (
+        safe_get(away_features, "away_offense_rushing_plays_ppa") - 
+        safe_get(home_features, "home_defense_rushing_plays_ppa")
+    )
+    
+    # Away passing attack vs home pass defense
+    matchup["matchup_away_pass_vs_home_pass_def"] = (
+        safe_get(away_features, "away_offense_passing_plays_ppa") - 
+        safe_get(home_features, "home_defense_passing_plays_ppa")
+    )
+    
+    # === Success Rate Matchups ===
+    matchup["matchup_home_success_vs_away_def_success"] = (
+        safe_get(home_features, "home_offense_success_rate") - 
+        safe_get(away_features, "away_defense_success_rate")
+    )
+    matchup["matchup_away_success_vs_home_def_success"] = (
+        safe_get(away_features, "away_offense_success_rate") - 
+        safe_get(home_features, "home_defense_success_rate")
+    )
+    
+    # === Explosiveness Matchups ===
+    matchup["matchup_home_explosiveness_vs_away_def"] = (
+        safe_get(home_features, "home_offense_explosiveness") - 
+        safe_get(away_features, "away_defense_explosiveness")
+    )
+    matchup["matchup_away_explosiveness_vs_home_def"] = (
+        safe_get(away_features, "away_offense_explosiveness") - 
+        safe_get(home_features, "home_defense_explosiveness")
+    )
+    
+    # === Recruiting/Talent Differential ===
+    matchup["matchup_recruiting_diff"] = (
+        safe_get(home_features, "home_recruiting_points") - 
+        safe_get(away_features, "away_recruiting_points")
+    )
+    
+    # === Rolling Performance Differentials ===
+    matchup["matchup_rolling_point_diff"] = (
+        safe_get(home_features, "home_rolling_point_diff") - 
+        safe_get(away_features, "away_rolling_point_diff")
+    )
+    matchup["matchup_rolling_win_pct_diff"] = (
+        safe_get(home_features, "home_rolling_win_pct") - 
+        safe_get(away_features, "away_rolling_win_pct")
+    )
+    
+    # === Weighted Rolling Performance Differentials ===
+    matchup["matchup_weighted_point_diff"] = (
+        safe_get(home_features, "home_rolling_weighted_point_diff") - 
+        safe_get(away_features, "away_rolling_weighted_point_diff")
+    )
+    
+    # === Streak Differential ===
+    # Positive = home team on win streak, negative = away team on win streak
+    matchup["matchup_streak_diff"] = (
+        safe_get(home_features, "home_rolling_win_streak") - 
+        safe_get(home_features, "home_rolling_loss_streak") -
+        safe_get(away_features, "away_rolling_win_streak") + 
+        safe_get(away_features, "away_rolling_loss_streak")
+    )
+    
+    return matchup
 
 
 def merge_game_features(game: Dict, team_lookup: Dict[str, Dict], 
@@ -577,6 +821,12 @@ def merge_game_features(game: Dict, team_lookup: Dict[str, Dict],
         features["betting_home_moneyline"] = line.get("homeMoneyline")
         features["betting_away_moneyline"] = line.get("awayMoneyline")
     
+    # Calculate matchup-specific interaction features
+    home_features = {k: v for k, v in features.items() if k.startswith('home_')}
+    away_features = {k: v for k, v in features.items() if k.startswith('away_')}
+    matchup_features = calculate_matchup_features(home_features, away_features)
+    features.update(matchup_features)
+    
     # Target variables (actual scores) - using camelCase from API
     features["home_score"] = game.get("homePoints")
     features["away_score"] = game.get("awayPoints")
@@ -588,33 +838,60 @@ def merge_game_features(game: Dict, team_lookup: Dict[str, Dict],
 # MAIN PROCESSING PIPELINE
 # ============================================================================
 
-def process_season(year: int) -> List[Dict]:
+def process_season(year: int, prior_year_data: Optional[Dict] = None) -> List[Dict]:
     """
     Process a complete season: fetch all data and create training rows
+    
+    Uses PRIOR SEASON's ratings (SP+, SRS, ELO, FPI, etc.) to prevent data leakage.
+    Season-aggregate stats like SP+ are computed at end of season, so using current
+    season's ratings for all games would be using future information.
+    
+    Args:
+        year: Season year to process
+        prior_year_data: Optional pre-fetched data from prior season to avoid duplicate API calls
     """
     print(f"\n{'='*70}")
     print(f"PROCESSING SEASON {year}")
     print(f"{'='*70}")
     
-    # Fetch all bulk data for the season (9 API calls)
+    # Fetch current season games
     games = fetch_season_games(year)
     if not games:
         print(f"Skipping {year} - no games found")
         return []
     
-    advanced_stats = fetch_season_advanced_stats(year)
-    ppa_data = fetch_season_ppa(year)
-    sp_ratings = fetch_season_sp_ratings(year)
-    srs_ratings = fetch_season_srs_ratings(year)
-    elo_ratings = fetch_season_elo_ratings(year)
-    fpi_ratings = fetch_season_fpi_ratings(year)
-    betting_lines = fetch_betting_lines(year)
-    recruiting = fetch_recruiting_rankings(year)
+    # Use PRIOR SEASON for ratings to prevent data leakage
+    # These are end-of-season aggregates that shouldn't be known during the season
+    prior_year = year - 1
+    print(f"  📊 Using prior season ({prior_year}) for team ratings (prevents data leakage)")
     
-    # Build team lookup dictionary
-    print(f"  Building team lookup...")
+    if prior_year_data:
+        # Use pre-fetched prior year data
+        advanced_stats = prior_year_data.get('advanced_stats', {})
+        ppa_data = prior_year_data.get('ppa_data', {})
+        sp_ratings = prior_year_data.get('sp_ratings', {})
+        srs_ratings = prior_year_data.get('srs_ratings', {})
+        elo_ratings = prior_year_data.get('elo_ratings', {})
+        fpi_ratings = prior_year_data.get('fpi_ratings', {})
+        recruiting = prior_year_data.get('recruiting', {})
+    else:
+        # Fetch prior season ratings (prevents data leakage)
+        advanced_stats = fetch_season_advanced_stats(prior_year)
+        ppa_data = fetch_season_ppa(prior_year)
+        sp_ratings = fetch_season_sp_ratings(prior_year)
+        srs_ratings = fetch_season_srs_ratings(prior_year)
+        elo_ratings = fetch_season_elo_ratings(prior_year)
+        fpi_ratings = fetch_season_fpi_ratings(prior_year)
+        # Recruiting uses prior year's class (recruits from year before)
+        recruiting = fetch_recruiting_rankings(prior_year)
+    
+    # Betting lines are game-specific and available before games, so use current season
+    betting_lines = fetch_betting_lines(year)
+    
+    # Build team lookup dictionary using prior year ratings
+    print(f"  Building team lookup (from {prior_year} ratings)...")
     team_lookup = build_team_lookup(
-        year, advanced_stats, ppa_data, sp_ratings, srs_ratings,
+        prior_year, advanced_stats, ppa_data, sp_ratings, srs_ratings,
         elo_ratings, fpi_ratings, recruiting
     )
     print(f"  ✓ Team features prepared for {len(team_lookup)} teams")
@@ -651,9 +928,28 @@ def process_season(year: int) -> List[Dict]:
     return season_data
 
 
+def fetch_season_ratings(year: int) -> Dict[str, Any]:
+    """
+    Fetch all season ratings data for a given year.
+    Returns dictionary with all rating types that can be passed to process_season.
+    """
+    return {
+        'advanced_stats': fetch_season_advanced_stats(year),
+        'ppa_data': fetch_season_ppa(year),
+        'sp_ratings': fetch_season_sp_ratings(year),
+        'srs_ratings': fetch_season_srs_ratings(year),
+        'elo_ratings': fetch_season_elo_ratings(year),
+        'fpi_ratings': fetch_season_fpi_ratings(year),
+        'recruiting': fetch_recruiting_rankings(year),
+    }
+
+
 def main():
     """
-    Main function to orchestrate data collection across all seasons
+    Main function to orchestrate data collection across all seasons.
+    
+    Uses prior season ratings to prevent data leakage - each season uses
+    the previous season's end-of-year ratings for team statistics.
     """
     global api_call_count
     
@@ -666,19 +962,30 @@ def main():
     
     print("="*70)
     print("COLLEGE FOOTBALL DATA COLLECTION")
+    print("(Using prior season ratings to prevent data leakage)")
     print("="*70)
     print(f"API Base URL: {CFBD_API_BASE_URL}")
     print(f"API Key: {'*' * 10}{CFBD_API_KEY[-4:] if len(CFBD_API_KEY) > 4 else '****'}")
-    print(f"Seasons: 2013-2023 (11 seasons)")
+    print(f"Seasons: 2003-2024 (22 seasons)")
     print("="*70)
     
     all_data = []
-    years = range(2013, 2024)  # 2013 to 2023 inclusive
+    years = range(2003, 2025)  # 2003 to 2024 inclusive (22 seasons)
+    
+    # Pre-fetch first prior year's data (2002 for 2003 season)
+    print(f"\n  Pre-fetching 2002 ratings for first season...")
+    prior_year_data = fetch_season_ratings(2002)
     
     for year in years:
         try:
-            season_data = process_season(year)
+            # Use cached prior year data
+            season_data = process_season(year, prior_year_data)
             all_data.extend(season_data)
+            
+            # Cache current year's ratings for next iteration
+            # This year's end-of-season ratings become next year's prior season data
+            print(f"  Caching {year} ratings for {year + 1} season...")
+            prior_year_data = fetch_season_ratings(year)
             
             # Save checkpoint after each season
             if season_data:
@@ -689,6 +996,11 @@ def main():
         
         except Exception as e:
             print(f"ERROR processing {year}: {e}")
+            # Still try to get ratings for this year for next iteration
+            try:
+                prior_year_data = fetch_season_ratings(year)
+            except:
+                pass
             continue
     
     # Create final DataFrame

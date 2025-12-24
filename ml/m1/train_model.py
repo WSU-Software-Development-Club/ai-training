@@ -3,20 +3,35 @@ XGBoost College Football Score Predictor - Training Script
 
 This script trains two XGBoost regression models to predict home and away scores
 for college football games based on comprehensive team statistics and historical data.
+
+Features:
+- Temporal train/val/test split (prevents data leakage)
+- Optuna hyperparameter optimization
+- Prior season ratings (prevents in-season data leakage)
+- Matchup-specific interaction features
 """
 
 import os
+import sys
 import pandas as pd
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for saving plots
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import xgboost as xgb
 import json
 from datetime import datetime
+
+# Optuna for hyperparameter optimization (optional dependency)
+try:
+    import optuna
+    from optuna.samplers import TPESampler
+    OPTUNA_AVAILABLE = True
+except ImportError:
+    OPTUNA_AVAILABLE = False
+    print("[INFO] Optuna not installed. Run 'pip install optuna' for hyperparameter optimization.")
 
 # Set random seed for reproducibility
 RANDOM_STATE = 42
@@ -26,8 +41,15 @@ np.random.seed(RANDOM_STATE)
 DATA_PATH = '../training_data/training_data.csv'
 MODEL_DIR = 'models'
 RESULTS_DIR = 'results'
-TEST_SIZE = 0.15
-VALIDATION_SIZE = 0.15
+
+# Temporal split configuration (prevents data leakage)
+TRAIN_SEASONS = range(2003, 2022)  # 2003-2021 (19 seasons)
+VAL_SEASONS = [2022, 2023]         # 2022-2023 (2 seasons)
+TEST_SEASONS = [2024]              # 2024 (1 season - most recent)
+
+# Hyperparameter optimization configuration
+OPTIMIZE_HYPERPARAMS = True  # Set to False to skip optimization and use defaults
+N_OPTUNA_TRIALS = 50         # Number of optimization trials
 
 
 def create_directories():
@@ -45,10 +67,8 @@ def load_and_preprocess_data(data_path):
         data_path: Path to the training data CSV file
         
     Returns:
-        X: Feature DataFrame
-        y_home: Home score target series
-        y_away: Away score target series
-        feature_names: List of feature names
+        df: Full DataFrame with all columns (for temporal splitting)
+        feature_names: List of feature column names
     """
     print("\n" + "="*70)
     print("LOADING AND PREPROCESSING DATA")
@@ -73,85 +93,216 @@ def load_and_preprocess_data(data_path):
         'home_score', 'away_score'  # Target variables
     ]
     
-    # Get all feature columns
-    feature_columns = [col for col in df.columns if col not in exclude_columns]
+    # Get all feature columns (excluding 'season' which we'll use for splitting)
+    feature_columns = [col for col in df.columns if col not in exclude_columns and col != 'season']
     
     print(f"\n✓ Selected {len(feature_columns)} features")
-    
-    # Extract features and targets
-    X = df[feature_columns].copy()
-    y_home = df['home_score'].copy()
-    y_away = df['away_score'].copy()
     
     # Handle missing values in features
     # Strategy: Fill with median for numeric columns
     print("\nHandling missing values...")
-    missing_before = X.isnull().sum().sum()
+    missing_before = df[feature_columns].isnull().sum().sum()
     
-    for col in X.columns:
-        if X[col].dtype in ['float64', 'int64']:
-            median_val = X[col].median()
-            X[col] = X[col].fillna(median_val)
+    for col in feature_columns:
+        if df[col].dtype in ['float64', 'int64']:
+            median_val = df[col].median()
+            df[col] = df[col].fillna(median_val)
         else:
             # For any non-numeric columns, fill with 0
-            X[col] = X[col].fillna(0)
+            df[col] = df[col].fillna(0)
     
-    missing_after = X.isnull().sum().sum()
+    missing_after = df[feature_columns].isnull().sum().sum()
     print(f"✓ Handled {missing_before} missing values")
     print(f"  Remaining missing values: {missing_after}")
     
     # Convert any remaining object columns to numeric
-    for col in X.columns:
-        if X[col].dtype == 'object':
-            X[col] = pd.to_numeric(X[col], errors='coerce').fillna(0)
+    for col in feature_columns:
+        if df[col].dtype == 'object':
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
     
-    print(f"\n✓ Final dataset shape: {X.shape}")
+    print(f"\n✓ Final dataset shape: {df.shape}")
     print(f"  Features: {len(feature_columns)}")
-    print(f"  Samples: {len(X)}")
+    print(f"  Samples: {len(df)}")
     
-    return X, y_home, y_away, feature_columns
+    return df, feature_columns
 
 
-def split_data(X, y_home, y_away, test_size, validation_size, random_state):
+def split_data_temporal(df, feature_columns, train_seasons, val_seasons, test_seasons):
     """
-    Split data into train, validation, and test sets.
+    Split data into train, validation, and test sets based on seasons (temporal split).
+    
+    This prevents data leakage by ensuring we never train on future data.
     
     Args:
-        X: Features
-        y_home: Home score targets
-        y_away: Away score targets
-        test_size: Proportion of data for test set
-        validation_size: Proportion of training data for validation set
-        random_state: Random seed
+        df: Full DataFrame with season column
+        feature_columns: List of feature column names
+        train_seasons: List/range of seasons for training (e.g., range(2003, 2022))
+        val_seasons: List of seasons for validation (e.g., [2022, 2023])
+        test_seasons: List of seasons for testing (e.g., [2024])
         
     Returns:
         Tuple of (X_train, X_val, X_test, y_home_train, y_home_val, y_home_test,
                   y_away_train, y_away_val, y_away_test)
     """
     print("\n" + "="*70)
-    print("SPLITTING DATA")
+    print("SPLITTING DATA (TEMPORAL)")
     print("="*70)
     
-    # First split: separate test set
-    X_temp, X_test, y_home_temp, y_home_test, y_away_temp, y_away_test = train_test_split(
-        X, y_home, y_away, test_size=test_size, random_state=random_state
-    )
+    # Split by season
+    train_mask = df['season'].isin(train_seasons)
+    val_mask = df['season'].isin(val_seasons)
+    test_mask = df['season'].isin(test_seasons)
     
-    # Second split: separate validation set from training
-    val_size_adjusted = validation_size / (1 - test_size)
-    X_train, X_val, y_home_train, y_home_val, y_away_train, y_away_val = train_test_split(
-        X_temp, y_home_temp, y_away_temp, test_size=val_size_adjusted, random_state=random_state
-    )
+    # Extract features and targets for each split
+    X_train = df.loc[train_mask, feature_columns].copy()
+    X_val = df.loc[val_mask, feature_columns].copy()
+    X_test = df.loc[test_mask, feature_columns].copy()
     
-    print(f"\nDataset splits:")
-    print(f"  Training:   {len(X_train):5d} samples ({len(X_train)/len(X)*100:.1f}%)")
-    print(f"  Validation: {len(X_val):5d} samples ({len(X_val)/len(X)*100:.1f}%)")
-    print(f"  Test:       {len(X_test):5d} samples ({len(X_test)/len(X)*100:.1f}%)")
+    y_home_train = df.loc[train_mask, 'home_score'].copy()
+    y_home_val = df.loc[val_mask, 'home_score'].copy()
+    y_home_test = df.loc[test_mask, 'home_score'].copy()
+    
+    y_away_train = df.loc[train_mask, 'away_score'].copy()
+    y_away_val = df.loc[val_mask, 'away_score'].copy()
+    y_away_test = df.loc[test_mask, 'away_score'].copy()
+    
+    total = len(df)
+    print(f"\nTemporal Dataset Splits:")
+    print(f"  Training:   {len(X_train):5d} samples ({len(X_train)/total*100:.1f}%) - Seasons {min(train_seasons)}-{max(train_seasons)}")
+    print(f"  Validation: {len(X_val):5d} samples ({len(X_val)/total*100:.1f}%) - Seasons {list(val_seasons)}")
+    print(f"  Test:       {len(X_test):5d} samples ({len(X_test)/total*100:.1f}%) - Seasons {list(test_seasons)}")
+    
+    # Reset indices for clean training
+    X_train = X_train.reset_index(drop=True)
+    X_val = X_val.reset_index(drop=True)
+    X_test = X_test.reset_index(drop=True)
+    y_home_train = y_home_train.reset_index(drop=True)
+    y_home_val = y_home_val.reset_index(drop=True)
+    y_home_test = y_home_test.reset_index(drop=True)
+    y_away_train = y_away_train.reset_index(drop=True)
+    y_away_val = y_away_val.reset_index(drop=True)
+    y_away_test = y_away_test.reset_index(drop=True)
     
     return X_train, X_val, X_test, y_home_train, y_home_val, y_home_test, y_away_train, y_away_val, y_away_test
 
 
-def train_model(X_train, y_train, X_val, y_val, model_name):
+def get_default_params():
+    """Return default XGBoost parameters."""
+    return {
+        'objective': 'reg:squarederror',
+        'max_depth': 6,
+        'learning_rate': 0.1,
+        'n_estimators': 500,
+        'subsample': 0.8,
+        'colsample_bytree': 0.8,
+        'min_child_weight': 3,
+        'gamma': 0.1,
+        'reg_alpha': 0.0,
+        'reg_lambda': 1.0,
+        'random_state': RANDOM_STATE,
+        'n_jobs': -1,
+        'eval_metric': 'rmse',
+        'early_stopping_rounds': 50
+    }
+
+
+def optimize_hyperparameters(X_train, y_train, X_val, y_val, model_name, n_trials=50):
+    """
+    Use Optuna to find optimal XGBoost hyperparameters.
+    
+    Args:
+        X_train: Training features
+        y_train: Training targets
+        X_val: Validation features
+        y_val: Validation targets
+        model_name: Name for the model (for display purposes)
+        n_trials: Number of optimization trials
+        
+    Returns:
+        Dictionary of best hyperparameters
+    """
+    if not OPTUNA_AVAILABLE:
+        print(f"  [WARNING] Optuna not available, using default parameters")
+        return get_default_params()
+    
+    print(f"\n{'='*70}")
+    print(f"OPTIMIZING HYPERPARAMETERS FOR {model_name.upper()}")
+    print(f"Running {n_trials} trials...")
+    print(f"{'='*70}")
+    
+    def objective(trial):
+        """Optuna objective function for XGBoost hyperparameter optimization."""
+        params = {
+            'objective': 'reg:squarederror',
+            'max_depth': trial.suggest_int('max_depth', 3, 10),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
+            'n_estimators': 500,  # Use early stopping instead
+            'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+            'min_child_weight': trial.suggest_int('min_child_weight', 1, 10),
+            'gamma': trial.suggest_float('gamma', 0.0, 1.0),
+            'reg_alpha': trial.suggest_float('reg_alpha', 1e-8, 1.0, log=True),
+            'reg_lambda': trial.suggest_float('reg_lambda', 1e-8, 10.0, log=True),
+            'random_state': RANDOM_STATE,
+            'n_jobs': -1,
+            'eval_metric': 'rmse',
+            'early_stopping_rounds': 50
+        }
+        
+        model = xgb.XGBRegressor(**params)
+        model.fit(
+            X_train, y_train,
+            eval_set=[(X_val, y_val)],
+            verbose=False
+        )
+        
+        y_pred = model.predict(X_val)
+        mae = mean_absolute_error(y_val, y_pred)
+        
+        return mae
+    
+    # Create study with TPE sampler for efficient search
+    sampler = TPESampler(seed=RANDOM_STATE)
+    study = optuna.create_study(
+        direction='minimize',
+        sampler=sampler,
+        study_name=f'{model_name}_optimization'
+    )
+    
+    # Suppress Optuna logging during optimization
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    
+    # Run optimization
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+    
+    # Get best parameters
+    best_params = study.best_params
+    best_mae = study.best_value
+    
+    print(f"\n✓ Optimization complete!")
+    print(f"  Best validation MAE: {best_mae:.3f}")
+    print(f"  Best parameters:")
+    for param, value in best_params.items():
+        if isinstance(value, float):
+            print(f"    {param}: {value:.6f}")
+        else:
+            print(f"    {param}: {value}")
+    
+    # Build complete params dict with best values
+    optimized_params = {
+        'objective': 'reg:squarederror',
+        'n_estimators': 500,
+        'random_state': RANDOM_STATE,
+        'n_jobs': -1,
+        'eval_metric': 'rmse',
+        'early_stopping_rounds': 50,
+        **best_params
+    }
+    
+    return optimized_params
+
+
+def train_model(X_train, y_train, X_val, y_val, model_name, params=None):
     """
     Train an XGBoost regression model.
     
@@ -161,27 +312,16 @@ def train_model(X_train, y_train, X_val, y_val, model_name):
         X_val: Validation features
         y_val: Validation targets
         model_name: Name for the model (for display purposes)
+        params: Optional dictionary of XGBoost parameters (if None, uses defaults)
         
     Returns:
         Trained XGBoost model
     """
     print(f"\nTraining {model_name} model...")
     
-    # XGBoost parameters
-    params = {
-        'objective': 'reg:squarederror',
-        'max_depth': 6,
-        'learning_rate': 0.1,
-        'n_estimators': 300,
-        'subsample': 0.8,
-        'colsample_bytree': 0.8,
-        'min_child_weight': 3,
-        'gamma': 0.1,
-        'random_state': RANDOM_STATE,
-        'n_jobs': -1,
-        'eval_metric': 'rmse',
-        'early_stopping_rounds': 50
-    }
+    # Use provided params or defaults
+    if params is None:
+        params = get_default_params()
     
     # Create and train model
     model = xgb.XGBRegressor(**params)
@@ -369,29 +509,58 @@ def save_model_and_metadata(model, feature_names, metrics, feature_importance, m
 
 
 def main():
-    """Main training pipeline."""
+    """Main training pipeline with optional hyperparameter optimization."""
     print("\n" + "="*70)
     print("XGBOOST COLLEGE FOOTBALL SCORE PREDICTOR")
-    print("Training Pipeline")
+    print("Training Pipeline (with Temporal Split + Optuna Optimization)")
     print("="*70)
     print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Hyperparameter optimization: {'ENABLED' if OPTIMIZE_HYPERPARAMS and OPTUNA_AVAILABLE else 'DISABLED'}")
     
     # Create directories
     create_directories()
     
     # Load and preprocess data
-    X, y_home, y_away, feature_names = load_and_preprocess_data(DATA_PATH)
+    df, feature_names = load_and_preprocess_data(DATA_PATH)
     
-    # Split data
-    X_train, X_val, X_test, y_home_train, y_home_val, y_home_test, y_away_train, y_away_val, y_away_test = split_data(
-        X, y_home, y_away, TEST_SIZE, VALIDATION_SIZE, RANDOM_STATE
+    # Split data temporally (prevents data leakage)
+    X_train, X_val, X_test, y_home_train, y_home_val, y_home_test, y_away_train, y_away_val, y_away_test = split_data_temporal(
+        df, feature_names, TRAIN_SEASONS, VAL_SEASONS, TEST_SEASONS
     )
+    
+    # Hyperparameter optimization (optional)
+    home_params = None
+    away_params = None
+    
+    if OPTIMIZE_HYPERPARAMS and OPTUNA_AVAILABLE:
+        # Optimize hyperparameters for each model
+        home_params = optimize_hyperparameters(
+            X_train, y_home_train, X_val, y_home_val, 
+            "Home Score", n_trials=N_OPTUNA_TRIALS
+        )
+        away_params = optimize_hyperparameters(
+            X_train, y_away_train, X_val, y_away_val, 
+            "Away Score", n_trials=N_OPTUNA_TRIALS
+        )
+        
+        # Save optimized parameters
+        params_path = os.path.join(MODEL_DIR, 'optimized_params.json')
+        with open(params_path, 'w') as f:
+            # Convert params to serializable format
+            serializable_params = {
+                'home_score': {k: v for k, v in home_params.items() if k not in ['n_jobs']},
+                'away_score': {k: v for k, v in away_params.items() if k not in ['n_jobs']}
+            }
+            json.dump(serializable_params, f, indent=2)
+        print(f"\n✓ Saved optimized parameters to: {params_path}")
+    else:
+        print("\n[INFO] Using default hyperparameters (optimization disabled or Optuna unavailable)")
     
     # Train Home Score Model
     print("\n" + "="*70)
     print("TRAINING HOME SCORE MODEL")
     print("="*70)
-    home_model = train_model(X_train, y_home_train, X_val, y_home_val, "Home Score")
+    home_model = train_model(X_train, y_home_train, X_val, y_home_val, "Home Score", params=home_params)
     home_metrics = evaluate_model(
         home_model, X_train, y_home_train, X_val, y_home_val, X_test, y_home_test, "Home Score"
     )
@@ -407,7 +576,7 @@ def main():
     print("\n" + "="*70)
     print("TRAINING AWAY SCORE MODEL")
     print("="*70)
-    away_model = train_model(X_train, y_away_train, X_val, y_away_val, "Away Score")
+    away_model = train_model(X_train, y_away_train, X_val, y_away_val, "Away Score", params=away_params)
     away_metrics = evaluate_model(
         away_model, X_train, y_away_train, X_val, y_away_val, X_test, y_away_test, "Away Score"
     )
@@ -424,6 +593,9 @@ def main():
     print("TRAINING COMPLETE")
     print("="*70)
     print(f"\nEnd time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"\nConfiguration:")
+    print(f"  Hyperparameter optimization: {'ENABLED' if OPTIMIZE_HYPERPARAMS and OPTUNA_AVAILABLE else 'DISABLED'}")
+    print(f"  Temporal split: Train {min(TRAIN_SEASONS)}-{max(TRAIN_SEASONS)}, Val {list(VAL_SEASONS)}, Test {list(TEST_SEASONS)}")
     print("\nTest Set Performance Summary:")
     print(f"\nHome Score Model:")
     print(f"  MAE:  {home_metrics['test']['mae']:.2f} points")
