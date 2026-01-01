@@ -742,14 +742,18 @@ def load_models() -> tuple:
     
     # Load home score model
     home_model_path = MODEL_DIR / 'home_score_model.json'
-    home_model = xgb.XGBRegressor(objective='reg:squarederror')
+    home_model = xgb.XGBRegressor()
     home_model.load_model(home_model_path)
+    # Fix for XGBoost 2.0+ bug: manually set _estimator_type for sklearn compatibility
+    home_model._estimator_type = 'regressor'
     print(f"[OK] Loaded home score model from {home_model_path}")
     
     # Load away score model
     away_model_path = MODEL_DIR / 'away_score_model.json'
-    away_model = xgb.XGBRegressor(objective='reg:squarederror')
+    away_model = xgb.XGBRegressor()
     away_model.load_model(away_model_path)
+    # Fix for XGBoost 2.0+ bug: manually set _estimator_type for sklearn compatibility
+    away_model._estimator_type = 'regressor'
     print(f"[OK] Loaded away score model from {away_model_path}")
     
     # Load feature lists
