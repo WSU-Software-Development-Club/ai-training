@@ -11,6 +11,7 @@ const HomePage = () => {
   const [selectedConference, setSelectedConference] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeek());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState("All");
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,10 +22,10 @@ const HomePage = () => {
     console.log("Searching for:", searchTerm);
   };
 
-  // Reset date filter when week changes
+  // Reset date filter when week or year changes
   useEffect(() => {
     setSelectedDate("All");
-  }, [selectedWeek]);
+  }, [selectedWeek, selectedYear]);
 
   // Fetch weekly game data on component mount
   useEffect(() => {
@@ -33,7 +34,10 @@ const HomePage = () => {
       setError(null);
 
       try {
-        const response = await api.getScoreboardByWeek(selectedWeek);
+        const response = await api.getScoreboardByWeek(
+          selectedWeek,
+          selectedYear
+        );
 
         if (response.success) {
           setGameData(response.data);
@@ -49,7 +53,7 @@ const HomePage = () => {
     };
 
     fetchGameData();
-  }, [selectedWeek]);
+  }, [selectedWeek, selectedYear]);
 
   if (loading) {
     return (
@@ -106,6 +110,13 @@ const HomePage = () => {
 
   // Supports all possible weeks returned by getCurrentWeek (1–18)
   const weeks = Array.from({ length: 19 }, (_, i) => i + 1);
+
+  // Year options: current year going back to 2025
+  const currentYear = new Date().getFullYear();
+  const years = Array.from(
+    { length: currentYear - 2025 + 1 },
+    (_, i) => currentYear - i
+  );
 
   // Extract unique dates from games
   const dateSet = new Map();
@@ -168,6 +179,21 @@ const HomePage = () => {
           </div>
 
           <div className={styles.homePageFilters}>
+            {/* Year Dropdown */}
+            <div className={styles.homePageFilterGroup}>
+              <label className={styles.homePageFilterLabel}>Year:</label>
+              <select
+                className={styles.homePageFilterSelect}
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+              >
+                {years.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
             {/* Week Dropdown */}
             <div className={styles.homePageFilterGroup}>
               <label className={styles.homePageFilterLabel}>Week:</label>

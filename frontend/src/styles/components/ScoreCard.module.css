@@ -132,6 +132,14 @@
   text-decoration: underline;
 }
 
+.scoreCardTeamNameWinning {
+  color: var(--color-success);
+}
+
+.scoreCardTeamNamePredictedWinning {
+  color: var(--color-success);
+}
+
 .scoreCardScoreContainer {
   display: flex;
   flex-direction: column;
@@ -160,7 +168,7 @@
 }
 
 .scoreCardTeamScoreWinning {
-  color: #ffff;
+  color: var(--color-success);
   opacity: 1;
 }
 
@@ -173,6 +181,10 @@
   font-weight: var(--font-weight-bold);
   line-height: 1;
   color: var(--color-text-muted);
+}
+
+.scoreCardPredictedScoreWinning {
+  color: var(--color-success);
 }
 
 .scoreCardVs {

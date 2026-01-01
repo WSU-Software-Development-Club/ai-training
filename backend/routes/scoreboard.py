@@ -14,10 +14,18 @@ def get_scoreboard_by_week(week):
     Route to get scoreboard data for a specific week
     Args:
         week (int): Week number (1-16 typically)
+    Query params:
+        year (int, optional): Season year (defaults to current year)
     Returns:
         JSON response with scoreboard data or error message
     """
-    scoreboard_data = get_scoreboard_data(week)
+    # Get year from query parameter, default to current year
+    year = request.args.get('year', type=int)
+    if year is None:
+        from datetime import date
+        year = date.today().year
+    
+    scoreboard_data = get_scoreboard_data(week, year)
 
     if scoreboard_data is None:
         return jsonify({

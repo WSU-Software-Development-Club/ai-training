@@ -39,6 +39,16 @@ const ScoreCard = ({ game }) => {
   const predictedAwayScore =
     prediction?.away_score != null ? Math.round(prediction.away_score) : null;
 
+  // Determine predicted winner (if predicted scores are available)
+  const predictedHomeWins =
+    predictedHomeScore !== null &&
+    predictedAwayScore !== null &&
+    predictedHomeScore > predictedAwayScore;
+  const predictedAwayWins =
+    predictedHomeScore !== null &&
+    predictedAwayScore !== null &&
+    predictedAwayScore > predictedHomeScore;
+
   // Get over/under data
   const predictedTotal = prediction?.predicted_total ?? null;
   const overUnderLine = prediction?.betting_over_under ?? null;
@@ -142,7 +152,9 @@ const ScoreCard = ({ game }) => {
             </div>
             <div className={styles.scoreCardTeamDetails}>
               <div
-                className={styles.scoreCardTeamName}
+                className={`${styles.scoreCardTeamName} ${
+                  awayWins ? styles.scoreCardTeamNameWinning : ""
+                }`}
                 onClick={(e) => handleTeamNameClick(e, awayTeamFull)}
                 style={{ cursor: "pointer" }}
                 title={`View ${awayTeamFull} team page`}
@@ -165,7 +177,13 @@ const ScoreCard = ({ game }) => {
                 </div>
                 <div className={styles.scoreCardScoreGroup}>
                   <div className={styles.scoreCardScoreLabel}>Predicted</div>
-                  <div className={styles.scoreCardPredictedScore}>
+                  <div
+                    className={`${styles.scoreCardPredictedScore} ${
+                      predictedAwayWins
+                        ? styles.scoreCardPredictedScoreWinning
+                        : ""
+                    }`}
+                  >
                     {predictedAwayScore ?? "-"}
                   </div>
                 </div>
@@ -180,7 +198,9 @@ const ScoreCard = ({ game }) => {
           <div className={styles.scoreCardTeamInfo}>
             <div className={styles.scoreCardTeamDetails}>
               <div
-                className={styles.scoreCardTeamName}
+                className={`${styles.scoreCardTeamName} ${
+                  homeWins ? styles.scoreCardTeamNameWinning : ""
+                }`}
                 onClick={(e) => handleTeamNameClick(e, homeTeamFull)}
                 style={{ cursor: "pointer" }}
                 title={`View ${homeTeamFull} team page`}
@@ -203,7 +223,13 @@ const ScoreCard = ({ game }) => {
                 </div>
                 <div className={styles.scoreCardScoreGroup}>
                   <div className={styles.scoreCardScoreLabel}>Predicted</div>
-                  <div className={styles.scoreCardPredictedScore}>
+                  <div
+                    className={`${styles.scoreCardPredictedScore} ${
+                      predictedHomeWins
+                        ? styles.scoreCardPredictedScoreWinning
+                        : ""
+                    }`}
+                  >
                     {predictedHomeScore ?? "-"}
                   </div>
                 </div>

@@ -20,12 +20,12 @@
   --color-info: #17a2b8;
 
   /* Dark Mode Backgrounds */
-  --color-background: #1a1a1a;
-  --color-background-secondary: #242424;
-  --color-background-tertiary: #2d2d2d;
-  --color-surface: #242424;
-  --color-surface-light: #2d2d2d;
-  --color-surface-dark: #1a1a1a;
+  --color-background: #2d2d2d;
+  --color-background-secondary: #353535;
+  --color-background-tertiary: #3d3d3d;
+  --color-surface: #353535;
+  --color-surface-light: #3d3d3d;
+  --color-surface-dark: #2d2d2d;
 
   /* Dark Mode Text */
   --color-text-primary: #ffffff;
