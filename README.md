@@ -1,6 +1,6 @@
-# React Flask Web App
+# [CFB Analytics & Predictions](https://football.wsu-swdc.dev)
 
-A simple web application with a React.js frontend and Flask backend, containerized with Docker.
+A web application with a React.js frontend and Flask backend, containerized with Docker.
 
 ## Project Structure
 
