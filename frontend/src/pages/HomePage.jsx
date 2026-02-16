@@ -5,13 +5,14 @@ import { appConfig } from "../constants";
 import api from "../services/api";
 import styles from "../styles/pages/HomePage.module.css";
 import { getCurrentWeek } from "../utils/helpers";
+import { getCurrentYear } from "../utils/helpers";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const HomePage = () => {
   const [selectedConference, setSelectedConference] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeek());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(getCurrentYear());
   const [selectedDate, setSelectedDate] = useState("All");
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
