@@ -5,6 +5,7 @@
   padding: var(--spacing-md);
   transition: var(--transition-all);
   cursor: pointer;
+  overflow: hidden;
 }
 
 .scoreCard:hover {
@@ -83,6 +84,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .scoreCardTeamInfo {
@@ -108,6 +110,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+  min-width: 0;
 }
 
 .scoreCardTeamAway .scoreCardTeamDetails {
@@ -125,6 +128,8 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   transition: var(--transition-colors);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .scoreCardTeamName:hover {
@@ -268,6 +273,7 @@
 
   .scoreCardTeamInfo {
     gap: var(--spacing-xs);
+    min-width: 0;
   }
 
   .scoreCardVs {

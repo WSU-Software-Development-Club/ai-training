@@ -37,23 +37,14 @@ export const debounce = (func, wait) => {
 // Get current week
 export const getCurrentWeek = () => {
   const startDate = new Date();
-  startDate.setMonth(7); // start-end dates hardcoded in, might wanna change this later on for future season reusability
+  startDate.setMonth(7);
   startDate.setDate(23);
-
-  const endDate = new Date();
-  endDate.setMonth(11);
-  endDate.setDate(13);
 
   const currentDate = new Date();
 
-  if (currentDate.getMonth() < 7) return 1;
-  if (currentDate.getMonth() > 11) {
-    // Calculate weeks for December and beyond
-    const daysSinceStart = Math.floor(
-      (currentDate - startDate) / (1000 * 60 * 60 * 24)
-    );
-    const weeks = Math.floor(daysSinceStart / 7 + 1);
-    return weeks > 19 ? 19 : weeks;
+  if (currentDate.getMonth() < 7)
+  {
+    return 19;
   }
 
   const daysSinceStart = Math.floor(
@@ -64,3 +55,11 @@ export const getCurrentWeek = () => {
 
   return weeks > 19 ? 19 : weeks;
 };
+
+export const getCurrentYear = () => {
+  const currentDate = new Date();
+  if (currentDate.getMonth() < 7) {
+    return currentDate.getFullYear() - 1;
+  }
+  return currentDate.getFullYear();
+}
