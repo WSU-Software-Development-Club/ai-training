@@ -50,14 +50,9 @@ const ScoreCard = ({ game }) => {
     predictedAwayScore > predictedHomeScore;
 
   // Get over/under data
-  const predictedTotal = prediction?.predicted_total ?? null;
   const overUnderLine = prediction?.betting_over_under ?? null;
   const overProbability = prediction?.over_probability ?? null;
   const underProbability = prediction?.under_probability ?? null;
-
-  // Calculate actual total if scores are available
-  const actualTotal =
-    homeScore !== null && awayScore !== null ? homeScore + awayScore : null;
 
   const conference = home?.conference || away?.conference || "N/A";
   const status = game_state?.isLive
