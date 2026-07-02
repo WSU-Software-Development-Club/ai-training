@@ -1,0 +1,12 @@
+target-version = "py311"
+line-length = 120
+
+# Legacy ML scripts and vendored/build dirs are out of scope for now.
+extend-exclude = ["frontend", "ml", "**/__pycache__"]
+
+[lint]
+# Pyflakes (real errors) + a pragmatic subset of pycodestyle.
+select = ["E", "F"]
+# Relax the noisiest legacy rules: bare-except and line-length.
+# (Run `ruff format` and drop E501 from ignore to enforce width later.)
+ignore = ["E722", "E501"]

@@ -5,7 +5,7 @@
 -- Idempotent: uses IF NOT EXISTS throughout.
 
 CREATE TABLE IF NOT EXISTS predictions (
-    id                   BIGSERIAL PRIMARY KEY,
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id              BIGINT,                       -- CFBD game id
     ncaa_game_id         BIGINT UNIQUE,                -- NCAA game id (upsert conflict key)
     season               INTEGER,
@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS predictions (
     game_date            TIMESTAMPTZ,                  -- CFBD startDate (ISO 8601)
     home_team            TEXT,
     away_team            TEXT,
+    neutral_site         BOOLEAN DEFAULT FALSE,
     predicted_home_score DOUBLE PRECISION,
     predicted_away_score DOUBLE PRECISION,
     predicted_winner     TEXT,
