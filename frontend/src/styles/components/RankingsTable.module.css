@@ -53,6 +53,15 @@
   background-color: var(--color-background-secondary);
 }
 
+.rankingsTableRowClickable {
+  cursor: pointer;
+}
+
+.rankingsTableRowClickable:hover .rankingsTableTeamLink {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
 .rankingsTableRow:last-child {
   border-bottom: none;
 }
@@ -73,6 +82,19 @@
 .rankingsTableCellTeam {
   font-weight: var(--font-weight-medium);
   min-width: 150px;
+}
+
+.rankingsTableTeamLink {
+  cursor: pointer;
+  color: var(--color-text-primary);
+  transition: var(--transition-colors);
+}
+
+.rankingsTableTeamLink:hover,
+.rankingsTableTeamLink:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+  outline: none;
 }
 
 .rankingsTableCellRecord {

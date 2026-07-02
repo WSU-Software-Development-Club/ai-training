@@ -21,13 +21,17 @@ const StatsPage = () => {
 
   // Fetch stats data when category changes
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchStats = async () => {
       // Check if this category has backend support
       if (hasBackendSupport(selectedCategory)) {
         setLoading(true);
         setError(null);
         try {
-          const response = await getStats(selectedCategory);
+          const response = await getStats(selectedCategory, {
+            signal: controller.signal,
+          });
           if (response.success && response.data && response.data.data) {
             setStats(response.data.data);
           } else {
@@ -35,11 +39,15 @@ const StatsPage = () => {
             setStats([]);
           }
         } catch (err) {
+          // Cancelled because the user navigated away — not an error.
+          if (err.name === "AbortError") return;
           console.error(`Error fetching ${selectedCategory} stats:`, err);
           setError(`Error loading ${selectedCategory} statistics`);
           setStats([]);
         } finally {
-          setLoading(false);
+          if (!controller.signal.aborted) {
+            setLoading(false);
+          }
         }
       } else {
         // Use mock data for categories without backend support
@@ -50,6 +58,8 @@ const StatsPage = () => {
     };
 
     fetchStats();
+
+    return () => controller.abort();
   }, [selectedCategory]);
 
   const currentStats = stats;

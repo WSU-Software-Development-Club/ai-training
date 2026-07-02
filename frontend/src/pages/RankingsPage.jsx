@@ -16,24 +16,33 @@ const RankingsPage = () => {
   };
   
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchRanking = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const response = await api.getRankings(); // <-- use a named variable
-        console.log("API response:", response.data); /* DEBUGGING PURPOSES */
+        const response = await api.getRankings({ signal: controller.signal });
         if (response.success) {
           setRanking(response.data);
         } else {
           setError("No rankings available.");
         }
       } catch (err) {
+        // Request was cancelled because the user navigated away — not an error.
+        if (err.name === "AbortError") return;
         console.error(err);
         setError("Unable to load rankings.");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchRanking();
+
+    return () => controller.abort();
   }, []);
 
   return (

@@ -23,17 +23,20 @@
  * 
  * @example
  * normalizeName("Florida St.") // returns "florida st"
- * normalizeName("Miami (FL)") // returns "miami"
+ * normalizeName("Miami (FL)") // returns "miami fl"
+ * normalizeName("Miami (OH)") // returns "miami oh"
  */
 export function normalizeName(name) {
   if (!name) return '';
-  
+
   return name
     .trim()
     .toLowerCase()
-    .replace(/\([^)]*\)/g, '') // Remove parenthetical content like "(FL)" or "(OH)"
-    .replace(/\./g, '') // Remove periods
-    .replace(/[()]/g, '') // Remove any remaining parentheses
+    // Convert parentheses and periods to spaces. We must NOT drop the
+    // parenthetical content: the state qualifier is what distinguishes
+    // "Miami (FL)" (Hurricanes) from "Miami (OH)" (RedHawks). Removing it made
+    // both collapse to "miami" and share one logo.
+    .replace(/[().]/g, ' ')
     .replace(/\s+/g, ' ') // Normalize whitespace to single spaces
     .trim(); // Trim again after removals
 }

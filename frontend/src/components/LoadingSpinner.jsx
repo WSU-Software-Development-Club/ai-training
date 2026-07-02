@@ -1,8 +1,8 @@
 import styles from "../styles/components/LoadingSpinner.module.css";
 
-export default function LoadingSpinner() {
+export default function LoadingSpinner({ inline = false }) {
   return (
-    <div className={styles.spinnerWrapper}>
+    <div className={inline ? styles.spinnerWrapperInline : styles.spinnerWrapper}>
       <div className={styles.spinner} />
     </div>
   );

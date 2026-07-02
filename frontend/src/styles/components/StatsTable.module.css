@@ -53,6 +53,15 @@
   background-color: var(--color-background-secondary);
 }
 
+.statsTableRowClickable {
+  cursor: pointer;
+}
+
+.statsTableRowClickable:hover .statsTableTeamLink {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
 .statsTableRow:last-child {
   border-bottom: none;
 }
@@ -73,6 +82,19 @@
 .statsTableCellTeam {
   font-weight: var(--font-weight-medium);
   min-width: 150px;
+}
+
+.statsTableTeamLink {
+  cursor: pointer;
+  color: var(--color-text-primary);
+  transition: var(--transition-colors);
+}
+
+.statsTableTeamLink:hover,
+.statsTableTeamLink:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+  outline: none;
 }
 
 .statsTableEmpty {

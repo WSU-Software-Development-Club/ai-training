@@ -1,7 +1,15 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { navigateToResolvedTeam } from "../utils/teamNavigation";
 import styles from "../styles/components/StatsTable.module.css";
 
 const StatsTable = ({ stats, title, statCategory }) => {
+  const navigate = useNavigate();
+
+  const handleTeamClick = (teamName) => {
+    navigateToResolvedTeam(navigate, teamName);
+  };
+
   if (!stats || stats.length === 0) {
     return (
       <div className={styles.statsTable}>
@@ -62,10 +70,16 @@ const StatsTable = ({ stats, title, statCategory }) => {
             </tr>
           </thead>
           <tbody>
-            {stats.map((stat, index) => (
+            {stats.map((stat, index) => {
+              const teamName = stat.team || stat.Team;
+              return (
               <tr
                 key={stat.rank || stat.Rank || index}
-                className={styles.statsTableRow}
+                className={`${styles.statsTableRow} ${
+                  teamName ? styles.statsTableRowClickable : ""
+                }`}
+                onClick={teamName ? () => handleTeamClick(teamName) : undefined}
+                title={teamName ? `View ${teamName} team page` : undefined}
               >
                 <td
                   className={`${styles.statsTableCell} ${styles.statsTableCellRank}`}
@@ -75,7 +89,27 @@ const StatsTable = ({ stats, title, statCategory }) => {
                 <td
                   className={`${styles.statsTableCell} ${styles.statsTableCellTeam}`}
                 >
-                  {stat.team || stat.Team}
+                  {teamName ? (
+                    <span
+                      className={styles.statsTableTeamLink}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTeamClick(teamName);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleTeamClick(teamName);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {teamName}
+                    </span>
+                  ) : (
+                    teamName
+                  )}
                 </td>
                 {columns.map((column) => (
                   <td key={column} className={styles.statsTableCell}>
@@ -83,7 +117,8 @@ const StatsTable = ({ stats, title, statCategory }) => {
                   </td>
                 ))}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

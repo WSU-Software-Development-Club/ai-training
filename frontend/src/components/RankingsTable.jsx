@@ -1,7 +1,15 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { navigateToResolvedTeam } from "../utils/teamNavigation";
 import styles from "../styles/components/RankingsTable.module.css";
 
 const RankingsTable = ({ rankings, title = "AP Top 25" }) => {
+  const navigate = useNavigate();
+
+  const handleTeamClick = (school) => {
+    navigateToResolvedTeam(navigate, school);
+  };
+
   if (!rankings || rankings.length === 0) {
     return (
       <div className={styles.rankingsTable}>
@@ -30,7 +38,12 @@ const RankingsTable = ({ rankings, title = "AP Top 25" }) => {
           </thead>
           <tbody>
             {rankings.map((team, index) => (
-              <tr key={team.rank || index} className={styles.rankingsTableRow}>
+              <tr
+                key={team.rank || index}
+                className={`${styles.rankingsTableRow} ${styles.rankingsTableRowClickable}`}
+                onClick={() => handleTeamClick(team.SCHOOL)}
+                title={`View ${team.SCHOOL} team page`}
+              >
                 <td
                   className={`${styles.rankingsTableCell} ${styles.rankingsTableCellRank}`}
                 >
@@ -39,7 +52,23 @@ const RankingsTable = ({ rankings, title = "AP Top 25" }) => {
                 <td
                   className={`${styles.rankingsTableCell} ${styles.rankingsTableCellTeam}`}
                 >
-                  {team.SCHOOL}
+                  <span
+                    className={styles.rankingsTableTeamLink}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTeamClick(team.SCHOOL);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleTeamClick(team.SCHOOL);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    {team.SCHOOL}
+                  </span>
                 </td>
                 <td
                   className={`${styles.rankingsTableCell} ${styles.rankingsTableCellPoints}`}

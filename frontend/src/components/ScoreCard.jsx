@@ -2,8 +2,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "../styles/components/ScoreCard.module.css";
 import { navigateToTeam, navigateToComparison } from "../utils/teamNavigation";
-import TeamLogo from "./TeamLogo";
 import { useTeamBranding } from "../hooks/useTeamBranding";
+import { formatConferenceName } from "../utils/helpers";
 
 const ScoreCard = ({ game }) => {
   const navigate = useNavigate();
@@ -54,7 +54,8 @@ const ScoreCard = ({ game }) => {
   const overProbability = prediction?.over_probability ?? null;
   const underProbability = prediction?.under_probability ?? null;
 
-  const conference = home?.conference || away?.conference || "N/A";
+  const rawConference = home?.conference || away?.conference;
+  const conference = rawConference ? formatConferenceName(rawConference) : "N/A";
   const status = game_state?.isLive
     ? "Live"
     : game_state?.isFinished
@@ -108,7 +109,14 @@ const ScoreCard = ({ game }) => {
     return "";
   };
 
-  // Create card style with team colors
+  // Prefer the dark-mode logo variant for the backdrops — it's designed for
+  // dark UIs, so otherwise-dark logos (TCU, Duke, etc.) stay visible against
+  // the dark card. Fall back to the standard logo if no dark version exists.
+  const awayLogo = awayBranding?.logoDark || awayBranding?.logo;
+  const homeLogo = homeBranding?.logoDark || homeBranding?.logo;
+
+  // Create card style with team colors and logo backdrops (exposed as CSS
+  // custom properties consumed by the ::before/::after layers).
   const cardStyle = {
     borderLeft: awayBranding?.primaryColor
       ? `4px solid ${awayBranding.primaryColor}`
@@ -116,6 +124,8 @@ const ScoreCard = ({ game }) => {
     borderRight: homeBranding?.primaryColor
       ? `4px solid ${homeBranding.primaryColor}`
       : undefined,
+    "--away-logo": awayLogo ? `url("${awayLogo}")` : "none",
+    "--home-logo": homeLogo ? `url("${homeLogo}")` : "none",
   };
 
   return (
@@ -142,9 +152,6 @@ const ScoreCard = ({ game }) => {
       <div className={styles.scoreCardTeams}>
         <div className={`${styles.scoreCardTeam} ${styles.scoreCardTeamAway}`}>
           <div className={styles.scoreCardTeamInfo}>
-            <div className={styles.scoreCardTeamLogo}>
-              <TeamLogo teamName={awayTeamFull} size="medium" />
-            </div>
             <div className={styles.scoreCardTeamDetails}>
               <div
                 className={`${styles.scoreCardTeamName} ${
@@ -229,9 +236,6 @@ const ScoreCard = ({ game }) => {
                   </div>
                 </div>
               </div>
-            </div>
-            <div className={styles.scoreCardTeamLogo}>
-              <TeamLogo teamName={homeTeamFull} size="medium" />
             </div>
           </div>
         </div>

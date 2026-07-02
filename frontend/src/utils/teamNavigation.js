@@ -4,6 +4,8 @@
  * Provides helper functions for navigating to team pages
  */
 
+import { findTeamByName } from "../matching/teamMatcher";
+
 /**
  * Navigate to a team page
  *
@@ -16,6 +18,33 @@ export const navigateToTeam = (navigate, teamName) => {
   // Encode the team name for URL
   const encodedTeamName = encodeURIComponent(teamName);
   navigate(`/team/${encodedTeamName}`);
+};
+
+/**
+ * Resolve a "display" team name to a canonical team, then navigate.
+ *
+ * Some sources decorate the name with extra text the team API won't recognize,
+ * e.g. AP rankings append first-place votes ("Indiana (66)") or use short
+ * forms ("Southern Cal"). This strips trailing vote counts and runs the name
+ * through the matcher (which understands abbreviations/alternate names) so the
+ * team page loads for every team.
+ *
+ * @param {Function} navigate - React Router navigate function
+ * @param {string} rawName - The possibly-decorated team name
+ */
+export const navigateToResolvedTeam = async (navigate, rawName) => {
+  if (!rawName) return;
+
+  // Drop a trailing "(<number>)" — AP rankings' first-place vote count — but
+  // keep meaningful qualifiers like "(FL)"/"(OH)".
+  const cleaned = rawName.replace(/\s*\(\d+\)\s*$/, "").trim();
+
+  try {
+    const team = await findTeamByName(cleaned);
+    navigateToTeam(navigate, team?.school || cleaned);
+  } catch {
+    navigateToTeam(navigate, cleaned);
+  }
 };
 
 /**

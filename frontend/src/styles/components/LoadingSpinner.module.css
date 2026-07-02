@@ -5,6 +5,13 @@
   height: 60vh;
 }
 
+/* Compact variant for embedding inside cards/sections without forcing 60vh. */
+.spinnerWrapperInline {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .spinner {
   width: 60px;
   height: 60px;

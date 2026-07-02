@@ -7,6 +7,93 @@ import styles from "../styles/pages/TeamsPage.module.css";
 import LoadingSpinner from "../components/LoadingSpinner";
 import TeamLogo from "../components/TeamLogo";
 import { navigateToTeam } from "../utils/teamNavigation";
+import { formatConferenceName } from "../utils/helpers";
+
+// Parse a numeric value, defaulting to 0 for blanks/invalid input.
+const toNumber = (value) => {
+  const parsed = parseFloat(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+// Convert a "W-L" record string into a win percentage for sorting. Missing
+// records sort to the bottom (-1) so teams with data rank above blanks.
+const recordWinPct = (record) => {
+  if (!record || typeof record !== "string") return -1;
+  const [wins, losses] = record.split("-").map((n) => parseInt(n, 10) || 0);
+  const total = wins + losses;
+  return total > 0 ? wins / total : 0;
+};
+
+// Convert a streak like "W3" / "Won 2" / "L1" into a signed number so win
+// streaks sort above loss streaks.
+const streakValue = (streak) => {
+  if (!streak || typeof streak !== "string") return 0;
+  const normalized = streak.trim().toUpperCase();
+  const count = parseInt(normalized.replace(/[^0-9]/g, ""), 10) || 0;
+  if (normalized.startsWith("W")) return count;
+  if (normalized.startsWith("L")) return -count;
+  return 0;
+};
+
+// Column definitions drive both the header row and the sort behavior so the
+// two never drift out of sync.
+const TEAM_COLUMNS = [
+  { key: "name", label: "Team", type: "string", get: (t) => t.name || "" },
+  {
+    key: "record",
+    label: "Overall Record",
+    type: "number",
+    get: (t) => recordWinPct(t.record),
+  },
+  {
+    key: "conferenceRecord",
+    label: "Conf Record",
+    type: "number",
+    get: (t) => recordWinPct(t.stats?.conferenceRecord),
+  },
+  {
+    key: "pointsPerGame",
+    label: "PPG",
+    type: "number",
+    get: (t) => toNumber(t.stats?.pointsPerGame),
+  },
+  {
+    key: "pointsAllowed",
+    label: "PAPG",
+    type: "number",
+    get: (t) => toNumber(t.stats?.pointsAllowed),
+  },
+  {
+    key: "overallPF",
+    label: "PF",
+    type: "number",
+    get: (t) => toNumber(t.stats?.overallPF),
+  },
+  {
+    key: "overallPA",
+    label: "PA",
+    type: "number",
+    get: (t) => toNumber(t.stats?.overallPA),
+  },
+  {
+    key: "overallHome",
+    label: "Home",
+    type: "number",
+    get: (t) => recordWinPct(t.stats?.overallHome),
+  },
+  {
+    key: "overallAway",
+    label: "Away",
+    type: "number",
+    get: (t) => recordWinPct(t.stats?.overallAway),
+  },
+  {
+    key: "overallStreak",
+    label: "Streak",
+    type: "number",
+    get: (t) => streakValue(t.stats?.overallStreak),
+  },
+];
 
 const TeamsPage = () => {
   const navigate = useNavigate();
@@ -14,6 +101,39 @@ const TeamsPage = () => {
   const [teams, setTeams] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  // Toggle direction when re-clicking the active column; otherwise select the
+  // new column with a sensible default (A→Z for text, highest-first for stats).
+  const handleSort = (key) => {
+    const column = TEAM_COLUMNS.find((c) => c.key === key);
+    if (!column) return;
+
+    if (sortColumn === key) {
+      setSortDirection((dir) => (dir === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(key);
+      setSortDirection(column.type === "string" ? "asc" : "desc");
+    }
+  };
+
+  // Return a sorted copy of a conference's teams based on the active column.
+  const sortTeams = (teamsToSort) => {
+    if (!sortColumn) return teamsToSort;
+    const column = TEAM_COLUMNS.find((c) => c.key === sortColumn);
+    if (!column) return teamsToSort;
+
+    return [...teamsToSort].sort((a, b) => {
+      const aValue = column.get(a);
+      const bValue = column.get(b);
+      const comparison =
+        column.type === "string"
+          ? String(aValue).localeCompare(String(bValue))
+          : aValue - bValue;
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  };
 
   const handleSearch = (searchTerm) => {
     // MOCK FUNCTIONALITY - Replace with actual search API call
@@ -44,43 +164,14 @@ const TeamsPage = () => {
     fetchTeams();
   }, []);
 
-  if (loading) {
-    return (
-      <div className={styles.teamsPage}>
-        <Header title={appConfig.name} onSearch={handleSearch} />
-        <main className={styles.teamsPageMain}>
-           <div className={styles.teamsPageContainer}>
-              <div className={styles.teamsPageHeader}>
-                <h1 className={styles.teamsPageTitle}>College Football Teams</h1>
-                <p className={styles.teamsPageSubtitle}>
-                Browse all FBS college football teams
-                </p>
-              </div>
-              <div className={styles.loadingContainer}>
-                <LoadingSpinner />
-              </div>
-            </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.teamsPage}>
-        <Header title={appConfig.name} onSearch={handleSearch} />
-        <main className={styles.teamsPageMain}>
-          <div className={styles.errorContainer}>
-            <p>{error}</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  // Loaded team list. Empty while the request is in flight — deriving from
+  // this (instead of early-returning) keeps the conference filter mounted so
+  // it never disappears during loading.
+  const teamList = teams ?? [];
 
   // Extract unique conferences from teams
   const conferenceSet = new Set(
-    teams.map((team) => team.conference).filter(Boolean)
+    teamList.map((team) => team.conference).filter(Boolean)
   );
 
   const conferences = [
@@ -89,12 +180,12 @@ const TeamsPage = () => {
       .sort()
       .map((conf) => ({
         value: conf,
-        label: conf.charAt(0).toUpperCase() + conf.slice(1),
+        label: formatConferenceName(conf),
       })),
   ];
 
   // Filter teams based on selected conference
-  const filteredTeams = teams.filter((team) => {
+  const filteredTeams = teamList.filter((team) => {
     const conferenceMatch =
       selectedConference === "All" ||
       (team.conference &&
@@ -122,6 +213,7 @@ const TeamsPage = () => {
                 className={styles.teamsPageFilterSelect}
                 value={selectedConference}
                 onChange={(e) => setSelectedConference(e.target.value)}
+                disabled={loading}
               >
                 {conferences.map((conference) => (
                   <option key={conference.value} value={conference.value}>
@@ -133,15 +225,27 @@ const TeamsPage = () => {
           </div>
 
           <section className={styles.teamsPageSection}>
-            {error && <p className="error">{error}</p>}
+            {loading && (
+              <div className={styles.loadingContainer}>
+                <LoadingSpinner />
+              </div>
+            )}
 
-            {filteredTeams.length === 0 && (
+            {!loading && error && (
+              <div className={styles.errorContainer}>
+                <p>{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && filteredTeams.length === 0 && (
               <div className={styles.teamsPageNoResults}>
                 <p>No teams found matching your filters.</p>
               </div>
             )}
 
-            {filteredTeams.length > 0 &&
+            {!loading &&
+              !error &&
+              filteredTeams.length > 0 &&
               Object.entries(
                 filteredTeams.reduce((groups, team) => {
                   const conf = team.conference || "Independent";
@@ -159,40 +263,43 @@ const TeamsPage = () => {
                     className={styles.teamsPageConferenceGroup}
                   >
                     <h2 className={styles.teamsPageConferenceHeading}>
-                      {conference.charAt(0).toUpperCase() + conference.slice(1)}
+                      {formatConferenceName(conference)}
                     </h2>
                     <div className={styles.teamsPageTableContainer}>
                       <table className={styles.teamsPageTable}>
                         <thead>
                           <tr>
-                            <th className={styles.teamsPageTableHeader}>
-                              Team
-                            </th>
-                            <th className={styles.teamsPageTableHeader}>
-                              Overall Record
-                            </th>
-                            <th className={styles.teamsPageTableHeader}>
-                              Conf Record
-                            </th>
-                            <th className={styles.teamsPageTableHeader}>PPG</th>
-                            <th className={styles.teamsPageTableHeader}>
-                              PAPG
-                            </th>
-                            <th className={styles.teamsPageTableHeader}>PF</th>
-                            <th className={styles.teamsPageTableHeader}>PA</th>
-                            <th className={styles.teamsPageTableHeader}>
-                              Home
-                            </th>
-                            <th className={styles.teamsPageTableHeader}>
-                              Away
-                            </th>
-                            <th className={styles.teamsPageTableHeader}>
-                              Streak
-                            </th>
+                            {TEAM_COLUMNS.map((column) => {
+                              const isActive = sortColumn === column.key;
+                              return (
+                                <th
+                                  key={column.key}
+                                  className={`${styles.teamsPageTableHeader} ${styles.teamsPageTableHeaderSortable}`}
+                                  onClick={() => handleSort(column.key)}
+                                  aria-sort={
+                                    isActive
+                                      ? sortDirection === "asc"
+                                        ? "ascending"
+                                        : "descending"
+                                      : "none"
+                                  }
+                                  title={`Sort by ${column.label}`}
+                                >
+                                  {column.label}
+                                  <span className={styles.teamsPageSortIndicator}>
+                                    {isActive
+                                      ? sortDirection === "asc"
+                                        ? "▲"
+                                        : "▼"
+                                      : ""}
+                                  </span>
+                                </th>
+                              );
+                            })}
                           </tr>
                         </thead>
                         <tbody>
-                          {teams.map((team) => (
+                          {sortTeams(teams).map((team) => (
                             <tr
                               key={team.id}
                               className={styles.teamsPageTableRow}
@@ -223,7 +330,7 @@ const TeamsPage = () => {
                                     <span
                                       className={styles.teamsPageTeamConference}
                                     >
-                                      {team.conference}
+                                      {formatConferenceName(team.conference)}
                                     </span>
                                   </div>
                                 </div>
