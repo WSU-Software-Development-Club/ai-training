@@ -69,7 +69,7 @@
 
 .rankingsTableCellRank {
   font-weight: var(--font-weight-bold);
-  color: var(--color-primary);
+  color: var(--color-text-primary);
   text-align: center;
   width: 60px;
 }
@@ -111,6 +111,12 @@
   width: 80px;
 }
 
+.rankingsTableCellPrevious {
+  text-align: center;
+  font-weight: var(--font-weight-medium);
+  width: 80px;
+}
+
 .rankingsTableEmpty {
   text-align: center;
   color: var(--color-text-muted);
@@ -128,23 +134,48 @@
     font-size: var(--font-size-lg);
   }
 
+  /* Force the table to the container width and wrap, instead of expanding to
+     its natural width inside the scroll container (which pushed the rightmost
+     "Previous" column off-screen). Fixed layout takes column widths from this
+     first (header) row, so the width classes are also applied to the <th>s. */
+  .rankingsTableTable {
+    table-layout: fixed;
+    width: 100%;
+  }
+
   .rankingsTableHeader,
   .rankingsTableCell {
-    padding: var(--spacing-sm);
-    font-size: var(--font-size-xs);
+    padding: var(--spacing-sm) var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    letter-spacing: 0;
+  }
+
+  .rankingsTableHeader {
+    white-space: nowrap;
+  }
+
+  /* Points is the least useful column on a phone — hide it so the remaining
+     four columns can split the width evenly. */
+  .rankingsTableCellPoints {
+    display: none;
+  }
+
+  /* Give the four visible columns an equal share of the row width. */
+  .rankingsTableCellRank,
+  .rankingsTableCellTeam,
+  .rankingsTableCellRecord,
+  .rankingsTableCellPrevious {
+    width: 25%;
+    text-align: center;
   }
 
   .rankingsTableCellTeam {
-    min-width: 120px;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .rankingsTableCellConference {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .rankingsTableCellPoints {
     display: none;
   }
 }

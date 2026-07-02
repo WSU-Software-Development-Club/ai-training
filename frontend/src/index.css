@@ -34,6 +34,7 @@
   --color-text-muted: #a7a8aa;
 
   /* Spacing */
+  --spacing-xxs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
@@ -53,6 +54,7 @@
   --border-radius-xl: 12px;
 
   /* Font sizes */
+  --font-size-xxs: 10px;
   --font-size-xs: 12px;
   --font-size-sm: 14px;
   --font-size-md: 16px;
@@ -133,7 +135,10 @@
 }
 
 /* Reserve space for the vertical scrollbar so content doesn't shift
-   horizontally when navigating between short and tall pages. */
+   horizontally when navigating between short and tall pages. Only the end
+   (right) edge is reserved — that's where the scrollbar lives — so full-width
+   elements like the header still stretch flush to the left edge without a
+   tacky empty gutter strip on the side. */
 html {
   scrollbar-gutter: stable;
   overflow-y: scroll;

@@ -16,8 +16,15 @@ const NAV_ITEMS = [
   { to: "/comparison", label: "Team Comparison" },
 ];
 
+// The Header (and this Navigation) remounts on every route change because each
+// page renders its own <Header>. Persist the horizontal scroll position of the
+// tab row at module scope so it can be restored on remount — otherwise the
+// scrollable tab bar snaps back to the start on every navigation.
+let savedTabsScrollLeft = 0;
+
 const Navigation = () => {
   const location = useLocation();
+  const tabsRef = useRef(null);
   const tabRefs = useRef([]);
   const [indicator, setIndicator] = useState({
     left: 0,
@@ -48,6 +55,19 @@ const Navigation = () => {
     updateIndicator();
   }, [updateIndicator]);
 
+  // Restore the tab row's horizontal scroll position on mount (before paint)
+  // so navigating between pages never makes the bar jump.
+  useLayoutEffect(() => {
+    const el = tabsRef.current;
+    if (el) {
+      el.scrollLeft = savedTabsScrollLeft;
+    }
+  }, []);
+
+  const handleTabsScroll = (e) => {
+    savedTabsScrollLeft = e.currentTarget.scrollLeft;
+  };
+
   useEffect(() => {
     const id = requestAnimationFrame(() => setAnimate(true));
     return () => cancelAnimationFrame(id);
@@ -66,7 +86,11 @@ const Navigation = () => {
   return (
     <nav className={styles.navigation}>
       <div className={styles.navigationContainer}>
-        <div className={styles.navigationTabs}>
+        <div
+          className={styles.navigationTabs}
+          ref={tabsRef}
+          onScroll={handleTabsScroll}
+        >
           {NAV_ITEMS.map((item, index) => (
             <Link
               key={item.to}
