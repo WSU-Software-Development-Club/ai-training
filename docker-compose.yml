@@ -10,7 +10,7 @@ services:
       - FLASK_DEBUG=True
       - FLASK_RUN_HOST=0.0.0.0
       - FLASK_RUN_PORT=5000
-      - CORS_ORIGINS=http://localhost:${FRONTEND_PORT:-3000},http://127.0.0.1:${FRONTEND_PORT:-3000}
+      - CORS_ORIGINS=https://football.wsu-swdc.dev,http://localhost:${FRONTEND_PORT:-3000},http://127.0.0.1:${FRONTEND_PORT:-3000}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-aitraining}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aitraining}
     volumes:
       - ./backend:/app
