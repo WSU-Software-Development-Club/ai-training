@@ -1,7 +1,8 @@
 .scoreCard {
   background-color: var(--color-surface);
-  border: 1px solid var(--color-secondary);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
   padding: var(--spacing-md);
   transition: var(--transition-all);
   cursor: pointer;
@@ -45,8 +46,10 @@
   background-position: bottom right;
 }
 
+/* Lift + deepen the shadow on hover. Note we deliberately do NOT override
+   border-color here — the left/right borders are set per-team (inline) to the
+   teams' brand colors, and changing border-color would clobber them. */
 .scoreCard:hover {
-  border-color: var(--color-primary);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
@@ -65,10 +68,10 @@
 }
 
 .scoreCardStatus {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-xxs);
   font-weight: var(--font-weight-bold);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--radius-pill);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -195,13 +198,12 @@
 .scoreCardScoreLabel {
   font-size: var(--font-size-xxs);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.3px;
 }
 
 .scoreCardTeamScore {
-  color: #ffff;
+  color: var(--color-text-primary);
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   line-height: 1;
@@ -216,15 +218,17 @@
   opacity: 0.6;
 }
 
+/* Predicted (model) numbers are tinted cyan so they read as "the model's
+   pick" and never get confused with the real, white score above them. */
 .scoreCardPredictedScore {
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   line-height: 1;
-  color: var(--color-text-primary);
+  color: var(--color-highlight);
 }
 
 .scoreCardPredictedScoreWinning {
-  color: var(--color-success);
+  color: var(--color-highlight);
 }
 
 .scoreCardVs {
@@ -243,7 +247,7 @@
 .scoreCardOverUnder {
   margin-top: var(--spacing-md);
   padding-top: var(--spacing-md);
-  border-top: 1px solid var(--color-secondary);
+  border-top: 1px solid var(--color-border);
 }
 
 .scoreCardOverUnderContent {
@@ -264,9 +268,8 @@
 .scoreCardOverUnderLabel {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.3px;
 }
 
 .scoreCardOverUnderValue {

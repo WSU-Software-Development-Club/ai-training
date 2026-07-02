@@ -1,7 +1,8 @@
 .teamCard {
   background-color: var(--color-surface);
-  border: 1px solid var(--color-secondary);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
   padding: var(--spacing-md);
   transition: var(--transition-all);
   cursor: pointer;
@@ -11,7 +12,7 @@
 }
 
 .teamCard:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }

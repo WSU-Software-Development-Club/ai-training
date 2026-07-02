@@ -30,6 +30,27 @@ function RoutePrefetcher() {
   return null;
 }
 
+// Wraps the routed page in a container keyed by pathname, so each navigation
+// remounts it and replays a short fade-in (see `.pageFade` in index.css).
+// Keyed on pathname only, so in-page state changes (filters, week) don't fade.
+function AnimatedRoutes() {
+  const location = useLocation();
+
+  return (
+    <div key={location.pathname} className="pageFade">
+      <Routes location={location}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/rankings" element={<RankingsPage />} />
+        <Route path="/stats" element={<StatsPage />} />
+        <Route path="/teams" element={<TeamsPage />} />
+        <Route path="/comparison" element={<ComparisonPage />} />
+        <Route path="/prediction" element={<PredictionPage />} />
+        <Route path="/team/:teamName" element={<TeamPage />} />
+      </Routes>
+    </div>
+  );
+}
+
 function App() {
   // Preload team branding data on app initialization
   useEffect(() => {
@@ -45,15 +66,7 @@ function App() {
     <Router>
       <RoutePrefetcher />
       <div className="app">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/rankings" element={<RankingsPage />} />
-          <Route path="/stats" element={<StatsPage />} />
-          <Route path="/teams" element={<TeamsPage />} />
-          <Route path="/comparison" element={<ComparisonPage />} />
-          <Route path="/prediction" element={<PredictionPage />} />
-          <Route path="/team/:teamName" element={<TeamPage />} />
-        </Routes>
+        <AnimatedRoutes />
       </div>
     </Router>
   );
