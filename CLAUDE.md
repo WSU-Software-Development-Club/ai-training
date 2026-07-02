@@ -50,8 +50,9 @@ used — see §5 and the tech-debt note in §7.)
 │   │   ├── models/          # Trained XGBoost artifacts + metrics/feature importance
 │   │   └── results/
 │   └── training_data/       # collect_data.py + training_data.csv
-├── db/                      # schema.sql (Postgres) + migration runbook (README.md)
-├── .github/workflows/weekly_predictions.yml  # Tue 09:00 UTC cron → Postgres (over Tailscale)
+├── db/                      # schema.sql — Postgres predictions schema (auto-loaded on init)
+├── .github/workflows/       # ci.yml (lint+test), deploy.yml (push→troyster), weekly_predictions.yml
+├── ruff.toml                # lint config (backend; ml excluded for now)
 ├── docker-compose.yml       # Base compose (see gotcha #4)
 ├── docker-compose.dev.yml   # Dev compose with hot reload (preferred)
 └── *_guide.md               # backend/frontend/github/testing guides (onboarding docs)
@@ -115,12 +116,17 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
 - **Database → Postgres container** on troyster (`postgres:16`, `db` compose service, `pgdata`
   volume; schema auto-initialized from `db/schema.sql`). The backend reaches it at `db:5432` via
   `DATABASE_URL`. Not exposed through the Cloudflare Tunnel — reachable over Tailscale/LAN only.
-- **ML → GitHub Actions** (`weekly_predictions.yml`): still active. Runs
-  `ml/m1/predict_upcoming.py` on a **GitHub-hosted `ubuntu-latest` runner** (not on troyster)
-  every Tuesday 09:00 UTC (plus manual `workflow_dispatch`). The runner joins the tailnet via
-  `tailscale/github-action` and writes predictions (upsert on `ncaa_game_id`) to the **troyster
-  Postgres over Tailscale**. The API reads them back. Secrets: `CFBD_API_KEY`, `DATABASE_URL`,
-  `TS_AUTHKEY`.
+- **CI/CD → GitHub Actions.** Three workflows in `.github/workflows/`:
+  - `ci.yml` — on PRs and push to `main`: `lint` (ruff, backend only — see `ruff.toml`) and
+    `test` (pytest against a `postgres:16` service container, schema loaded from `db/schema.sql`).
+  - `deploy.yml` — on push to `main`: joins the tailnet (Tailscale auth key, `tag:ci`), SSHes to
+    troyster with `DEPLOY_KEY`, then `git pull` + `docker compose up -d --build backend`.
+    Serialized via a `concurrency` group; `db`/`pgdata` are left running.
+  - `weekly_predictions.yml` — Tue 09:00 UTC (+ manual): joins the tailnet (auth key) and runs
+    `ml/m1/predict_upcoming.py` on a **GitHub-hosted runner**, writing predictions (upsert on
+    `ncaa_game_id`) to the **troyster Postgres over Tailscale**. The API reads them back.
+- **GitHub Actions secrets:** `TS_AUTHKEY` (ephemeral, tagged `tag:ci`), `DEPLOY_KEY` (SSH),
+  `DATABASE_URL`, `CFBD_API_KEY`.
 
 ## 6. Conventions
 - **Routes:** one Blueprint per file in `backend/routes/`, each with a `url_prefix`
@@ -163,14 +169,15 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
 6. **CRA + react-router-dom 7:** router v7 in a `react-scripts` 5 app; watch for version-specific
    API differences when adding routes.
 7. **Weekly job needs Tailscale:** the GitHub-hosted runner reaches troyster Postgres only after
-   `tailscale/github-action` joins the tailnet. If `TS_AUTHKEY` expires or the ACL `tag:ci` loses
+   `tailscale/github-action` joins the tailnet (auth key, `tag:ci`). If `TS_AUTHKEY` expires
+   or the ACL `tag:ci` loses
    access to `tcp:5432`, the save fails and the job falls back to writing a local JSON artifact.
 
 ## 8. Do-not-touch list
 - **`/.env`, `backend/.env`** and any real env values — contain the Postgres password / `DATABASE_URL`. They are
   gitignored (not tracked); never commit them or paste values into code/docs. Edit
   `*env.example` files instead.
-- **GitHub Actions secrets** (`CFBD_API_KEY`, `DATABASE_URL`, `TS_AUTHKEY`) — configured in
+- **GitHub Actions secrets** (`CFBD_API_KEY`, `DATABASE_URL`, `TS_AUTHKEY`, `DEPLOY_KEY`) — configured in
   the repo settings, not in code.
 - **`ml/m1/models/`** — committed trained model artifacts (`*_model.json`, metrics,
   feature-importance, `optimized_params.json`). Regenerate via `train_model.py`; don't hand-edit.

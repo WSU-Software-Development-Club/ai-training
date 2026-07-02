@@ -42,8 +42,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r ml/requirements.txt
 
-      # Join the tailnet so the runner can reach Postgres on troyster (192.168.1.126).
-      # Postgres is not publicly exposed; TS_AUTHKEY is an ephemeral, tagged auth key.
+      # Join the tailnet so the runner can reach Postgres on troyster.
+      # Postgres is not publicly exposed; auth via a tagged ephemeral auth key (tag:ci).
       - name: Connect to Tailscale
         uses: tailscale/github-action@v2
         with:
