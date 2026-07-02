@@ -35,6 +35,16 @@ const StatsTable = ({ stats, title, statCategory }) => {
       key !== "rank" && key !== "Rank" && key !== "team" && key !== "Team"
   );
 
+  // Sort by rank ascending. The API returns rows in an inconsistent order, and
+  // unranked rows (rank "-", blank) get scattered throughout — push those to
+  // the bottom so the table reads 1, 2, 3, … with the blanks last. Sort is
+  // stable, so tied ranks keep their original relative order.
+  const rankOf = (stat) => {
+    const parsed = parseInt(stat.rank ?? stat.Rank, 10);
+    return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+  };
+  const sortedStats = [...stats].sort((a, b) => rankOf(a) - rankOf(b));
+
   // Helper function to format column header, handling <br/> tags
   const formatColumnHeader = (columnName) => {
     // Check if column name contains <br/> tags
@@ -70,11 +80,11 @@ const StatsTable = ({ stats, title, statCategory }) => {
             </tr>
           </thead>
           <tbody>
-            {stats.map((stat, index) => {
+            {sortedStats.map((stat, index) => {
               const teamName = stat.team || stat.Team;
               return (
               <tr
-                key={stat.rank || stat.Rank || index}
+                key={`${teamName || "team"}-${index}`}
                 className={`${styles.statsTableRow} ${
                   teamName ? styles.statsTableRowClickable : ""
                 }`}

@@ -1,39 +1,57 @@
-/* CSS Variables - WSU Crimson Dark Mode Theme */
+/* CSS Variables — "Electric Night" dark analytics theme.
+   Single source of truth for the whole app. Layered near-black surfaces,
+   an electric indigo accent, cyan highlights, hairline borders, and real
+   elevation. Component CSS references these tokens by name, so re-theming
+   happens here. (The JS token files in src/constants/ are legacy/unused.) */
 :root {
-  /* WSU Brand Colors */
-  --color-primary: #981e32; /* WSU Crimson */
-  --color-primary-light: #b83a4f;
-  --color-primary-dark: #7a1a28;
-  --color-secondary: #5e6a71; /* WSU Gray */
-  --color-secondary-light: #a7a8aa; /* WSU Light Gray */
-  --color-secondary-dark: #3d4449;
+  /* Brand / accent — electric indigo is the primary interactive color
+     (active nav, links, meters, focus). Cyan is the data highlight. */
+  --color-primary: #f43f5e; /* electric crimson accent */
+  --color-primary-light: #ff6b81;
+  --color-primary-dark: #d81e42;
+  --color-accent: #f43f5e;
+  --color-accent-soft: rgba(244, 63, 94, 0.14); /* tinted hover / focus glow */
+  --color-highlight: #22d3ee; /* cyan — model/prediction data, positive deltas */
+  --color-highlight-soft: rgba(34, 211, 238, 0.14);
 
-  /* Dark Mode Colors */
+  /* "Secondary" is now the neutral edge/chip tone (was WSU gray). Kept under
+     the old name so existing components pick up the new value automatically. */
+  --color-secondary: #2a313c;
+  --color-secondary-light: #8a93a0;
+  --color-secondary-dark: #1a1f27;
+
+  /* Hairline borders — the modern alternative to heavy gray boxes. */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+
+  /* Neutrals */
   --color-white: #ffffff;
   --color-black: #000000;
-  --color-gray: #5e6a71;
-  --color-light-gray: #a7a8aa;
-  --color-dark-gray: #2d2d2d;
-  --color-success: #28a745;
-  --color-warning: #ffc107;
-  --color-error: #dc3545;
-  --color-info: #17a2b8;
+  --color-gray: #2a313c;
+  --color-light-gray: #272d36;
+  --color-dark-gray: #0b0d12;
 
-  /* Dark Mode Backgrounds */
-  --color-background: #2d2d2d;
-  --color-background-secondary: #353535;
-  --color-background-tertiary: #3d3d3d;
-  --color-surface: #353535;
-  --color-surface-light: #3d3d3d;
-  --color-surface-dark: #2d2d2d;
+  /* Status — retuned to sit on a near-black canvas (was Bootstrap defaults). */
+  --color-success: #3ec16f;
+  --color-warning: #f5b642;
+  --color-error: #ff5a5f;
+  --color-info: #4aa3ff;
 
-  /* Dark Mode Text */
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #e0e0e0;
+  /* Backgrounds — a real canvas → surface → elevated ramp with visible steps. */
+  --color-background: #0b0d12; /* app canvas */
+  --color-background-secondary: #1f242c; /* elevated: nav, table header, chips, hover */
+  --color-background-tertiary: #272d36;
+  --color-surface: #14171f; /* cards / panels */
+  --color-surface-light: #1f242c;
+  --color-surface-dark: #0b0d12;
+
+  /* Text ramp (all AA on the surfaces above) */
+  --color-text-primary: #f4f6fb;
+  --color-text-secondary: #b7bec8;
   --color-text-light: #ffffff;
-  --color-text-muted: #a7a8aa;
+  --color-text-muted: #828b96;
 
-  /* Spacing */
+  /* Spacing (4/8 rhythm; strays snapped back onto the scale) */
   --spacing-xxs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -42,16 +60,17 @@
   --spacing-xl: 32px;
   --spacing-xxl: 48px;
   --spacing-xxxl: 64px;
-  --spacing-header-padding: 20px;
-  --spacing-section-padding: 40px;
-  --spacing-card-padding: 16px;
+  --spacing-header-padding: 24px;
+  --spacing-section-padding: 48px;
+  --spacing-card-padding: 20px;
   --spacing-button-padding: 12px 24px;
 
-  /* Border radius */
-  --border-radius: 4px;
-  --border-radius-sm: 2px;
-  --border-radius-lg: 8px;
-  --border-radius-xl: 12px;
+  /* Border radius — softer, less boxy */
+  --border-radius: 8px;
+  --border-radius-sm: 6px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --radius-pill: 999px;
 
   /* Font sizes */
   --font-size-xxs: 10px;
@@ -59,9 +78,9 @@
   --font-size-sm: 14px;
   --font-size-md: 16px;
   --font-size-lg: 18px;
-  --font-size-xl: 24px;
-  --font-size-xxl: 32px;
-  --font-size-xxxl: 48px;
+  --font-size-xl: 22px;
+  --font-size-xxl: 30px;
+  --font-size-xxxl: 44px;
 
   /* Line heights */
   --line-height-tight: 1.2;
@@ -69,8 +88,8 @@
   --line-height-relaxed: 1.75;
 
   /* Font families */
-  --font-family-display: "Kanit", "Oswald", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-family-display: "Kanit", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
 
   /* Font weights */
   --font-weight-light: 300;
@@ -79,18 +98,19 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  /* Shadows */
+  /* Shadows — deepened for a dark UI so cards actually read as elevated. */
   --shadow-none: none;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-base: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-xxl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-base: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.45),
+    0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 40px -8px rgba(0, 0, 0, 0.55);
+  --shadow-xxl: 0 28px 56px -12px rgba(0, 0, 0, 0.6);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.25);
+
+  /* Focus ring — one shared token, applied to every interactive element. */
+  --focus-ring: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-accent);
 
   /* Transitions */
   /* Shared easing curve for buttery-smooth, consistent motion across the app.
@@ -122,6 +142,33 @@
   box-sizing: border-box;
 }
 
+/* One shared keyboard-focus treatment for every interactive element. Only
+   triggers for keyboard users (not mouse clicks), so it never clutters the UI
+   but always gives keyboard/AT users a clear, on-brand ring. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--border-radius-sm);
+}
+
+/* Smooth fade-in on each route change. The wrapper is keyed by pathname
+   (see AnimatedRoutes in App.jsx), so it replays on every navigation. Opacity
+   only — no transform — so the sticky header doesn't shift during the fade. */
+.pageFade {
+  animation: pageFadeIn 0.2s var(--ease-smooth);
+}
+
+@keyframes pageFadeIn {
+  from {
+    /* Start mostly-visible, not fully transparent, so navigation reads as a
+       gentle settle rather than a blank-frame "blink". */
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Respect users who prefer reduced motion — keep the UI functional but calm. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -149,6 +196,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
+  font-size: var(--font-size-md);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--color-background);

@@ -23,7 +23,7 @@
 
 .searchBarContainer:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(152, 30, 50, 0.2);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 
 .searchBarIcon {
@@ -53,6 +53,13 @@
 
 .searchBarInput:focus {
   outline: none;
+}
+
+/* The container's :focus-within glow is the focus indicator here, so suppress
+   the app-wide :focus-visible ring on the input itself — otherwise it draws a
+   second rectangle *inside* the search box. */
+.searchBarInput:focus-visible {
+  box-shadow: none;
 }
 
 /* Suggestions dropdown */
@@ -86,7 +93,7 @@
 
 .suggestionItem:hover,
 .suggestionItemSelected {
-  background-color: var(--color-primary-light, rgba(152, 30, 50, 0.1));
+  background-color: var(--color-accent-soft);
 }
 
 .suggestionLogo {

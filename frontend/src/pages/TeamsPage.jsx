@@ -101,27 +101,44 @@ const TeamsPage = () => {
   const [teams, setTeams] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sortColumn, setSortColumn] = useState(null);
-  const [sortDirection, setSortDirection] = useState("asc");
+  // Sort state is per-conference (keyed by conference name) so each table
+  // sorts independently — clicking a header in one conference must not reorder
+  // the others. Shape: { [conference]: { column, direction } }.
+  const [sortState, setSortState] = useState({});
 
-  // Toggle direction when re-clicking the active column; otherwise select the
-  // new column with a sensible default (A→Z for text, highest-first for stats).
-  const handleSort = (key) => {
+  // Toggle direction when re-clicking that conference's active column; otherwise
+  // select the new column with a sensible default (A→Z text, highest-first stats).
+  const handleSort = (conference, key) => {
     const column = TEAM_COLUMNS.find((c) => c.key === key);
     if (!column) return;
 
-    if (sortColumn === key) {
-      setSortDirection((dir) => (dir === "asc" ? "desc" : "asc"));
-    } else {
-      setSortColumn(key);
-      setSortDirection(column.type === "string" ? "asc" : "desc");
-    }
+    setSortState((prev) => {
+      const current = prev[conference];
+      if (current && current.column === key) {
+        return {
+          ...prev,
+          [conference]: {
+            column: key,
+            direction: current.direction === "asc" ? "desc" : "asc",
+          },
+        };
+      }
+      return {
+        ...prev,
+        [conference]: {
+          column: key,
+          direction: column.type === "string" ? "asc" : "desc",
+        },
+      };
+    });
   };
 
-  // Return a sorted copy of a conference's teams based on the active column.
-  const sortTeams = (teamsToSort) => {
-    if (!sortColumn) return teamsToSort;
-    const column = TEAM_COLUMNS.find((c) => c.key === sortColumn);
+  // Return a sorted copy of one conference's teams based on that conference's
+  // active column.
+  const sortTeams = (teamsToSort, conference) => {
+    const state = sortState[conference];
+    if (!state || !state.column) return teamsToSort;
+    const column = TEAM_COLUMNS.find((c) => c.key === state.column);
     if (!column) return teamsToSort;
 
     return [...teamsToSort].sort((a, b) => {
@@ -131,7 +148,7 @@ const TeamsPage = () => {
         column.type === "string"
           ? String(aValue).localeCompare(String(bValue))
           : aValue - bValue;
-      return sortDirection === "asc" ? comparison : -comparison;
+      return state.direction === "asc" ? comparison : -comparison;
     });
   };
 
@@ -270,15 +287,18 @@ const TeamsPage = () => {
                         <thead>
                           <tr>
                             {TEAM_COLUMNS.map((column) => {
-                              const isActive = sortColumn === column.key;
+                              const state = sortState[conference];
+                              const isActive = state?.column === column.key;
                               return (
                                 <th
                                   key={column.key}
                                   className={`${styles.teamsPageTableHeader} ${styles.teamsPageTableHeaderSortable}`}
-                                  onClick={() => handleSort(column.key)}
+                                  onClick={() =>
+                                    handleSort(conference, column.key)
+                                  }
                                   aria-sort={
                                     isActive
-                                      ? sortDirection === "asc"
+                                      ? state.direction === "asc"
                                         ? "ascending"
                                         : "descending"
                                       : "none"
@@ -288,7 +308,7 @@ const TeamsPage = () => {
                                   {column.label}
                                   <span className={styles.teamsPageSortIndicator}>
                                     {isActive
-                                      ? sortDirection === "asc"
+                                      ? state.direction === "asc"
                                         ? "▲"
                                         : "▼"
                                       : ""}
@@ -299,7 +319,7 @@ const TeamsPage = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {sortTeams(teams).map((team) => (
+                          {sortTeams(teams, conference).map((team) => (
                             <tr
                               key={team.id}
                               className={styles.teamsPageTableRow}

@@ -1,7 +1,8 @@
 .statsTable {
   background-color: var(--color-surface);
-  border: 1px solid var(--color-secondary);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
   padding: var(--spacing-lg);
   margin-bottom: var(--spacing-lg);
 }
@@ -11,7 +12,7 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin: 0 0 var(--spacing-lg) 0;
-  text-align: center;
+  text-align: left;
 }
 
 .statsTableContainer {
@@ -37,20 +38,24 @@
 }
 
 .statsTableRow {
-  border-bottom: 1px solid var(--color-secondary);
+  border-bottom: 1px solid var(--color-border);
   transition: var(--transition-colors);
 }
 
-.statsTableRow:nth-child(even) {
-  background-color: var(--color-background);
-}
-
+/* Subtle zebra that reads correctly regardless of the panel color: odd rows
+   inherit the panel surface, even rows get a faint lift. (Using the near-black
+   canvas here made every other row a harsh dark bar.) */
 .statsTableRow:nth-child(odd) {
-  background-color: var(--color-surface);
+  background-color: transparent;
 }
 
+.statsTableRow:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Accent-tinted hover, distinct from both zebra shades (was a no-op before). */
 .statsTableRow:hover {
-  background-color: var(--color-background-secondary);
+  background-color: var(--color-accent-soft);
 }
 
 .statsTableRowClickable {

@@ -29,29 +29,43 @@
   background-color: var(--color-primary);
   border-radius: 1px;
   pointer-events: none;
+  z-index: 2;
+}
+
+/* Sliding background pill that glides behind the active tab, sharing the exact
+   position/width the JS feeds the underline so the two move as one. Sits below
+   the tab text (z-index 0 vs the tabs' z-index 1). */
+.navigationHighlight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .navigationTab {
   text-decoration: none;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--border-radius);
   transition: var(--transition-colors);
   position: relative;
+  z-index: 1;
 }
 
 .navigationTab:hover {
   color: var(--color-text-primary);
-  background-color: var(--color-surface);
 }
 
+/* Active tab is coloured; its background is the sliding pill above, not a
+   per-tab fill (which would snap instantly and fight the glide). */
 .navigationTabActive {
   color: var(--color-text-primary);
-  background-color: var(--color-surface);
 }
 
 /* Responsive adjustments */
@@ -84,6 +98,17 @@
      always locked under that tab no matter where the row is scrolled. */
   .navigationIndicator {
     display: none;
+  }
+
+  /* The sliding pill/underline are JS-measured and don't play well with the
+     horizontally-scrolling mobile tab row, so drop the pill and give the active
+     tab a plain static background + underline instead. */
+  .navigationHighlight {
+    display: none;
+  }
+
+  .navigationTabActive {
+    background-color: var(--color-surface);
   }
 
   .navigationTabActive::after {

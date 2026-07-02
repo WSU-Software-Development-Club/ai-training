@@ -130,8 +130,18 @@ const ScoreCard = ({ game }) => {
     <div
       className={styles.scoreCard}
       onClick={handleCardClick}
+      onKeyDown={(e) => {
+        // Keyboard users get the same "compare teams" action as a click.
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          handleCardClick(e);
+        }
+      }}
+      role="button"
+      tabIndex={0}
       style={cardStyle}
       title="Click to compare teams"
+      aria-label={`Compare ${awayTeamFull} and ${homeTeamFull}`}
     >
       <div className={styles.scoreCardHeader}>
         <span

@@ -53,22 +53,71 @@
 
 .headerTitle {
   margin: 0;
+  /* Kanit display font for energy/personality, but sentence case (not the old
+     chunky ALL-CAPS that read childish) — heavy weight + large size make it a
+     strong, exciting wordmark. */
   font-family: var(--font-family-display);
   font-size: var(--font-size-xxl);
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.02em;
   line-height: var(--line-height-tight);
+  /* Mostly white with just a faint indigo→cyan tint at the tail — a subtle
+     Electric-Night sheen, not a loud rainbow. `color` is the fallback for
+     browsers without background-clip: text. */
   color: var(--color-text-primary);
+  background: linear-gradient(
+    100deg,
+    var(--color-text-primary) 0%,
+    var(--color-text-primary) 62%,
+    #f9b3c0 82%,
+    #b6eef8 100%
+  );
+  background-size: 220% 100%;
+  background-position: 0 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  width: fit-content;
 }
 
 .headerTitleLink {
   color: inherit;
   text-decoration: none;
+  /* Inherit the clipped-gradient fill from the title rather than painting an
+     opaque color over it (painting an opaque color made the text vanish). */
+  -webkit-text-fill-color: inherit;
 }
 
-.headerTitleLink:hover {
-  color: inherit;
+/* Hover: a cyan "blade glint" sweeps across the letters, then settles back to
+   white. A colored streak (not white) is used so it reads clearly as it passes
+   over the already-white text, and the title stays clean white before/after. */
+.headerTitle:hover {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-text-primary) 0%,
+    var(--color-text-primary) 32%,
+    #22d3ee 44%,
+    #ffffff 50%,
+    #22d3ee 56%,
+    var(--color-text-primary) 68%,
+    var(--color-text-primary) 100%
+  );
+  /* Cyan glow that pulses with the pass makes the glint read stronger. */
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.45));
+  will-change: background-position;
+  /* `forwards` holds the final frame (band swept off, text back to white) so
+     the title settles in place instead of snapping back to the start — which
+     was the momentary "disappear" between the sweep ending and re-render. */
+  animation: titleShimmer 0.9s var(--ease-smooth) forwards;
+}
+
+@keyframes titleShimmer {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -30% 0;
+  }
 }
 
 .headerSubtitle {
@@ -117,6 +166,11 @@
 
   .headerTitle {
     font-size: var(--font-size-xl);
+    /* The title is width: fit-content (so the gradient ends at the text); in
+       the centered mobile column that would otherwise sit left-aligned, so
+       centre it with auto margins. */
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .headerSubtitle {
