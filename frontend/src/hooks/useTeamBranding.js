@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getTeamBranding } from "../branding/teamBranding";
+import { getTeamBranding, getTeamBrandingSync } from "../branding/teamBranding";
 
 /**
  * React hook to get team branding data
@@ -7,13 +7,26 @@ import { getTeamBranding } from "../branding/teamBranding";
  * @returns {Object} { branding, loading, error }
  */
 export function useTeamBranding(teamName) {
-  const [branding, setBranding] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Seed from the synchronous cache when available so the component paints with
+  // the correct colors on first render (no flash of fallback styling). Falls
+  // back to null when the team data hasn't been preloaded yet.
+  const [branding, setBranding] = useState(() => getTeamBrandingSync(teamName));
+  const [loading, setLoading] = useState(() => !getTeamBrandingSync(teamName));
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!teamName) {
       setBranding(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // If cached data is already available, use it synchronously and skip the
+    // async fetch entirely.
+    const syncBranding = getTeamBrandingSync(teamName);
+    if (syncBranding) {
+      setBranding(syncBranding);
       setLoading(false);
       setError(null);
       return;

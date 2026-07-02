@@ -29,9 +29,23 @@ const HomePage = () => {
     setSelectedDate("All");
   }, [selectedWeek, selectedYear]);
 
-  // Fetch weekly game data on component mount
+  // Fetch weekly game data when the selected week/year changes.
   useEffect(() => {
     const controller = new AbortController();
+
+    // Instant path: if this week was already prefetched into the cache, render
+    // it synchronously — no async gap, no loading flash.
+    const cached = api.peekScoreboardByWeek(selectedWeek, selectedYear);
+    if (cached) {
+      if (cached.success) {
+        setGameData(cached.data);
+        setError(null);
+      } else {
+        setError("No scoreboard data available.");
+      }
+      setLoading(false);
+      return () => controller.abort();
+    }
 
     const fetchGameData = async () => {
       setLoading(true);

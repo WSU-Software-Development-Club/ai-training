@@ -4,7 +4,7 @@ import StatsTable from "../components/StatsTable";
 import { appConfig } from "../constants";
 import { mockStats } from "../utils/mockData";
 import { statCategories } from "../utils/appData";
-import { getStats, hasBackendSupport } from "../services/api";
+import { getStats, hasBackendSupport, peekStats } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import styles from "../styles/pages/StatsPage.module.css";
 
@@ -22,6 +22,23 @@ const StatsPage = () => {
   // Fetch stats data when category changes
   useEffect(() => {
     const controller = new AbortController();
+
+    // Instant path: if this category was already prefetched into the cache,
+    // render it synchronously — no async gap, no loading flash.
+    if (hasBackendSupport(selectedCategory)) {
+      const cached = peekStats(selectedCategory);
+      if (cached) {
+        if (cached.success && cached.data && cached.data.data) {
+          setStats(cached.data.data);
+          setError(null);
+        } else {
+          setError(`Failed to fetch ${selectedCategory} statistics`);
+          setStats([]);
+        }
+        setLoading(false);
+        return () => controller.abort();
+      }
+    }
 
     const fetchStats = async () => {
       // Check if this category has backend support

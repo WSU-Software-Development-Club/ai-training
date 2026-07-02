@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import styles from "../styles/components/ScoreCard.module.css";
 import { navigateToTeam, navigateToComparison } from "../utils/teamNavigation";
 import { useTeamBranding } from "../hooks/useTeamBranding";
-import { formatConferenceName } from "../utils/helpers";
 
 const ScoreCard = ({ game }) => {
   const navigate = useNavigate();
@@ -54,8 +53,6 @@ const ScoreCard = ({ game }) => {
   const overProbability = prediction?.over_probability ?? null;
   const underProbability = prediction?.under_probability ?? null;
 
-  const rawConference = home?.conference || away?.conference;
-  const conference = rawConference ? formatConferenceName(rawConference) : "N/A";
   const status = game_state?.isLive
     ? "Live"
     : game_state?.isFinished
@@ -117,13 +114,14 @@ const ScoreCard = ({ game }) => {
 
   // Create card style with team colors and logo backdrops (exposed as CSS
   // custom properties consumed by the ::before/::after layers).
+  // Always reserve the 4px side borders so the card box stays the same size
+  // whether or not branding has loaded yet — only the color fills in later.
+  // This avoids layout shift ("tweaking") when navigating back to the page.
   const cardStyle = {
-    borderLeft: awayBranding?.primaryColor
-      ? `4px solid ${awayBranding.primaryColor}`
-      : undefined,
-    borderRight: homeBranding?.primaryColor
-      ? `4px solid ${homeBranding.primaryColor}`
-      : undefined,
+    borderLeftWidth: "4px",
+    borderRightWidth: "4px",
+    borderLeftColor: awayBranding?.primaryColor || "var(--color-secondary)",
+    borderRightColor: homeBranding?.primaryColor || "var(--color-secondary)",
     "--away-logo": awayLogo ? `url("${awayLogo}")` : "none",
     "--home-logo": homeLogo ? `url("${homeLogo}")` : "none",
   };
@@ -136,7 +134,6 @@ const ScoreCard = ({ game }) => {
       title="Click to compare teams"
     >
       <div className={styles.scoreCardHeader}>
-        <span className={styles.scoreCardConference}>{conference}</span>
         <span
           className={`${styles.scoreCardStatus} ${getStatusClass(game_state)}`}
         >

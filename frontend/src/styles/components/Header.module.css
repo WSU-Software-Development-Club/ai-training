@@ -37,8 +37,9 @@
 
 .swdcLogo {
   height: 50px;
-  width: auto;
+  width: 50px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .headerTitleContainer {
@@ -94,6 +95,7 @@
 
   .swdcLogo {
     height: 40px;
+    width: 40px;
     margin-bottom: var(--spacing-xs);
   }
 

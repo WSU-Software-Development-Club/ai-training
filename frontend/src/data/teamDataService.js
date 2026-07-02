@@ -81,6 +81,19 @@ export async function getTeamData() {
 }
 
 /**
+ * Synchronously get already-cached team data.
+ *
+ * Returns the cached array if the data has finished loading, otherwise null.
+ * Use this when you need branding immediately (e.g. on first render) and can
+ * fall back to the async path when the cache isn't ready yet.
+ *
+ * @returns {Array|null} Cached team objects, or null if not loaded yet
+ */
+export function getTeamDataSync() {
+  return teamDataCache;
+}
+
+/**
  * Preload team data (call this when app starts to avoid delays later)
  *
  * @returns {Promise<void>}

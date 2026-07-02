@@ -14,7 +14,7 @@
  * - Keeping matching logic separate makes it testable and maintainable
  */
 
-import { getTeamData } from "../data/teamDataService";
+import { getTeamData, getTeamDataSync } from "../data/teamDataService";
 import {
   normalizeName,
   generateNameVariations,
@@ -76,28 +76,31 @@ async function initializeLookupMap() {
 }
 
 /**
- * Find a team by name using exact and fuzzy matching strategies
+ * Try to initialize the lookup map synchronously from already-cached data.
  *
- * Tries multiple strategies in order:
- * 1. Direct exact match
- * 2. Match with common suffixes removed
- * 3. Match with State/St variations
- * 4. Match with abbreviations expanded
- * 5. Partial substring matching (as last resort)
+ * @returns {boolean} true if the lookup map is ready, false otherwise
+ */
+function ensureLookupMapSync() {
+  if (lookupMap) {
+    return true;
+  }
+
+  const teamData = getTeamDataSync();
+  if (!teamData) {
+    return false; // Data not loaded yet — caller should use the async path
+  }
+
+  buildLookupMap(teamData);
+  return true;
+}
+
+/**
+ * Core matching logic. Assumes the lookup map is already built.
  *
  * @param {string} teamName - Team name to search for
- * @returns {Promise<Object|null>} Team object or null if not found
- *
- * @example
- * const team = await findTeamByName("Washington St");
- * console.log(team.school); // "Washington State"
+ * @returns {Object|null} Team object or null if not found
  */
-export async function findTeamByName(teamName) {
-  if (!teamName) return null;
-
-  // Ensure lookup map is initialized
-  await initializeLookupMap();
-
+function matchTeam(teamName) {
   const normalized = normalizeName(teamName);
 
   // Strategy 1: Direct exact match
@@ -153,6 +156,47 @@ export async function findTeamByName(teamName) {
 
   // No match found
   return null;
+}
+
+/**
+ * Synchronously find a team by name using already-cached data.
+ *
+ * Returns null if the team data hasn't been loaded into memory yet, in which
+ * case callers should fall back to the async {@link findTeamByName}.
+ *
+ * @param {string} teamName - Team name to search for
+ * @returns {Object|null} Team object, or null if not found / not loaded yet
+ */
+export function findTeamByNameSync(teamName) {
+  if (!teamName) return null;
+  if (!ensureLookupMapSync()) return null;
+  return matchTeam(teamName);
+}
+
+/**
+ * Find a team by name using exact and fuzzy matching strategies
+ *
+ * Tries multiple strategies in order:
+ * 1. Direct exact match
+ * 2. Match with common suffixes removed
+ * 3. Match with State/St variations
+ * 4. Match with abbreviations expanded
+ * 5. Partial substring matching (as last resort)
+ *
+ * @param {string} teamName - Team name to search for
+ * @returns {Promise<Object|null>} Team object or null if not found
+ *
+ * @example
+ * const team = await findTeamByName("Washington St");
+ * console.log(team.school); // "Washington State"
+ */
+export async function findTeamByName(teamName) {
+  if (!teamName) return null;
+
+  // Ensure lookup map is initialized
+  await initializeLookupMap();
+
+  return matchTeam(teamName);
 }
 
 /**
