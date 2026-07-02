@@ -41,13 +41,19 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r ml/requirements.txt
-          pip install supabase
+
+      # Join the tailnet so the runner can reach Postgres on troyster (192.168.1.126).
+      # Postgres is not publicly exposed; TS_AUTHKEY is an ephemeral, tagged auth key.
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          tags: tag:ci
 
       - name: Run prediction script
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           cd ml/m1
           if [ -n "${{ github.event.inputs.year }}" ] && [ -n "${{ github.event.inputs.week }}" ]; then
@@ -73,5 +79,5 @@ jobs:
           echo "Common issues:"
           echo "- API rate limit exceeded (should not happen with ~10 calls/week)"
           echo "- Invalid week number (off-season or invalid date)"
-          echo "- Supabase connection error"
-          echo "- Missing environment variables"
+          echo "- Postgres connection error (Tailscale down or troyster unreachable)"
+          echo "- Missing environment variables (DATABASE_URL, TS_AUTHKEY)"

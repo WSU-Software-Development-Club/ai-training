@@ -1,7 +1,7 @@
 """
 Weekly College Football Score Predictions
 Uses trained XGBoost models to predict upcoming game scores
-Fetches data from College Football Data API and saves predictions to Supabase
+Fetches data from College Football Data API and saves predictions to Postgres
 """
 
 import os
@@ -63,20 +63,19 @@ load_dotenv(dotenv_path=env_path)
 
 # Configuration
 MODEL_DIR = script_dir / 'models'
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Postgres connection string, e.g.
+#   postgresql://aitraining:PASSWORD@192.168.1.126:5432/aitraining  (over Tailscale from CI)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Supabase client initialization
+# Postgres driver availability check
 try:
-    from supabase import create_client, Client
-    if SUPABASE_URL and SUPABASE_KEY:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    else:
-        print("[WARNING] Supabase credentials not found. Predictions will not be saved.")
-        supabase = None
+    import psycopg  # noqa: F401
+    PSYCOPG_AVAILABLE = True
+    if not DATABASE_URL:
+        print("[WARNING] DATABASE_URL not found. Predictions will not be saved.")
 except ImportError:
-    print("[WARNING] Supabase client not installed. Run: pip install supabase")
-    supabase = None
+    print("[WARNING] psycopg not installed. Run: pip install 'psycopg[binary]'")
+    PSYCOPG_AVAILABLE = False
 
 
 # NCAA API base URL for game matching
@@ -1262,33 +1261,55 @@ def predict_games(games: List[Dict], year: int, season_type: str = "both", ncaa_
     return predictions, skipped_count, matched_count, used_ncaa_game_ids
 
 
-def save_to_supabase(predictions: List[Dict]) -> bool:
+# Columns written for each prediction (order matters for the INSERT below).
+PREDICTION_COLUMNS = [
+    'game_id', 'ncaa_game_id', 'season', 'week', 'game_date',
+    'home_team', 'away_team', 'predicted_home_score', 'predicted_away_score',
+    'predicted_winner', 'predicted_margin', 'predicted_total',
+    'betting_over_under', 'over_probability', 'under_probability',
+    'prediction_made_at',
+]
+
+
+def save_to_postgres(predictions: List[Dict]) -> bool:
     """
-    Save predictions to Supabase database using upsert.
-    If a prediction with the same ncaa_game_id exists, it will be updated.
-    This allows re-running predictions for the same week without creating duplicates.
-    
+    Save predictions to the Postgres database using INSERT ... ON CONFLICT.
+    If a prediction with the same ncaa_game_id exists, it is updated.
+    This allows re-running predictions for the same week without duplicates.
+
     Returns: True if successful, False otherwise
     """
-    
+
     print("\n" + "="*70)
-    print(f"SAVING {len(predictions)} PREDICTIONS TO SUPABASE")
+    print(f"SAVING {len(predictions)} PREDICTIONS TO POSTGRES")
     print("="*70)
-    
+
+    cols = PREDICTION_COLUMNS
+    # game_date / prediction_made_at arrive as ISO strings -> cast to timestamptz.
+    placeholders = ", ".join(
+        f"%({c})s::timestamptz" if c in ('game_date', 'prediction_made_at') else f"%({c})s"
+        for c in cols
+    )
+    updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in cols if c != 'ncaa_game_id')
+    sql = (
+        f"INSERT INTO predictions ({', '.join(cols)}) VALUES ({placeholders}) "
+        f"ON CONFLICT (ncaa_game_id) DO UPDATE SET {updates}"
+    )
+
     try:
-        # Upsert predictions into database (update if ncaa_game_id exists, insert if new)
-        # The 'on_conflict' parameter specifies which column to use for conflict resolution
-        response = supabase.table('predictions').upsert(
-            predictions,
-            on_conflict='ncaa_game_id'
-        ).execute()
-        print(f"[OK] Successfully upserted {len(predictions)} predictions to Supabase")
+        # Normalize each row to exactly the expected columns (missing -> None).
+        rows = [{c: pred.get(c) for c in cols} for pred in predictions]
+        with psycopg.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.executemany(sql, rows)
+            conn.commit()
+        print(f"[OK] Successfully upserted {len(predictions)} predictions to Postgres")
         print(f"     (Existing predictions with same NCAA game IDs were updated)")
         return True
     except Exception as e:
-        print(f"[WARNING] Error saving to Supabase: {e}")
+        print(f"[WARNING] Error saving to Postgres: {e}")
         print(f"   Saving to local file as backup...")
-        
+
         # Save to local JSON file as backup
         output_file = script_dir / f'predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         with open(output_file, 'w') as f:
@@ -1573,11 +1594,11 @@ def main():
         print("\n[WARNING] No predictions generated (all games skipped due to no NCAA match)")
         return
     
-    # Save to Supabase
-    if supabase:
-        save_to_supabase(predictions)
+    # Save to Postgres
+    if PSYCOPG_AVAILABLE and DATABASE_URL:
+        save_to_postgres(predictions)
     else:
-        print("\n[INFO] Supabase not configured - skipping save")
+        print("\n[INFO] DATABASE_URL not configured - skipping save")
     
     # Summary
     print("\n" + "="*70)

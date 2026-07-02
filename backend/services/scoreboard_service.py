@@ -1,23 +1,23 @@
 """
 Scoreboard service for fetching NCAA football game data by week
-Includes predictions from Supabase when available
+Includes predictions from the Postgres database when available
 """
 
 import requests
 from datetime import date
 from api_vars import NCAA_API_BASE_URL
-from utils.supabase_client import get_supabase_client
+from utils.db import get_db
 
-def process_games(raw_data: dict, predictions_map: dict = None, season: int = None, week: int = None, supabase=None):
+def process_games(raw_data: dict, predictions_map: dict = None, season: int = None, week: int = None, db=None):
     """
     Process games and include predictions if available
-    
+
     Args:
         raw_data: Raw game data from NCAA API
         predictions_map: Dictionary mapping ncaa_game_id to predictions (for quick lookup)
         season: Season year for precise prediction matching
         week: Week number for precise prediction matching
-        supabase: Supabase client instance for direct lookups if needed
+        db: PredictionsDB instance for direct lookups if needed
     """
     processed_games = []
     
@@ -85,8 +85,8 @@ def process_games(raw_data: dict, predictions_map: dict = None, season: int = No
                     print(f"Debug: ⚠ Prediction in map doesn't match season/week for NCAA game ID: {ncaa_game_id}")
             
             # If not found in map, try direct lookup (fallback)
-            if prediction is None and supabase and supabase.is_connected:
-                prediction = supabase.get_prediction_by_ncaa_game_id(ncaa_game_id, season, week)
+            if prediction is None and db and db.is_connected:
+                prediction = db.get_prediction_by_ncaa_game_id(ncaa_game_id, season, week)
                 if prediction:
                     print(f"Debug: ✓ Prediction found via direct lookup for NCAA game ID: {ncaa_game_id}")
         
@@ -130,21 +130,21 @@ def get_scoreboard_data(week, year = date.today().year):
         dict or None: Scoreboard data or None if error occurred
 
         Data Processing: Loop through games and extract/format each one
-        Includes predictions from Supabase if available
-    """ 
+        Includes predictions from the Postgres database if available
+    """
     try:
         # Fetch scoreboard data from NCAA API
         raw_response = requests.get(f"{NCAA_API_BASE_URL}/scoreboard/football/fbs/{year}/{week:02d}/all-conf", timeout=10)
         raw_response.raise_for_status()
         raw_data = raw_response.json()
         
-        # Fetch predictions from Supabase
+        # Fetch predictions from the database
         predictions_map = {}
-        supabase = None
+        db = None
         try:
-            supabase = get_supabase_client()
-            if supabase.is_connected:
-                predictions = supabase.get_predictions_by_week(year, week)
+            db = get_db()
+            if db.is_connected:
+                predictions = db.get_predictions_by_week(year, week)
                 print(f"Debug: Found {len(predictions)} predictions in database for week {week}, year {year}")
                 
                 # Create a map for quick lookup: ncaa_game_id (int) -> prediction
@@ -169,8 +169,8 @@ def get_scoreboard_data(week, year = date.today().year):
             print(f"Warning: Could not fetch predictions: {e}")
             # Continue without predictions
         
-        # Process games with predictions, passing season, week, and supabase for precise matching
-        processed_games = process_games(raw_data, predictions_map, season=year, week=week, supabase=supabase)
+        # Process games with predictions, passing season, week, and db for precise matching
+        processed_games = process_games(raw_data, predictions_map, season=year, week=week, db=db)
 
         game_data = {
             'week': week,
