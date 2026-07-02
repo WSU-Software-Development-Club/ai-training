@@ -14,9 +14,9 @@ jobs:
     name: Pull & rebuild on troyster
     runs-on: ubuntu-latest
     env:
-      # troyster is reached over the tailnet. DEPLOY_HOST is its MagicDNS name;
-      # if MagicDNS is off, replace with its Tailscale IP (100.x.y.z).
-      DEPLOY_HOST: troyster
+      # troyster is reached over the tailnet by its Tailscale IP
+      # (MagicDNS name "troyster" isn't resolvable from the runner).
+      DEPLOY_HOST: 100.110.59.39
       DEPLOY_USER: troymuehlbauer
     steps:
       # Join the tailnet with a tagged ephemeral auth key (tag:ci).
