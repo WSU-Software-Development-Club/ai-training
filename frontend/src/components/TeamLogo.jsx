@@ -9,13 +9,13 @@ import styles from "../styles/components/TeamLogo.module.css";
  * Supports light and dark mode variants.
  *
  * @param {string} teamName - The team name to display logo for
- * @param {string} variant - 'light' or 'dark' (default: 'light')
+ * @param {string} variant - 'light' or 'dark' (default: 'dark')
  * @param {string} size - Size class: 'small', 'medium', 'large' (default: 'medium')
  * @param {string} className - Additional CSS classes
  */
 const TeamLogo = ({
   teamName,
-  variant = "light",
+  variant = "dark",
   size = "medium",
   className = "",
 }) => {

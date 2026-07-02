@@ -6,22 +6,61 @@ import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
-import TeamLogo from "../components/TeamLogo";
 import { useTeamBranding } from "../hooks/useTeamBranding";
 import { navigateToTeam } from "../utils/teamNavigation";
+
+// Keys for remembering the comparison selection for the current tab session.
+// sessionStorage (not localStorage) so it clears when the tab is closed.
+const STORAGE_KEY_A = "comparison.selectedTeamA";
+const STORAGE_KEY_B = "comparison.selectedTeamB";
+
+const readStoredTeam = (key) => {
+  try {
+    return sessionStorage.getItem(key) || "Select Team";
+  } catch {
+    return "Select Team";
+  }
+};
+
+const writeStoredTeam = (key, value) => {
+  try {
+    if (value && value !== "Select Team") {
+      sessionStorage.setItem(key, value);
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore storage errors (e.g. private mode) — memory is best-effort.
+  }
+};
 
 const ComparisonPage = () => {
   const [searchParams] = useSearchParams();
   const [teams, setTeams] = useState([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
-  const [selectedTeamA, setSelectedTeamA] = useState("Select Team");
-  const [selectedTeamB, setSelectedTeamB] = useState("Select Team");
+  // Seed from this session's remembered selection so navigating away and back
+  // restores the teams the user had picked.
+  const [selectedTeamA, setSelectedTeamA] = useState(() =>
+    readStoredTeam(STORAGE_KEY_A)
+  );
+  const [selectedTeamB, setSelectedTeamB] = useState(() =>
+    readStoredTeam(STORAGE_KEY_B)
+  );
   const [teamAData, setTeamAData] = useState(null);
   const [teamBData, setTeamBData] = useState(null);
   const [loadingA, setLoadingA] = useState(false);
   const [loadingB, setLoadingB] = useState(false);
   const [errorA, setErrorA] = useState(null);
   const [errorB, setErrorB] = useState(null);
+
+  // Remember the current selection for this session so it survives navigation.
+  useEffect(() => {
+    writeStoredTeam(STORAGE_KEY_A, selectedTeamA);
+  }, [selectedTeamA]);
+
+  useEffect(() => {
+    writeStoredTeam(STORAGE_KEY_B, selectedTeamB);
+  }, [selectedTeamB]);
 
   const handleSearch = (searchTerm) => {
     // MOCK FUNCTIONALITY - Replace with actual search API call
@@ -479,19 +518,26 @@ const TeamComparisonTable = ({ teamAData, teamBData }) => {
       }
     : {};
 
-  const teamAHeaderStyle = brandingA?.primaryColor
-    ? {
-        backgroundColor: brandingA.primaryColor,
-        color: "#ffffff",
-      }
-    : {};
+  // Header styling that mirrors the ScoreCard aesthetic: the team color with a
+  // diagonal lighting sheen, plus the team logo exposed as a CSS custom
+  // property so it can be painted as a faint watermark backdrop (see
+  // .comparisonTeamHeader::before).
+  const buildHeaderStyle = (branding) => {
+    const style = { color: "#ffffff" };
+    const logo = branding?.logoDark || branding?.logo;
+    if (branding?.primaryColor) {
+      style.backgroundColor = branding.primaryColor;
+      style.backgroundImage =
+        "linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.3))";
+    }
+    if (logo) {
+      style["--team-logo"] = `url("${logo}")`;
+    }
+    return style;
+  };
 
-  const teamBHeaderStyle = brandingB?.primaryColor
-    ? {
-        backgroundColor: brandingB.primaryColor,
-        color: "#ffffff",
-      }
-    : {};
+  const teamAHeaderStyle = buildHeaderStyle(brandingA);
+  const teamBHeaderStyle = buildHeaderStyle(brandingB);
 
   const comparisonRows = [
     {
@@ -558,11 +604,6 @@ const TeamComparisonTable = ({ teamAData, teamBData }) => {
     <div className={styles.comparisonTable}>
       <div className={styles.comparisonTableHeader}>
         <div className={styles.comparisonTeamHeader} style={teamAHeaderStyle}>
-          <TeamLogo
-            teamName={teamAData["School"]}
-            size="medium"
-            className={styles.comparisonHeaderLogo}
-          />
           <h3
             className={styles.comparisonTeamName}
             onClick={() => handleTeamClick(teamAData["School"])}
@@ -573,11 +614,6 @@ const TeamComparisonTable = ({ teamAData, teamBData }) => {
         </div>
         <div className={styles.comparisonVs}>VS</div>
         <div className={styles.comparisonTeamHeader} style={teamBHeaderStyle}>
-          <TeamLogo
-            teamName={teamBData["School"]}
-            size="medium"
-            className={styles.comparisonHeaderLogo}
-          />
           <h3
             className={styles.comparisonTeamName}
             onClick={() => handleTeamClick(teamBData["School"])}
