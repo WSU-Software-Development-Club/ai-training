@@ -22,6 +22,8 @@ const Header = ({ title, onSearch }) => {
               className={styles.swdcLogo}
               width={50}
               height={50}
+              decoding="sync"
+              fetchPriority="high"
             />
           </a>
           <div className={styles.headerTitleContainer}>

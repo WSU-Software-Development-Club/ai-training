@@ -66,10 +66,15 @@
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
 
+  /* Font families */
+  --font-family-display: "Kanit", "Oswald", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
   /* Font weights */
   --font-weight-light: 300;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
+  --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
   /* Shadows */
@@ -86,14 +91,19 @@
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
 
   /* Transitions */
+  /* Shared easing curve for buttery-smooth, consistent motion across the app.
+     A gentle ease-out-back-ish standard curve that decelerates naturally. */
+  --ease-smooth: cubic-bezier(0.22, 0.61, 0.36, 1);
   --transition-none: none;
-  --transition-all: all 0.15s ease-in-out;
-  --transition-colors: color 0.15s ease-in-out,
-    background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
-  --transition-opacity: opacity 0.15s ease-in-out;
-  --transition-transform: transform 0.15s ease-in-out;
-  --transition-fast: all 0.1s ease-in-out;
-  --transition-slow: all 0.3s ease-in-out;
+  --transition-all: all 0.25s var(--ease-smooth);
+  --transition-colors: color 0.25s var(--ease-smooth),
+    background-color 0.25s var(--ease-smooth),
+    border-color 0.25s var(--ease-smooth), fill 0.25s var(--ease-smooth),
+    stroke 0.25s var(--ease-smooth);
+  --transition-opacity: opacity 0.25s var(--ease-smooth);
+  --transition-transform: transform 0.25s var(--ease-smooth);
+  --transition-fast: all 0.15s var(--ease-smooth);
+  --transition-slow: all 0.4s var(--ease-smooth);
 
   /* Z-index layers */
   --z-dropdown: 1000;
@@ -108,6 +118,18 @@
 /* Global styles */
 * {
   box-sizing: border-box;
+}
+
+/* Respect users who prefer reduced motion — keep the UI functional but calm. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Reserve space for the vertical scrollbar so content doesn't shift
@@ -127,6 +149,14 @@ body {
   background-color: var(--color-background);
   color: var(--color-text-primary);
   line-height: var(--line-height-normal);
+}
+
+/* Clean, modern display font for all titles/headings. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-family-display);
+  letter-spacing: -0.02em;
 }
 
 code {

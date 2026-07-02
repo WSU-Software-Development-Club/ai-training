@@ -16,13 +16,26 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+  position: relative;
+}
+
+/* Single shared underline that glides between tabs on navigation. Its
+   position/width are driven from JS (see Navigation.jsx). */
+.navigationIndicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background-color: var(--color-primary);
+  border-radius: 1px;
+  pointer-events: none;
 }
 
 .navigationTab {
   text-decoration: none;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: var(--spacing-sm) var(--spacing-md);
@@ -37,20 +50,8 @@
 }
 
 .navigationTabActive {
-  color: var(--color-primary);
+  color: var(--color-text-primary);
   background-color: var(--color-surface);
-}
-
-.navigationTabActive::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% + var(--spacing-md));
-  height: 2px;
-  background-color: var(--color-primary);
-  border-radius: 1px;
 }
 
 /* Responsive adjustments */
@@ -62,7 +63,24 @@
   .navigationTabs {
     gap: var(--spacing-sm);
     overflow-x: auto;
+    /* Lock the vertical axis — without this, setting overflow-x to a
+       non-visible value makes the browser compute overflow-y as auto,
+       which lets the nav scroll vertically. */
+    overflow-y: hidden;
     padding-bottom: var(--spacing-xs);
+    -webkit-overflow-scrolling: touch;
+    /* Hide the scrollbar so it doesn't shift layout or clash with the
+       sliding underline. */
+    scrollbar-width: none;
+  }
+
+  .navigationTabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The scroll container clips overflow, so keep the underline inside it. */
+  .navigationIndicator {
+    bottom: 0;
   }
 
   .navigationTab {

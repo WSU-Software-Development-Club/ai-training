@@ -103,7 +103,7 @@
 
 .scoreCardDate {
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
   margin-bottom: var(--spacing-md);
   text-align: center;
 }
@@ -195,7 +195,7 @@
 .scoreCardScoreLabel {
   font-size: var(--font-size-xxs);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -220,7 +220,7 @@
   font-size: var(--font-size-xxl);
   font-weight: var(--font-weight-bold);
   line-height: 1;
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
 }
 
 .scoreCardPredictedScoreWinning {
@@ -230,7 +230,7 @@
 .scoreCardVs {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
   flex-shrink: 0;
   padding: var(--spacing-xs) var(--spacing-sm);
   background-color: var(--color-background-secondary);
@@ -264,7 +264,7 @@
 .scoreCardOverUnderLabel {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

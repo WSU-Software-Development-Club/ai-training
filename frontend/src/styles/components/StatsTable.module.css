@@ -57,11 +57,6 @@
   cursor: pointer;
 }
 
-.statsTableRowClickable:hover .statsTableTeamLink {
-  color: var(--color-primary);
-  text-decoration: underline;
-}
-
 .statsTableRow:last-child {
   border-bottom: none;
 }
@@ -90,11 +85,9 @@
   transition: var(--transition-colors);
 }
 
-.statsTableTeamLink:hover,
 .statsTableTeamLink:focus-visible {
-  color: var(--color-primary);
-  text-decoration: underline;
-  outline: none;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .statsTableEmpty {
