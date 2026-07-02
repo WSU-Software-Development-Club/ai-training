@@ -29,11 +29,31 @@ const RankingsTable = ({ rankings, title = "AP Top 25" }) => {
         <table className={styles.rankingsTableTable}>
           <thead>
             <tr>
-              <th className={styles.rankingsTableHeader}>Rank</th>
-              <th className={styles.rankingsTableHeader}>School</th>
-              <th className={styles.rankingsTableHeader}>Points</th>
-              <th className={styles.rankingsTableHeader}>Record</th>
-              <th className={styles.rankingsTableHeader}>Previous</th>
+              <th
+                className={`${styles.rankingsTableHeader} ${styles.rankingsTableCellRank}`}
+              >
+                Rank
+              </th>
+              <th
+                className={`${styles.rankingsTableHeader} ${styles.rankingsTableCellTeam}`}
+              >
+                School
+              </th>
+              <th
+                className={`${styles.rankingsTableHeader} ${styles.rankingsTableCellPoints}`}
+              >
+                Points
+              </th>
+              <th
+                className={`${styles.rankingsTableHeader} ${styles.rankingsTableCellRecord}`}
+              >
+                Record
+              </th>
+              <th
+                className={`${styles.rankingsTableHeader} ${styles.rankingsTableCellPrevious}`}
+              >
+                Previous
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +100,11 @@ const RankingsTable = ({ rankings, title = "AP Top 25" }) => {
                 >
                   {team.RECORD}
                 </td>
-                <td className={styles.rankingsTableCell}>{team.PREVIOUS}</td>
+                <td
+                  className={`${styles.rankingsTableCell} ${styles.rankingsTableCellPrevious}`}
+                >
+                  {team.PREVIOUS}
+                </td>
               </tr>
             ))}
           </tbody>

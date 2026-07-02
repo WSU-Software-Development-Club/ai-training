@@ -78,9 +78,23 @@
     display: none;
   }
 
-  /* The scroll container clips overflow, so keep the underline inside it. */
+  /* On mobile the tab row scrolls horizontally, which makes the single
+     JS-measured sliding underline fight the scroll offset and jump around.
+     Instead, attach a static underline directly to the active tab so it's
+     always locked under that tab no matter where the row is scrolled. */
   .navigationIndicator {
+    display: none;
+  }
+
+  .navigationTabActive::after {
+    content: "";
+    position: absolute;
+    left: var(--spacing-sm);
+    right: var(--spacing-sm);
     bottom: 0;
+    height: 2px;
+    background-color: var(--color-primary);
+    border-radius: 1px;
   }
 
   .navigationTab {

@@ -18,7 +18,11 @@
 }
 
 .headerBranding {
-  flex-shrink: 0;
+  /* Allow the branding to shrink (title wraps) instead of forcing width and
+     pushing the search bar off-screen at medium widths. The logo itself keeps
+     its size via its own flex-shrink: 0. */
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
@@ -44,6 +48,7 @@
 
 .headerTitleContainer {
   flex: 1;
+  min-width: 0;
 }
 
 .headerTitle {
@@ -74,8 +79,12 @@
 }
 
 .headerSearch {
-  flex: 1;
+  /* Shrinkable so it always fits the space left by the branding — min-width: 0
+     lets the flex item (which contains an <input>) shrink below its intrinsic
+     content width instead of overflowing. */
+  flex: 0 1 400px;
   max-width: 400px;
+  min-width: 0;
 }
 
 /* Responsive adjustments */
@@ -116,5 +125,10 @@
 
   .headerSearch {
     max-width: none;
+    /* Reset the 400px flex-basis from the row layout — in this column layout
+       the main axis is vertical, so a 400px basis would stretch the search
+       bar's height. Let it size to content and span full width instead. */
+    flex: 0 1 auto;
+    width: 100%;
   }
 }

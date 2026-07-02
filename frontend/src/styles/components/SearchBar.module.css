@@ -2,10 +2,12 @@
   position: relative;
   width: 100%;
   max-width: 400px;
+  min-width: 0;
 }
 
 .searchBar {
   width: 100%;
+  min-width: 0;
 }
 
 .searchBarContainer {
@@ -35,6 +37,7 @@
 
 .searchBarInput {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   outline: none;
