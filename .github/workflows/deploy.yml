@@ -39,7 +39,7 @@ jobs:
             "${DEPLOY_USER}@${DEPLOY_HOST}" bash -se <<'REMOTE'
           set -euo pipefail
           cd /home/troymuehlbauer/ai-training
-          git pull origin main --rebase
+          git fetch origin && git reset --hard origin/main
           # Rebuild only the backend; the db service (and its pgdata volume) keep running.
           # depends_on ensures db is up. Frontend is hosted on Vercel, not troyster.
           docker compose up -d --build backend
