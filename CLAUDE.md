@@ -127,6 +127,12 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
     `ncaa_game_id`) to the **troyster Postgres over Tailscale**. The API reads them back.
 - **GitHub Actions secrets:** `TS_AUTHKEY` (ephemeral, tagged `tag:ci`), `DEPLOY_KEY` (SSH),
   `DATABASE_URL`, `CFBD_API_KEY`.
+- **ML → GitHub Actions** (`weekly_predictions.yml`): still active. Runs
+  `ml/m1/predict_upcoming.py` on a **GitHub-hosted `ubuntu-latest` runner** (not on troyster)
+  every Tuesday 09:00 UTC (plus manual `workflow_dispatch`). The runner joins the tailnet via
+  `tailscale/github-action` and writes predictions (upsert on `ncaa_game_id`) to the **troyster
+  Postgres over Tailscale**. The API reads them back. Secrets: `CFBD_API_KEY`, `DATABASE_URL`,
+  `TS_AUTHKEY`.
 
 ## 6. Conventions
 - **Routes:** one Blueprint per file in `backend/routes/`, each with a `url_prefix`
