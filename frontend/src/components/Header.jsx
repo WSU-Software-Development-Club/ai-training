@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import Navigation from "./Navigation";
 import styles from "../styles/components/Header.module.css";
@@ -22,7 +23,15 @@ const Header = ({ title, onSearch }) => {
             />
           </a>
           <div className={styles.headerTitleContainer}>
-            <h1 className={styles.headerTitle}>{title}</h1>
+            <h1 className={styles.headerTitle}>
+              <Link
+                to="/"
+                className={styles.headerTitleLink}
+                aria-label={`${title} — go to home`}
+              >
+                {title}
+              </Link>
+            </h1>
             {/**
             <p className={styles.headerSubtitle}>
               Subtitle here

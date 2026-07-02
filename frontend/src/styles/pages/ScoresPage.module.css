@@ -88,6 +88,8 @@
 .scoresPageScoresGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  /* Equal-height rows so every card matches, regardless of team-name length. */
+  grid-auto-rows: 1fr;
   gap: var(--spacing-lg);
 }
 

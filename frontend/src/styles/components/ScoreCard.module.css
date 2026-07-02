@@ -6,12 +6,55 @@
   transition: var(--transition-all);
   cursor: pointer;
   overflow: hidden;
+  /* Fill the grid row so all cards in the grid share the same height. */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  /* Establish a stacking context so the logo background layers (z-index: -1)
+     sit above the card's surface color but behind the content. */
+  position: relative;
+  isolation: isolate;
+}
+
+/* Faint team-logo backdrops: away (left) team anchored top-left, home (right)
+   team anchored bottom-right, for a subtle diagonal effect. */
+.scoreCard::before,
+.scoreCard::after {
+  content: "";
+  position: absolute;
+  width: 66%;
+  height: 66%;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.14;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.scoreCard::before {
+  top: calc(var(--spacing-lg) * -1);
+  left: calc(var(--spacing-lg) * -1);
+  background-image: var(--away-logo, none);
+  background-position: top left;
+}
+
+.scoreCard::after {
+  bottom: calc(var(--spacing-lg) * -1);
+  right: calc(var(--spacing-lg) * -1);
+  background-image: var(--home-logo, none);
+  background-position: bottom right;
 }
 
 .scoreCard:hover {
   border-color: var(--color-primary);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
+}
+
+/* Bring the logos up slightly on hover for a bit of life. */
+.scoreCard:hover::before,
+.scoreCard:hover::after {
+  opacity: 0.2;
 }
 
 .scoreCardHeader {

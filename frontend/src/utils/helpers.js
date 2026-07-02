@@ -11,6 +11,41 @@ export const formatStatus = (status) => {
   return capitalize(status);
 };
 
+// Proper display names for NCAA conference slugs (the API returns SEO-style
+// values like "big-ten" / "cusa" / "sec"). Anything not listed falls back to
+// a title-cased version of the slug.
+const CONFERENCE_DISPLAY_NAMES = {
+  acc: "ACC",
+  american: "American",
+  "big-12": "Big 12",
+  "big-ten": "Big Ten",
+  cusa: "C-USA",
+  sec: "SEC",
+  "sun-belt": "Sun Belt",
+  "pac-12": "Pac-12",
+  "mountain-west": "Mountain West",
+  "mid-american": "MAC",
+  "fbs-independents": "FBS Independents",
+  independent: "Independent",
+};
+
+// Convert a conference slug/name into a human-friendly display label.
+export const formatConferenceName = (conference) => {
+  if (!conference) return "";
+
+  const key = conference.trim().toLowerCase();
+  if (CONFERENCE_DISPLAY_NAMES[key]) {
+    return CONFERENCE_DISPLAY_NAMES[key];
+  }
+
+  // Fallback: title-case each hyphen/space separated word.
+  return key
+    .split(/[-\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 // Check if a value is empty or null
 export const isEmpty = (value) => {
   return value === null || value === undefined || value === "";

@@ -6,6 +6,7 @@ import api from "../services/api";
 import styles from "../styles/pages/HomePage.module.css";
 import { getCurrentWeek } from "../utils/helpers";
 import { getCurrentYear } from "../utils/helpers";
+import { formatConferenceName } from "../utils/helpers";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const HomePage = () => {
@@ -30,6 +31,8 @@ const HomePage = () => {
 
   // Fetch weekly game data on component mount
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchGameData = async () => {
       setLoading(true);
       setError(null);
@@ -37,7 +40,8 @@ const HomePage = () => {
       try {
         const response = await api.getScoreboardByWeek(
           selectedWeek,
-          selectedYear
+          selectedYear,
+          { signal: controller.signal }
         );
 
         if (response.success) {
@@ -46,53 +50,30 @@ const HomePage = () => {
           setError("No scoreboard data available.");
         }
       } catch (err) {
+        // Request was cancelled because the user navigated away — not an error.
+        if (err.name === "AbortError") return;
         console.error(err);
         setError("Unable to load scoreboard data.");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchGameData();
+
+    return () => controller.abort();
   }, [selectedWeek, selectedYear]);
 
-  if (loading) {
-    return (
-      <div className={styles.homePage}>
-        <Header title={appConfig.name} onSearch={handleSearch} />
-        <main className={styles.homePageMain}>
-          <div className={styles.homePageContainer}>
-            <div className={styles.homePageHeader}>
-              <h1 className={styles.homePageTitle}>College Football Scores</h1>
-              <p className={styles.homePageSubtitle}>
-                Latest scores from across all conferences
-              </p>
-            </div>
-            <div className={styles.loadingContainer}>
-              <LoadingSpinner />
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.homePage}>
-        <Header title={appConfig.name} onSearch={handleSearch} />
-        <main className={styles.homePageMain}>
-          <div className={styles.errorContainer}>
-            <p>{error}</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  // Games for the currently loaded week. Empty on first load or while a new
+  // week/year is being fetched. Deriving from this (instead of early-returning)
+  // keeps the filter bar mounted so it never disappears during navigation.
+  const games = gameData?.games ?? [];
 
   // Extract unique conferences, preserving original case for filtering
   const conferenceSet = new Set(
-    gameData.games
+    games
       .flatMap((game) => [game.away.conference, game.home.conference])
       .filter(Boolean) // Remove null/undefined values
   );
@@ -103,7 +84,7 @@ const HomePage = () => {
       .sort()
       .map((conf) => ({
         value: conf,
-        label: conf.charAt(0).toUpperCase() + conf.slice(1),
+        label: formatConferenceName(conf),
       })),
   ];
 
@@ -121,7 +102,7 @@ const HomePage = () => {
 
   // Extract unique dates from games
   const dateSet = new Map();
-  gameData.games.forEach((game) => {
+  games.forEach((game) => {
     if (game.epoch) {
       const date = new Date(game.epoch * 1000);
       const dateKey = date.toLocaleDateString("en-US", {
@@ -145,7 +126,7 @@ const HomePage = () => {
   ];
 
   // Filter scores based on selected filters
-  const filteredScores = gameData.games.filter((game) => {
+  const filteredScores = games.filter((game) => {
     const conferenceMatch =
       selectedConference === "All" ||
       (game.away.conference &&
@@ -258,15 +239,27 @@ const HomePage = () => {
 
           {/* Scores grouped by date to make it easier to scan */}
           <section className={styles.homePageSection}>
-            {error && <p className="error">{error}</p>}
+            {loading && (
+              <div className={styles.loadingContainer}>
+                <LoadingSpinner />
+              </div>
+            )}
 
-            {filteredScores.length === 0 && (
+            {!loading && error && (
+              <div className={styles.errorContainer}>
+                <p>{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && filteredScores.length === 0 && (
               <div className={styles.homePageNoResults}>
                 <p>No scores found matching your filters.</p>
               </div>
             )}
 
-            {filteredScores.length > 0 &&
+            {!loading &&
+              !error &&
+              filteredScores.length > 0 &&
               Object.entries(
                 filteredScores.reduce((groups, game) => {
                   const { epoch } = game;

@@ -2,16 +2,49 @@
 Service file for team-specific data like record, ppg, etc.
 """
 
+import re
+import unicodedata
+
 import requests
 from api_vars import NCAA_API_BASE_URL
 
+
 def normalize_team_name(name):
     """
-    Normalize a team name for comparisons on case the name is not always consistent.
+    Normalize a team name so different spellings resolve to the same team.
 
-    Has to be implemented after frontend methods are implemented.
+    Different data sources (NCAA standings, the scoreboard feed, and the
+    frontend's team CSV) spell the same school differently, e.g.
+    "Washington St.", "Washington State", and "washington st". This makes
+    comparisons robust to:
+      - letter case ("USC" vs "usc")
+      - punctuation and accents ("San José St." vs "San Jose St")
+      - the "State"/"St." abbreviation (both collapse to a single token)
+
+    Args:
+        name (str): Team name to normalize.
+    Returns:
+        str: A canonical, lowercase, whitespace-collapsed form.
     """
-    raise NotImplementedError
+    if not name:
+        return ""
+
+    # Strip accents/diacritics (é -> e) so ASCII and non-ASCII spellings match.
+    stripped = "".join(
+        c
+        for c in unicodedata.normalize("NFKD", str(name))
+        if not unicodedata.combining(c)
+    )
+
+    lowered = stripped.lower()
+    # Replace any non-alphanumeric character (periods, parens, etc.) with space.
+    cleaned = re.sub(r"[^a-z0-9]+", " ", lowered)
+
+    # Treat "state" and "st" as the same word so "Washington State" matches
+    # "Washington St.".
+    tokens = ["st" if token == "state" else token for token in cleaned.split()]
+
+    return " ".join(tokens)
 
 
 def get_team_record(team_name):
@@ -27,10 +60,11 @@ def get_team_record(team_name):
         response = requests.get(f'{NCAA_API_BASE_URL}/standings/football/fbs', timeout=10)
         response.raise_for_status()
         raw_data = response.json()
+        target = normalize_team_name(team_name)
         for conf_block in raw_data.get('data', []):
             for row in conf_block.get('standings', []):
                 school = row.get("School", "")
-                if school == team_name:
+                if normalize_team_name(school) == target:
                     return row
         return None
 

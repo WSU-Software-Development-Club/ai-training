@@ -67,6 +67,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+  /* Equal share of the row, independent of the option text length, so the
+     boxes stay the same size and never shift when switching weeks. */
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .homePageFilterLabel {
@@ -76,6 +80,10 @@
 }
 
 .homePageFilterSelect {
+  width: 100%;
+  /* Keep the closed selector a fixed size — long option labels are clipped
+     rather than stretching the box. */
+  text-overflow: ellipsis;
   background-color: var(--color-background-secondary);
   border: 1px solid var(--color-secondary);
   border-radius: var(--border-radius);
@@ -99,6 +107,8 @@
 .homePageScoresGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  /* Equal-height rows so every card matches, regardless of team-name length. */
+  grid-auto-rows: 1fr;
   gap: var(--spacing-lg);
 }
 
@@ -114,6 +124,13 @@
   justify-content: center;
   align-items: center;
   padding: var(--spacing-md);
+}
+
+.errorContainer {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-error, #dc3545);
+  font-weight: var(--font-weight-medium);
 }
 
 /* Responsive adjustments */

@@ -1,4 +1,7 @@
 .header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
   background-color: var(--color-background-secondary);
   padding: var(--spacing-md) var(--spacing-lg) 0 var(--spacing-lg);
   border-bottom: 1px solid var(--color-secondary);
@@ -48,6 +51,15 @@
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
   color: var(--color-text-primary);
+}
+
+.headerTitleLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.headerTitleLink:hover {
+  color: inherit;
 }
 
 .headerSubtitle {

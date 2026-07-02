@@ -30,10 +30,12 @@ const ComparisonPage = () => {
 
   // Fetch teams list on component mount
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchTeams = async () => {
       setTeamsLoading(true);
       try {
-        const response = await api.getAllTeams();
+        const response = await api.getAllTeams({ signal: controller.signal });
         if (response.success && response.data) {
           // Sort teams alphabetically by name
           const sortedTeams = [...response.data].sort((a, b) =>
@@ -69,14 +71,19 @@ const ComparisonPage = () => {
           setTeams([]);
         }
       } catch (err) {
+        if (err.name === "AbortError") return;
         console.error("Error fetching teams:", err);
         setTeams([]);
       } finally {
-        setTeamsLoading(false);
+        if (!controller.signal.aborted) {
+          setTeamsLoading(false);
+        }
       }
     };
 
     fetchTeams();
+
+    return () => controller.abort();
   }, [searchParams]);
 
   // Fetch team A data when selected
@@ -87,12 +94,16 @@ const ComparisonPage = () => {
       return;
     }
 
+    const controller = new AbortController();
+
     const fetchData = async () => {
       setLoadingA(true);
       setErrorA(null);
 
       try {
-        const response = await api.getTeamData(selectedTeamA);
+        const response = await api.getTeamData(selectedTeamA, {
+          signal: controller.signal,
+        });
         if (response.success) {
           setTeamAData(response.data);
         } else {
@@ -102,15 +113,20 @@ const ComparisonPage = () => {
           setTeamAData(null);
         }
       } catch (err) {
+        if (err.name === "AbortError") return;
         console.error(err);
         setErrorA(`Unable to load data for ${selectedTeamA}`);
         setTeamAData(null);
       } finally {
-        setLoadingA(false);
+        if (!controller.signal.aborted) {
+          setLoadingA(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => controller.abort();
   }, [selectedTeamA]);
 
   // Fetch team B data when selected
@@ -121,12 +137,16 @@ const ComparisonPage = () => {
       return;
     }
 
+    const controller = new AbortController();
+
     const fetchData = async () => {
       setLoadingB(true);
       setErrorB(null);
 
       try {
-        const response = await api.getTeamData(selectedTeamB);
+        const response = await api.getTeamData(selectedTeamB, {
+          signal: controller.signal,
+        });
         if (response.success) {
           setTeamBData(response.data);
         } else {
@@ -136,15 +156,20 @@ const ComparisonPage = () => {
           setTeamBData(null);
         }
       } catch (err) {
+        if (err.name === "AbortError") return;
         console.error(err);
         setErrorB(`Unable to load data for ${selectedTeamB}`);
         setTeamBData(null);
       } finally {
-        setLoadingB(false);
+        if (!controller.signal.aborted) {
+          setLoadingB(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => controller.abort();
   }, [selectedTeamB]);
 
   // Handle team selection with validation
@@ -177,6 +202,13 @@ const ComparisonPage = () => {
     return teams.filter((team) => team.name !== selectedTeamA);
   };
 
+  // Both teams must be picked before we consider the comparison to be "loading".
+  // A single selection fetches its data in the background without a spinner.
+  const bothTeamsSelected =
+    selectedTeamA !== "Select Team" && selectedTeamB !== "Select Team";
+  const comparisonLoading =
+    bothTeamsSelected && (loadingA || loadingB) && !errorA && !errorB;
+
   return (
     <div className={styles.comparisonPage}>
       <Header title={appConfig.name} onSearch={handleSearch} />
@@ -197,30 +229,25 @@ const ComparisonPage = () => {
                 <label className={styles.comparisonPageFilterLabel}>
                   Team A:
                 </label>
-                {teamsLoading ? (
-                  <div className={styles.loadingContainer}>
-                    <LoadingSpinner />
-                  </div>
-                ) : (
-                  <select
-                    className={styles.comparisonPageFilterSelect}
-                    value={selectedTeamA}
-                    onChange={handleTeamAChange}
-                    disabled={teamsLoading || teams.length === 0}
-                  >
-                    <option value="Select Team">Select Team</option>
-                    {getAvailableTeamsForA().map((team) => (
-                      <option key={team.id || team.name} value={team.name}>
-                        {team.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {loadingA && (
-                  <div className={styles.teamLoadingIndicator}>
-                    Loading team data...
-                  </div>
-                )}
+                <select
+                  className={styles.comparisonPageFilterSelect}
+                  value={teamsLoading ? "" : selectedTeamA}
+                  onChange={handleTeamAChange}
+                  disabled={teamsLoading || teams.length === 0}
+                >
+                  {teamsLoading ? (
+                    <option value="">Loading teams…</option>
+                  ) : (
+                    <>
+                      <option value="Select Team">Select Team</option>
+                      {getAvailableTeamsForA().map((team) => (
+                        <option key={team.id || team.name} value={team.name}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
                 {errorA && (
                   <div className={styles.teamErrorIndicator}>{errorA}</div>
                 )}
@@ -231,30 +258,25 @@ const ComparisonPage = () => {
                 <label className={styles.comparisonPageFilterLabel}>
                   Team B:
                 </label>
-                {teamsLoading ? (
-                  <div className={styles.loadingContainer}>
-                    <LoadingSpinner />
-                  </div>
-                ) : (
-                  <select
-                    className={styles.comparisonPageFilterSelect}
-                    value={selectedTeamB}
-                    onChange={handleTeamBChange}
-                    disabled={teamsLoading || teams.length === 0}
-                  >
-                    <option value="Select Team">Select Team</option>
-                    {getAvailableTeamsForB().map((team) => (
-                      <option key={team.id || team.name} value={team.name}>
-                        {team.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {loadingB && (
-                  <div className={styles.teamLoadingIndicator}>
-                    Loading team data...
-                  </div>
-                )}
+                <select
+                  className={styles.comparisonPageFilterSelect}
+                  value={teamsLoading ? "" : selectedTeamB}
+                  onChange={handleTeamBChange}
+                  disabled={teamsLoading || teams.length === 0}
+                >
+                  {teamsLoading ? (
+                    <option value="">Loading teams…</option>
+                  ) : (
+                    <>
+                      <option value="Select Team">Select Team</option>
+                      {getAvailableTeamsForB().map((team) => (
+                        <option key={team.id || team.name} value={team.name}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
                 {errorB && (
                   <div className={styles.teamErrorIndicator}>{errorB}</div>
                 )}
@@ -269,21 +291,40 @@ const ComparisonPage = () => {
             </div>
           )}
 
-          {/* Comparison Section */}
-          {teamAData && teamBData && !errorA && !errorB && (
-            <section className={styles.comparisonPageSection}>
-              <h2>Team Comparison</h2>
-              <TeamComparisonTable
-                teamAData={teamAData}
-                teamBData={teamBData}
-              />
-            </section>
+          {/* Single unified loading state: teams list, or the comparison
+              once BOTH teams are selected. */}
+          {(teamsLoading || comparisonLoading) && (
+            <div className={styles.comparisonPageLoading}>
+              <LoadingSpinner inline />
+              <p className={styles.comparisonPageLoadingText}>
+                {teamsLoading
+                  ? "Loading teams…"
+                  : "Loading team comparison…"}
+              </p>
+            </div>
           )}
 
-          {/* Placeholder when no teams selected */}
-          {(!teamAData || !teamBData) &&
+          {/* Comparison Section */}
+          {teamAData &&
+            teamBData &&
+            !errorA &&
+            !errorB &&
             !loadingA &&
-            !loadingB &&
+            !loadingB && (
+              <section className={styles.comparisonPageSection}>
+                <h2>Team Comparison</h2>
+                <TeamComparisonTable
+                  teamAData={teamAData}
+                  teamBData={teamBData}
+                />
+              </section>
+            )}
+
+          {/* Placeholder when both teams aren't selected yet. Stays visible
+              while a single team's data loads in the background. */}
+          {(!teamAData || !teamBData) &&
+            !teamsLoading &&
+            !comparisonLoading &&
             !errorA &&
             !errorB &&
             teams.length > 0 && (

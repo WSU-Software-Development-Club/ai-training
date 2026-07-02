@@ -3,17 +3,56 @@ import { appConfig } from "../constants";
 // Base API configuration
 const API_BASE_URL = appConfig.apiUrl;
 
-// Timeout utility - wraps fetch with a timeout
-const fetchWithTimeout = (url, options = {}, timeout = 90000) => {
-  return Promise.race([
-    fetch(url, options),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Request timeout")), timeout)
-    ),
-  ]);
+// HTTP statuses worth retrying: transient server/tunnel/rate-limit errors.
+// Client errors (4xx, except the ones below) are not retried — they won't
+// succeed on a second attempt.
+const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+// True when a request was cancelled (e.g. the user navigated to another tab).
+const isAbortError = (error) => error && error.name === "AbortError";
+
+// Timeout utility - actually aborts the underlying request on timeout, and
+// honors an external AbortSignal (from the caller) so navigation can cancel it.
+const fetchWithTimeout = async (url, options = {}, timeout = 90000) => {
+  const controller = new AbortController();
+  let timedOut = false;
+
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeout);
+
+  // Bridge the caller's signal (used to cancel on unmount) to our controller.
+  const externalSignal = options.signal;
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+    }
+  }
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    // A timeout surfaces as an AbortError; convert it to a retryable error so
+    // it's distinguishable from a caller-initiated cancellation.
+    if (isAbortError(error) && timedOut) {
+      throw new Error("Request timeout");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    if (externalSignal) {
+      externalSignal.removeEventListener("abort", onExternalAbort);
+    }
+  }
 };
 
-// Retry utility with exponential backoff
+// Retry utility with exponential backoff. Retries transient network failures,
+// timeouts, and retryable HTTP statuses — but never retries a cancelled
+// request or a non-transient client error.
 const fetchWithRetry = async (
   url,
   options = {},
@@ -21,50 +60,107 @@ const fetchWithRetry = async (
   timeout = 90000
 ) => {
   for (let i = 0; i < retries; i++) {
+    const isLastRetry = i === retries - 1;
+
+    let response;
     try {
-      const response = await fetchWithTimeout(url, options, timeout);
-      return response;
+      response = await fetchWithTimeout(url, options, timeout);
     } catch (error) {
-      const isLastRetry = i === retries - 1;
+      // Caller cancelled (navigation/unmount): bail immediately, don't retry.
+      if (isAbortError(error)) {
+        throw error;
+      }
       if (isLastRetry) {
         throw error;
       }
-
-      // Exponential backoff: wait 2^i seconds before retry
-      const waitTime = Math.min(1000 * Math.pow(2, i), 10000);
-      console.log(
-        `Request failed, retrying in ${waitTime}ms... (attempt ${
-          i + 1
-        }/${retries})`
-      );
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      await backoff(i);
+      continue;
     }
+
+    if (response.ok) {
+      return response;
+    }
+
+    // Retry transient server errors; fail fast on everything else (e.g. 404).
+    if (RETRYABLE_STATUS.has(response.status) && !isLastRetry) {
+      await backoff(i);
+      continue;
+    }
+
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
 };
+
+// Exponential backoff helper (2^i seconds, capped at 10s).
+const backoff = (attempt) => {
+  const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000);
+  console.log(
+    `Request failed, retrying in ${waitTime}ms... (attempt ${attempt + 1})`
+  );
+  return new Promise((resolve) => setTimeout(resolve, waitTime));
+};
+
+// Session-scoped, in-memory response cache. The API returns small, mostly
+// static payloads (rankings, weekly scores, season stats, team lists), so we
+// cache successful GET responses for the lifetime of the page. A full page
+// reload starts a fresh session and clears everything — this is deliberately
+// short-term.
+const responseCache = new Map();
+
+// Live/status endpoints that must always hit the network.
+const NON_CACHEABLE_ENDPOINTS = [appConfig.endpoints.health];
+
+const isCacheableRequest = (endpoint, method) =>
+  method === "GET" &&
+  !NON_CACHEABLE_ENDPOINTS.some((e) => e && endpoint.startsWith(e));
+
+// Deep-copy cached values so callers can freely mutate results (sort, etc.)
+// without corrupting the shared cache entry.
+const cloneData = (data) => {
+  if (typeof structuredClone === "function") {
+    return structuredClone(data);
+  }
+  return JSON.parse(JSON.stringify(data));
+};
+
+// Clear the session cache (e.g. to force fresh data). Exposed for callers/tests.
+export const clearApiCache = () => responseCache.clear();
 
 // Generic API request function
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
+  const method = (options.method || "GET").toUpperCase();
+  const cacheable = isCacheableRequest(endpoint, method);
 
-  const defaultOptions = {
+  // Serve previously-received data instantly, without touching the network.
+  if (cacheable && responseCache.has(url)) {
+    return cloneData(responseCache.get(url));
+  }
+
+  const config = {
+    ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(options.headers || {}),
     },
   };
 
-  const config = { ...defaultOptions, ...options };
-
   try {
-    // Use 90 second timeout and 3 retries to handle Render spin-up
     const response = await fetchWithRetry(url, config, 3, 90000);
+    const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Only cache genuine successful payloads — never an error-shaped response.
+    if (cacheable && data && data.success !== false) {
+      responseCache.set(url, data);
+      return cloneData(data);
     }
 
-    return await response.json();
+    return data;
   } catch (error) {
-    console.error("API request failed:", error);
+    // Cancellations are expected during navigation — not real failures.
+    if (!isAbortError(error)) {
+      console.error("API request failed:", error);
+    }
     throw error;
   }
 };
@@ -126,43 +222,45 @@ export const hasBackendSupport = (category) => {
 };
 
 // Generic function to get stats for any category
-export const getStats = async (category) => {
+export const getStats = async (category, options) => {
   const statId = STAT_NAME_TO_ID[category];
   if (!statId) {
     throw new Error(`No backend support for category: ${category}`);
   }
-  return apiRequest(`/stats/stat/${statId}`);
+  return apiRequest(`/stats/stat/${statId}`, options);
 };
 
-// Specific API functions
+// Specific API functions. Each accepts an optional `options` object (e.g.
+// `{ signal }`) so callers can cancel requests when a component unmounts.
 export const api = {
   // Get welcome message
-  getWelcomeMessage: () => apiRequest(appConfig.endpoints.home),
+  getWelcomeMessage: (options) => apiRequest(appConfig.endpoints.home, options),
 
   // Get health status
-  getHealthStatus: () => apiRequest(appConfig.endpoints.health),
+  getHealthStatus: (options) =>
+    apiRequest(appConfig.endpoints.health, options),
 
   // Get stats for any supported category
   getStats,
 
   // Get AP rankings
-  getRankings: () => apiRequest(appConfig.endpoints.rankings),
+  getRankings: (options) => apiRequest(appConfig.endpoints.rankings, options),
 
   // Get scoreboard by a given week
-  getScoreboardByWeek: (week, year) => {
+  getScoreboardByWeek: (week, year, options) => {
     let endpoint = appConfig.endpoints.scores + week;
     if (year) {
       endpoint += `?year=${year}`;
     }
-    return apiRequest(endpoint);
+    return apiRequest(endpoint, options);
   },
 
   // Get a given team's current season data
-  getTeamData: (team) =>
-    apiRequest(appConfig.endpoints.team + team + "/record"),
+  getTeamData: (team, options) =>
+    apiRequest(appConfig.endpoints.team + team + "/record", options),
 
   // Get all teams
-  getAllTeams: () => apiRequest(appConfig.endpoints.teams),
+  getAllTeams: (options) => apiRequest(appConfig.endpoints.teams, options),
 };
 
 export default api;

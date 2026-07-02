@@ -122,6 +122,28 @@
   letter-spacing: 0.5px;
 }
 
+.teamsPageTableHeaderSortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: var(--transition-colors);
+}
+
+.teamsPageTableHeaderSortable:hover {
+  color: var(--color-primary);
+}
+
+.teamsPageSortIndicator {
+  /* Always reserve space for the arrow so the header text doesn't shift when a
+     column becomes active/inactive. */
+  display: inline-block;
+  width: 1em;
+  margin-left: var(--spacing-xs);
+  text-align: center;
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+}
+
 .teamsPageTableRow {
   border-bottom: 1px solid var(--color-secondary);
   transition: var(--transition-colors);
