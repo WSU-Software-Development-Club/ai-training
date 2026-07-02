@@ -138,6 +138,41 @@ export const peekCache = (endpoint) => {
   return undefined;
 };
 
+// Exponential backoff helper (2^i seconds, capped at 10s).
+const backoff = (attempt) => {
+  const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000);
+  console.log(
+    `Request failed, retrying in ${waitTime}ms... (attempt ${attempt + 1})`
+  );
+  return new Promise((resolve) => setTimeout(resolve, waitTime));
+};
+
+// Session-scoped, in-memory response cache. The API returns small, mostly
+// static payloads (rankings, weekly scores, season stats, team lists), so we
+// cache successful GET responses for the lifetime of the page. A full page
+// reload starts a fresh session and clears everything — this is deliberately
+// short-term.
+const responseCache = new Map();
+
+// Live/status endpoints that must always hit the network.
+const NON_CACHEABLE_ENDPOINTS = [appConfig.endpoints.health];
+
+const isCacheableRequest = (endpoint, method) =>
+  method === "GET" &&
+  !NON_CACHEABLE_ENDPOINTS.some((e) => e && endpoint.startsWith(e));
+
+// Deep-copy cached values so callers can freely mutate results (sort, etc.)
+// without corrupting the shared cache entry.
+const cloneData = (data) => {
+  if (typeof structuredClone === "function") {
+    return structuredClone(data);
+  }
+  return JSON.parse(JSON.stringify(data));
+};
+
+// Clear the session cache (e.g. to force fresh data). Exposed for callers/tests.
+export const clearApiCache = () => responseCache.clear();
+
 // Generic API request function
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;

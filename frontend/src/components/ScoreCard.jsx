@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import styles from "../styles/components/ScoreCard.module.css";
 import { navigateToTeam, navigateToComparison } from "../utils/teamNavigation";
 import { useTeamBranding } from "../hooks/useTeamBranding";
+import { formatConferenceName } from "../utils/helpers";
 
 const ScoreCard = ({ game }) => {
   const navigate = useNavigate();
