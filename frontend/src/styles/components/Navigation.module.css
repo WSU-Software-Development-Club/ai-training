@@ -63,7 +63,24 @@
   .navigationTabs {
     gap: var(--spacing-sm);
     overflow-x: auto;
+    /* Lock the vertical axis — without this, setting overflow-x to a
+       non-visible value makes the browser compute overflow-y as auto,
+       which lets the nav scroll vertically. */
+    overflow-y: hidden;
     padding-bottom: var(--spacing-xs);
+    -webkit-overflow-scrolling: touch;
+    /* Hide the scrollbar so it doesn't shift layout or clash with the
+       sliding underline. */
+    scrollbar-width: none;
+  }
+
+  .navigationTabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The scroll container clips overflow, so keep the underline inside it. */
+  .navigationIndicator {
+    bottom: 0;
   }
 
   .navigationTab {
