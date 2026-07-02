@@ -20,6 +20,8 @@ const Header = ({ title, onSearch }) => {
               src="/swdc-logo.png"
               alt="WSU Software Development Club"
               className={styles.swdcLogo}
+              width={50}
+              height={50}
             />
           </a>
           <div className={styles.headerTitleContainer}>

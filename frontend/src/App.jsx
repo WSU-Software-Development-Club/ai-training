@@ -1,5 +1,10 @@
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import RankingsPage from "./pages/RankingsPage";
 import StatsPage from "./pages/StatsPage";
@@ -8,8 +13,22 @@ import ComparisonPage from "./pages/ComparisonPage";
 import PredictionPage from "./pages/PredictionPage";
 import TeamPage from "./pages/TeamPage";
 import { preloadTeamData } from "./branding/teamBranding";
+import { prefetchForRoute } from "./services/prefetchService";
 import "./App.css";
 import { api } from "./services/api";
+
+// Watches the active route and warms the response cache in the background:
+// the rest of the current tab's data first, then the default data for every
+// other tab. Renders nothing.
+function RoutePrefetcher() {
+  const location = useLocation();
+
+  useEffect(() => {
+    prefetchForRoute(location.pathname);
+  }, [location.pathname]);
+
+  return null;
+}
 
 function App() {
   // Preload team branding data on app initialization
@@ -24,6 +43,7 @@ function App() {
 
   return (
     <Router>
+      <RoutePrefetcher />
       <div className="app">
         <Routes>
           <Route path="/" element={<HomePage />} />

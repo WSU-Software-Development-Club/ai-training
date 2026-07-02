@@ -22,8 +22,32 @@
  * ```
  */
 
-import { findTeamByName, testTeamMatch } from "../matching/teamMatcher";
+import {
+  findTeamByName,
+  findTeamByNameSync,
+  testTeamMatch,
+} from "../matching/teamMatcher";
 import { preloadTeamData as preloadData } from "../data/teamDataService";
+
+/**
+ * Build a branding object from a matched team, or null.
+ *
+ * @param {Object|null} team - Matched team object
+ * @returns {Object|null} Branding info or null
+ */
+function toBranding(team) {
+  if (!team) return null;
+
+  return {
+    logo: team.logo,
+    logoDark: team.logoDark,
+    primaryColor: team.primaryColor,
+    alternateColor: team.alternateColor,
+    conference: team.conference,
+    school: team.school,
+    abbreviation: team.abbreviation,
+  };
+}
 
 /**
  * Get team branding information by team name
@@ -48,20 +72,24 @@ export async function getTeamBranding(teamName) {
   // Use the matcher to find the team
   const team = await findTeamByName(teamName);
 
-  if (!team) {
-    return null;
-  }
+  return toBranding(team);
+}
 
-  // Return only the branding-related information
-  return {
-    logo: team.logo,
-    logoDark: team.logoDark,
-    primaryColor: team.primaryColor,
-    alternateColor: team.alternateColor,
-    conference: team.conference,
-    school: team.school,
-    abbreviation: team.abbreviation,
-  };
+/**
+ * Synchronously get team branding from already-cached data.
+ *
+ * Returns null if the team data hasn't loaded into memory yet (in which case
+ * callers should fall back to the async {@link getTeamBranding}). This lets
+ * components render with the correct colors on first paint once the data has
+ * been preloaded, avoiding a flash of fallback styling.
+ *
+ * @param {string} teamName - Name of the team
+ * @returns {Object|null} Branding information, or null if unavailable/not loaded
+ */
+export function getTeamBrandingSync(teamName) {
+  if (!teamName) return null;
+
+  return toBranding(findTeamByNameSync(teamName));
 }
 
 /**

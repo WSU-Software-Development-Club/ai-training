@@ -126,6 +126,53 @@ const cloneData = (data) => {
 // Clear the session cache (e.g. to force fresh data). Exposed for callers/tests.
 export const clearApiCache = () => responseCache.clear();
 
+// Synchronously read an already-cached GET response for an endpoint, or return
+// undefined if it hasn't been fetched yet. Lets components render prefetched
+// data instantly (no async gap / loading flash) and fall back to a normal
+// request when the data isn't cached.
+export const peekCache = (endpoint) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  if (responseCache.has(url)) {
+    return cloneData(responseCache.get(url));
+  }
+  return undefined;
+};
+
+// Exponential backoff helper (2^i seconds, capped at 10s).
+const backoff = (attempt) => {
+  const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000);
+  console.log(
+    `Request failed, retrying in ${waitTime}ms... (attempt ${attempt + 1})`
+  );
+  return new Promise((resolve) => setTimeout(resolve, waitTime));
+};
+
+// Session-scoped, in-memory response cache. The API returns small, mostly
+// static payloads (rankings, weekly scores, season stats, team lists), so we
+// cache successful GET responses for the lifetime of the page. A full page
+// reload starts a fresh session and clears everything — this is deliberately
+// short-term.
+const responseCache = new Map();
+
+// Live/status endpoints that must always hit the network.
+const NON_CACHEABLE_ENDPOINTS = [appConfig.endpoints.health];
+
+const isCacheableRequest = (endpoint, method) =>
+  method === "GET" &&
+  !NON_CACHEABLE_ENDPOINTS.some((e) => e && endpoint.startsWith(e));
+
+// Deep-copy cached values so callers can freely mutate results (sort, etc.)
+// without corrupting the shared cache entry.
+const cloneData = (data) => {
+  if (typeof structuredClone === "function") {
+    return structuredClone(data);
+  }
+  return JSON.parse(JSON.stringify(data));
+};
+
+// Clear the session cache (e.g. to force fresh data). Exposed for callers/tests.
+export const clearApiCache = () => responseCache.clear();
+
 // Generic API request function
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -221,13 +268,36 @@ export const hasBackendSupport = (category) => {
   return STAT_NAME_TO_ID.hasOwnProperty(category);
 };
 
+// Build the scoreboard endpoint for a week (with optional year). Shared by the
+// async fetch and the synchronous cache peek so their cache keys always match.
+const scoreboardEndpoint = (week, year) => {
+  let endpoint = appConfig.endpoints.scores + week;
+  if (year) {
+    endpoint += `?year=${year}`;
+  }
+  return endpoint;
+};
+
+// Build the stats endpoint for a category, or null if unsupported. Shared by
+// the async fetch and the synchronous cache peek so their keys always match.
+const statsEndpoint = (category) => {
+  const statId = STAT_NAME_TO_ID[category];
+  return statId ? `/stats/stat/${statId}` : null;
+};
+
 // Generic function to get stats for any category
 export const getStats = async (category, options) => {
-  const statId = STAT_NAME_TO_ID[category];
-  if (!statId) {
+  const endpoint = statsEndpoint(category);
+  if (!endpoint) {
     throw new Error(`No backend support for category: ${category}`);
   }
-  return apiRequest(`/stats/stat/${statId}`, options);
+  return apiRequest(endpoint, options);
+};
+
+// Synchronously read a cached stat category (or undefined if not cached).
+export const peekStats = (category) => {
+  const endpoint = statsEndpoint(category);
+  return endpoint ? peekCache(endpoint) : undefined;
 };
 
 // Specific API functions. Each accepts an optional `options` object (e.g.
@@ -247,13 +317,11 @@ export const api = {
   getRankings: (options) => apiRequest(appConfig.endpoints.rankings, options),
 
   // Get scoreboard by a given week
-  getScoreboardByWeek: (week, year, options) => {
-    let endpoint = appConfig.endpoints.scores + week;
-    if (year) {
-      endpoint += `?year=${year}`;
-    }
-    return apiRequest(endpoint, options);
-  },
+  getScoreboardByWeek: (week, year, options) =>
+    apiRequest(scoreboardEndpoint(week, year), options),
+
+  // Synchronously read a cached scoreboard week (or undefined if not cached).
+  peekScoreboardByWeek: (week, year) => peekCache(scoreboardEndpoint(week, year)),
 
   // Get a given team's current season data
   getTeamData: (team, options) =>
