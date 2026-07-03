@@ -82,6 +82,11 @@ services:
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3}
       - SAMPLE_SIZE_THRESHOLD=${SAMPLE_SIZE_THRESHOLD:-30}
+      # Polymarket (Gamma/CLOB) is public, no key needed; egress to
+      # gamma-api.polymarket.com / clob.polymarket.com over the open internet
+      # (NOT the compose network, NOT the Cloudflare Tunnel). Toggle off if
+      # that egress is unavailable/blocked on troyster.
+      - POLYMARKET_ENABLED=${POLYMARKET_ENABLED:-true}
     depends_on:
       db:
         condition: service_healthy

@@ -16,6 +16,7 @@ CFG = Config(
     database_url=None, cfbd_api_key=None,
     ollama_url="http://ollama:11434", ollama_model="gemma3",
     sample_size_threshold=30, request_timeout=5,
+    polymarket_enabled=True,
 )
 
 PAYLOAD = {

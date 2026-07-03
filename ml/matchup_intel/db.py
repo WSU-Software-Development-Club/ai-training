@@ -189,6 +189,45 @@ def insert_factor(conn: psycopg.Connection, factor: Factor) -> str:
     return str(row[0])
 
 
+def insert_llm_call(
+    conn: psycopg.Connection,
+    *,
+    raw_id: Optional[str],
+    factor_id: Optional[str],
+    model: Optional[str],
+    prompt: str,
+    response: Optional[str],
+    valid: bool,
+) -> None:
+    """Persist one LLM extraction call (prompt + raw response) for auditability."""
+    conn.execute(
+        """
+        INSERT INTO llm_calls (raw_id, factor_id, model, prompt, response, valid)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (
+            UUID(raw_id) if raw_id else None,
+            UUID(factor_id) if factor_id else None,
+            model, prompt, response, valid,
+        ),
+    )
+
+
+def reset_game_factors(conn: psycopg.Connection, ncaa_game_id: int) -> None:
+    """Make extraction re-runnable: clear a game's prior factors + their LLM call
+    records before re-extracting, so re-runs don't accumulate duplicates.
+    (Deletes calls first — including dropped-output rows keyed only by raw_id —
+    then the factors.)"""
+    conn.execute(
+        """
+        DELETE FROM llm_calls
+        WHERE raw_id IN (SELECT raw_id FROM raw_signals WHERE ncaa_game_id = %s)
+        """,
+        (ncaa_game_id,),
+    )
+    conn.execute("DELETE FROM factors WHERE ncaa_game_id = %s", (ncaa_game_id,))
+
+
 def fetch_factors_for_game(conn: psycopg.Connection, ncaa_game_id: int) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
         return cur.execute(
@@ -196,10 +235,77 @@ def fetch_factors_for_game(conn: psycopg.Connection, ncaa_game_id: int) -> list[
         ).fetchall()
 
 
+# --- weather historical grounding -----------------------------------------
+
+def get_weather_history_rate(conn: psycopg.Connection, team_id, bucket: str) -> tuple[int, int]:
+    """Return (wins, total) for a team's past games in a weather bucket."""
+    tid = team_id if isinstance(team_id, UUID) else UUID(str(team_id))
+    row = conn.execute(
+        """
+        SELECT count(*) FILTER (WHERE won) AS wins, count(*) AS total
+        FROM weather_history WHERE team_id = %s AND condition_bucket = %s
+        """,
+        (tid, bucket),
+    ).fetchone()
+    return (int(row[0] or 0), int(row[1] or 0))
+
+
+def delete_weather_history_for_team(conn: psycopg.Connection, team_id: str) -> None:
+    """Clear all of a team's weather history (all buckets) — used before a fresh
+    live backfill so re-runs are idempotent."""
+    conn.execute("DELETE FROM weather_history WHERE team_id = %s", (UUID(team_id),))
+
+
+def insert_weather_history_bulk(
+    conn: psycopg.Connection, team_id: str, bucket: str, results: list[tuple[int, bool]],
+    source: str = "seed",
+) -> None:
+    """Bulk-insert (season, won) rows for a team+bucket."""
+    with conn.cursor() as cur:
+        cur.executemany(
+            "INSERT INTO weather_history (team_id, condition_bucket, season, won, source) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            [(UUID(team_id), bucket, season, won, source) for season, won in results],
+        )
+
+
 # --- reference panel + serving --------------------------------------------
 
+def get_latest_polymarket_odds(conn: psycopg.Connection, ncaa_game_id: int) -> Optional[dict]:
+    """Most recent Polymarket snapshot for a game (see
+    ingest/polymarket_ingest.py), or None. None covers BOTH "no market exists"
+    (the common CFB case) and "not ingested yet" — both are legitimately
+    unknown to a caller and must be treated identically, as an explicit null,
+    never an error."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        row = cur.execute(
+            """
+            SELECT payload, as_of_timestamp FROM raw_signals
+            WHERE source_type = 'polymarket' AND ncaa_game_id = %s
+            ORDER BY as_of_timestamp DESC LIMIT 1
+            """,
+            (ncaa_game_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    payload = row["payload"] or {}
+    return {
+        "home_win_prob": payload.get("home_win_prob"),
+        "away_win_prob": payload.get("away_win_prob"),
+        "market_id": payload.get("market_id"),
+        "question": payload.get("question"),
+        "source_url": payload.get("source_url"),
+        "as_of": row["as_of_timestamp"].isoformat() if row["as_of_timestamp"] else None,
+    }
+
+
 def get_model_reference_panel(conn: psycopg.Connection, ncaa_game_id: int) -> Optional[dict]:
-    """Layer 6: the existing XGBoost prediction, framed as an input not a verdict."""
+    """Layer 6: the existing XGBoost prediction, framed as an input not a verdict.
+
+    NOTE: like the existing 'vegas'/'model' keys, this reads current state (not
+    point-in-time filtered against kickoff) — consistent with how this panel
+    has always behaved, not a new inconsistency introduced for Polymarket.
+    """
     with conn.cursor(row_factory=dict_row) as cur:
         pred = cur.execute(
             """
@@ -217,8 +323,7 @@ def get_model_reference_panel(conn: psycopg.Connection, ncaa_game_id: int) -> Op
             "predicted_home_score", "predicted_away_score", "predicted_winner",
             "predicted_margin", "predicted_total")},
         "vegas": {"over_under": pred["betting_over_under"]},
-        # Polymarket is intentionally null until that extractor is wired.
-        "polymarket": None,
+        "polymarket": get_latest_polymarket_odds(conn, ncaa_game_id),
     }
 
 

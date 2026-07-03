@@ -119,6 +119,38 @@ CREATE INDEX IF NOT EXISTS idx_factors_game     ON factors (ncaa_game_id);
 CREATE INDEX IF NOT EXISTS idx_factors_team_cat ON factors (team_id, category);
 CREATE INDEX IF NOT EXISTS idx_factors_asof     ON factors (as_of_timestamp);
 
+-- Full LLM audit trail: the exact prompt + raw model response for every
+-- extraction call, INCLUDING ones whose output was invalid and dropped
+-- (factor_id NULL, valid=false). Completes the raw_signal -> factor lineage.
+CREATE TABLE IF NOT EXISTS llm_calls (
+    call_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    raw_id      UUID REFERENCES raw_signals(raw_id),
+    factor_id   UUID REFERENCES factors(factor_id) ON DELETE CASCADE,  -- NULL if dropped
+    model       TEXT,
+    prompt      TEXT NOT NULL,
+    response    TEXT,                         -- raw model text (NULL on transport failure)
+    valid       BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_llm_calls_raw    ON llm_calls (raw_id);
+CREATE INDEX IF NOT EXISTS idx_llm_calls_factor ON llm_calls (factor_id);
+
+-- Historical grounding store for the WEATHER factor: a team's past results in a
+-- given weather bucket. The grounder aggregates win-rate + sample_size from here;
+-- the sample-size guard then decides whether the rate is served. (Seeded now;
+-- later backfilled from CFBD results x Open-Meteo archive by stadium coords.)
+CREATE TABLE IF NOT EXISTS weather_history (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id          UUID NOT NULL REFERENCES teams(team_id),
+    condition_bucket TEXT NOT NULL,          -- cold | wind | rain | heat | clear
+    season           INTEGER,
+    won              BOOLEAN NOT NULL,
+    source           TEXT,                   -- provenance (e.g. 'seed', 'cfbd+open-meteo')
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_weather_history_team_bucket
+    ON weather_history (team_id, condition_bucket);
+
 -- Layer 5 serving. The sample-size guard is applied when writing this table, so
 -- serving physically cannot emit a sub-threshold historical_rate.
 CREATE TABLE IF NOT EXISTS factor_decks (
@@ -132,3 +164,140 @@ CREATE TABLE IF NOT EXISTS factor_decks (
     UNIQUE (ncaa_game_id, team_id, as_of_timestamp)
 );
 CREATE INDEX IF NOT EXISTS idx_factor_decks_game ON factor_decks (ncaa_game_id);
+
+
+-- ============================================================================
+-- Point-in-time FEATURE STORE (stacked-ensemble ML: training + inference)
+-- ----------------------------------------------------------------------------
+-- Long/EAV feature store the ensemble models read from. The hard requirement is
+-- POINT-IN-TIME correctness (no leakage): a feature carries as_of_timestamp = the
+-- instant it BECAME KNOWN, and a game's feature vector may ONLY use rows whose
+-- as_of_timestamp <= that game's kickoff. This mirrors the raw_signals/factors
+-- discipline above (as_of_timestamp filtered at the serving boundary).
+--
+-- ENTITY KEYS (soft refs, same scheme as the rest of the schema):
+--   * game        -> ncaa_game_id  (== predictions.ncaa_game_id / factors.ncaa_game_id);
+--                    game_id is the parallel CFBD id (== predictions.game_id), nullable.
+--   * team        -> team_id        (FK teams.team_id; predictions keys teams by TEXT
+--                    name, so join predictions.home_team/away_team -> teams.normalized_name
+--                    via normalize_team_name(), exactly as the matchup engine does).
+--   * team-in-game-> both ncaa_game_id AND team_id set (e.g. a home-team rolling stat
+--                    computed for one specific game context).
+-- A row must attach to at least one entity (CHECK below).
+--
+-- KICKOFF for the as-of filter = predictions.game_date (CFBD startDate, TIMESTAMPTZ/UTC).
+-- ============================================================================
+
+-- Catalog of every feature the store may hold. feature_name is the stable key the
+-- ML side references (mirrors the training_data.csv column names, e.g. 'home_sp_rating',
+-- 'matchup_elo_diff', 'betting_over_under', 'away_rolling_win_pct').
+-- point_in_time_safe = FALSE flags features that are NOT leakage-safe (e.g. a
+-- season-aggregate rating only finalized post-hoc); the reader filters on this.
+CREATE TABLE IF NOT EXISTS feature_definitions (
+    feature_name        TEXT PRIMARY KEY,           -- stable ML-facing key
+    description         TEXT,
+    dtype               TEXT NOT NULL DEFAULT 'numeric'
+                        CHECK (dtype IN ('numeric','text','boolean','categorical')),
+    entity_level        TEXT NOT NULL DEFAULT 'team_game'
+                        CHECK (entity_level IN ('game','team','team_game')),
+    unit                TEXT,                       -- optional (e.g. 'points','rating','pct')
+    source              TEXT,                       -- provenance (e.g. 'cfbd:ratings/sp', 'derived')
+    point_in_time_safe  BOOLEAN NOT NULL DEFAULT TRUE,   -- FALSE => may leak; reader must exclude
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- The feature values themselves (long/EAV form so new features need no DDL).
+-- One row = one (feature, entity, as_of) observation. Numeric OR text value is set
+-- (booleans/categoricals stored as 0/1 in value_num or a label in value_text).
+CREATE TABLE IF NOT EXISTS feature_values (
+    feature_value_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    feature_name      TEXT NOT NULL REFERENCES feature_definitions(feature_name),
+    ncaa_game_id      BIGINT,                       -- soft ref -> predictions.ncaa_game_id (nullable)
+    game_id           BIGINT,                       -- CFBD id -> predictions.game_id (nullable)
+    team_id           UUID REFERENCES teams(team_id),   -- FK teams.team_id (nullable)
+    season            INTEGER,                      -- denormalized for training-set slicing
+    week              INTEGER,
+    value_num         DOUBLE PRECISION,             -- numeric/boolean(0|1) value
+    value_text        TEXT,                         -- text/categorical value
+    as_of_timestamp   TIMESTAMPTZ NOT NULL,         -- POINT-IN-TIME: when this value became known
+    source            TEXT NOT NULL,                -- provenance (e.g. 'cfbd:ratings/sp@2024', 'collect_data')
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (value_num IS NOT NULL OR value_text IS NOT NULL),
+    CHECK (ncaa_game_id IS NOT NULL OR team_id IS NOT NULL),
+    -- Idempotent upsert key: re-ingesting the same (feature, entity, as_of) UPDATES
+    -- rather than duplicates. NULLS NOT DISTINCT (PG15+) so a null team_id/ncaa_game_id
+    -- collides as expected for game-only / team-only rows.
+    UNIQUE NULLS NOT DISTINCT (feature_name, ncaa_game_id, team_id, as_of_timestamp)
+);
+
+-- Indexes tuned for the as-of read: "latest value per (entity, feature_name) with
+-- as_of_timestamp <= kickoff". The DESC on as_of_timestamp lets DISTINCT ON take the
+-- newest qualifying row per feature without a separate sort.
+CREATE INDEX IF NOT EXISTS idx_feature_values_game_asof
+    ON feature_values (ncaa_game_id, feature_name, as_of_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_feature_values_team_asof
+    ON feature_values (team_id, feature_name, as_of_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_feature_values_season_week
+    ON feature_values (season, week);   -- training-set slicing by season/week
+
+-- Reproducible training: a named, versioned set fixes WHICH features a model reads
+-- (the column list); a snapshot records HOW a specific training matrix was built
+-- (the set + the as-of rule + season span + a content hash), pointing back to
+-- feature_values rather than copying them. To reproduce a run, re-issue the as-of
+-- query below for feature_names at each game's kickoff over the snapshot's seasons.
+CREATE TABLE IF NOT EXISTS feature_sets (
+    feature_set_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name            TEXT NOT NULL,
+    version         INTEGER NOT NULL DEFAULT 1,
+    description     TEXT,
+    feature_names   TEXT[] NOT NULL,               -- ordered feature_definitions.feature_name keys
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (name, version)
+);
+
+CREATE TABLE IF NOT EXISTS feature_snapshots (
+    snapshot_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    feature_set_id  UUID REFERENCES feature_sets(feature_set_id),
+    name            TEXT,
+    as_of_rule      TEXT NOT NULL DEFAULT 'kickoff',   -- 'kickoff' | ISO ts | rule name
+    season_from     INTEGER,
+    season_to       INTEGER,
+    row_count       INTEGER,
+    content_hash    TEXT UNIQUE,                   -- idempotent build dedupe
+    manifest        JSONB,                         -- {feature_names, params, git_sha, ...}
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_feature_snapshots_set ON feature_snapshots (feature_set_id);
+
+-- ----------------------------------------------------------------------------
+-- AS-OF READ PATTERN (the ML side MUST use this to avoid leakage)
+-- ----------------------------------------------------------------------------
+-- For one game, kickoff := predictions.game_date. Pull the newest value known at or
+-- before kickoff, per feature. GAME-level features:
+--
+--   SELECT DISTINCT ON (fv.feature_name)
+--          fv.feature_name, fv.value_num, fv.value_text
+--   FROM feature_values fv
+--   JOIN feature_definitions fd USING (feature_name)
+--   WHERE fv.ncaa_game_id = %(ncaa_game_id)s
+--     AND fv.as_of_timestamp <= %(kickoff)s     -- point-in-time cutoff
+--     AND fd.point_in_time_safe                 -- never serve leaky features
+--   ORDER BY fv.feature_name, fv.as_of_timestamp DESC;   -- newest wins
+--
+-- TEAM-level features (run once per team; map name -> team_id via teams.normalized_name):
+--
+--   SELECT DISTINCT ON (fv.feature_name)
+--          fv.feature_name, fv.value_num, fv.value_text
+--   FROM feature_values fv
+--   JOIN feature_definitions fd USING (feature_name)
+--   WHERE fv.team_id = %(team_id)s
+--     AND fv.as_of_timestamp <= %(kickoff)s
+--     AND fd.point_in_time_safe
+--   ORDER BY fv.feature_name, fv.as_of_timestamp DESC;
+--
+-- Leakage guardrails: (1) the cutoff is STRICTLY the game's own kickoff, never now();
+-- (2) as_of_timestamp is the KNOWN-AT time, so a value stamped after kickoff is
+-- invisible to that game; (3) point_in_time_safe=FALSE features are excluded here,
+-- so post-hoc season aggregates can be stored for analysis without polluting training.
+-- ============================================================================

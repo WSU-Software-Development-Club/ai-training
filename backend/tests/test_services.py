@@ -321,6 +321,78 @@ class TestServices(unittest.TestCase):
         result = get_scoreboard_data(6,2025)
         self.assertIsNone(result)
 
+    @patch('services.scoreboard_service.get_db')
+    @patch('services.scoreboard_service.requests.get')
+    def test_get_scoreboard_data_attaches_prediction_with_mismatched_week(self, mock_get, mock_get_db):
+        """Regression test: a prediction row stored under a DIFFERENT
+        season/week than the scoreboard is queried with (e.g. the ML writer's
+        CFBD week vs. the NCAA scoreboard's display week) must still attach,
+        because ncaa_game_id is UNIQUE and is matched on alone.
+        """
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "updated_at": "2025-10-30 04:44:57",
+            "games": [
+                {
+                    "game": {
+                        "gameID": "6459454",
+                        "away": {"score": "10", "names": {"full": "Sam Houston State University"}},
+                        "home": {"score": "37", "names": {"full": "New Mexico State University"}},
+                        "startTimeEpoch": "1759453200",
+                        "gameState": "final",
+                    }
+                }
+            ],
+        }
+        mock_get.return_value = mock_response
+
+        # Seed a predictions row whose ncaa_game_id matches the scoreboard game,
+        # but whose season/week were stored differently (e.g. postseason
+        # cfbd_week+15, or the NCAA "week 01" that folds in CFBD week 0) than
+        # the (season=2025, week=6) the scoreboard is being queried with.
+        stored_prediction = {
+            "id": "fake-uuid",
+            "game_id": 401520000,
+            "ncaa_game_id": 6459454,
+            "season": 2025,
+            "week": 21,  # mismatched vs the queried week (6)
+            "game_date": "2025-10-02T21:00:00Z",
+            "home_team": "New Mexico State",
+            "away_team": "Sam Houston State",
+            "predicted_home_score": 34.0,
+            "predicted_away_score": 14.0,
+            "predicted_winner": "New Mexico State",
+            "predicted_margin": 20.0,
+            "predicted_total": 48.0,
+            "betting_over_under": None,
+            "over_probability": None,
+            "under_probability": None,
+            "neutral_site": False,
+            "prediction_made_at": "2025-09-30T00:00:00Z",
+            "created_at": "2025-09-30T00:00:00Z",
+        }
+
+        mock_db = Mock()
+        mock_db.is_connected = True
+        # The batch query is season/week-scoped, so with a mismatched stored
+        # week it legitimately finds nothing for THIS week...
+        mock_db.get_predictions_by_week.return_value = []
+        # ...but the id-only lookup (the fix) finds it regardless of week.
+        mock_db.get_prediction_by_ncaa_game_id.return_value = stored_prediction
+        mock_get_db.return_value = mock_db
+
+        result = get_scoreboard_data(6, 2025)
+
+        self.assertIsNotNone(result)
+        self.assertTrue(result['hasPredictions'])
+        self.assertIn('prediction', result['games'][0])
+        self.assertEqual(result['games'][0]['prediction']['ncaa_game_id'], 6459454)
+        self.assertEqual(result['games'][0]['prediction']['week'], 21)
+
+        # Confirm the fixed lookup was called id-only (no season/week args).
+        mock_db.get_prediction_by_ncaa_game_id.assert_called_once_with(6459454)
+
     @patch('services.stats_service.requests.get')
     def test_get_offense_stats_empty(self, mock_get):
         """Test successful retrieval Total Offense stats with empty data"""

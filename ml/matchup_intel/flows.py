@@ -36,11 +36,52 @@ except ImportError:  # pragma: no cover
         import logging
         return logging.getLogger("matchup_intel")
 
+from uuid import UUID
+
 from . import db, serve
 from .config import Config, load_config
-from .extract import extract_factor
+from .extract import extract_factor_traced
 from .ground import ground_factor
+from .ingest.polymarket_ingest import ingest_seed_odds
 from .ingest.seed import ingest_seed, load_seed_games
+from .ingest.seed_weather import ingest_weather_seed
+from .schemas import Factor, Source
+from .score.weather import score_weather
+
+
+def _safe_sources(payload: dict) -> list[Source]:
+    out = []
+    for s in payload.get("sources", []) or []:
+        try:
+            out.append(Source.model_validate(s))
+        except Exception:
+            pass
+    return out
+
+
+def _weather_factor(row: dict, game: dict) -> Factor:
+    """Build a weather Factor from a raw signal via the Layer-2 scorer (no LLM).
+    The bucket is carried on `grounding` so the weather grounder can query history."""
+    payload = row["payload"]
+    ws = score_weather(payload.get("conditions", {}))
+    return Factor(
+        ncaa_game_id=game["ncaa_game_id"],
+        game_id=game.get("cfbd_game_id"),
+        season=game.get("season"),
+        week=game.get("week"),
+        team_id=row["team_id"] if isinstance(row["team_id"], UUID) else UUID(str(row["team_id"])),
+        category="weather",
+        raw_signal=payload.get("text"),
+        direction=ws.direction,
+        magnitude=ws.magnitude,
+        confidence=ws.confidence,
+        explanation=ws.explanation,
+        scoring_method="model",              # grounding bumps to 'hybrid'
+        sources=_safe_sources(payload),
+        derived_from_raw_ids=[row["raw_id"] if isinstance(row["raw_id"], UUID) else UUID(str(row["raw_id"]))],
+        grounding={"condition_bucket": ws.bucket},
+        as_of_timestamp=row["as_of_timestamp"],
+    )
 
 
 def _parse_ts(value: str) -> datetime:
@@ -50,7 +91,14 @@ def _parse_ts(value: str) -> datetime:
 @task(retries=2, retry_delay_seconds=10)
 def ingest_stage(cfg: Config) -> dict:
     with db.connect(cfg.database_url) as conn:
-        return ingest_seed(conn)
+        summary = ingest_seed(conn)
+        summary.update(ingest_weather_seed(conn))
+        # Best-effort, gated by config: Polymarket coverage is sparse and the
+        # source is optional, so a disabled/unreachable Polymarket must never
+        # fail the ingest stage overall.
+        if cfg.polymarket_enabled:
+            summary.update(ingest_seed_odds(conn, timeout=cfg.request_timeout))
+        return summary
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -59,11 +107,23 @@ def extract_and_ground_stage(cfg: Config, game: dict) -> int:
     log = get_run_logger()
     created = 0
     with db.connect(cfg.database_url) as conn:
+        # Idempotent re-run: clear this game's prior factors + call records first.
+        db.reset_game_factors(conn, game["ncaa_game_id"])
         rows = db.fetch_all_raw_signals_for_game(conn, game["ncaa_game_id"])
         for row in rows:
             if row.get("team_id") is None:
                 continue  # can't attribute a factor to a team
-            factor = extract_factor(
+
+            # Quantitative factors (weather, ...) use a Layer-2 scorer, NOT the
+            # LLM, for magnitude — then get real historical grounding.
+            if row["source_type"] == "weather":
+                factor = _weather_factor(row, game)
+                factor = ground_factor(factor, conn)
+                db.insert_factor(conn, factor)
+                created += 1
+                continue
+
+            result = extract_factor_traced(
                 cfg,
                 raw_id=str(row["raw_id"]),
                 ncaa_game_id=game["ncaa_game_id"],
@@ -75,12 +135,23 @@ def extract_and_ground_stage(cfg: Config, game: dict) -> int:
                 week=game.get("week"),
                 game_id=game.get("cfbd_game_id"),
             )
-            if factor is None:
+            factor_id = None
+            if result.factor is not None:
+                factor = ground_factor(result.factor, conn)
+                factor_id = db.insert_factor(conn, factor)
+                created += 1
+            else:
                 log.warning("LLM output dropped for raw_id=%s (invalid/unreachable)", row["raw_id"])
-                continue
-            factor = ground_factor(factor, conn)
-            db.insert_factor(conn, factor)
-            created += 1
+            # Persist the call for audit — even when the output was dropped.
+            db.insert_llm_call(
+                conn,
+                raw_id=str(row["raw_id"]),
+                factor_id=factor_id,
+                model=cfg.ollama_model,
+                prompt=result.prompt,
+                response=result.response,
+                valid=result.valid,
+            )
     return created
 
 

@@ -19,5 +19,6 @@ export const appConfig = {
     search: "search",
     stats: "/stats",
     totalOffense: "/stats/offense",
+    matchup: "/matchup/",
   },
 };

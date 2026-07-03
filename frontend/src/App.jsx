@@ -12,6 +12,7 @@ import TeamsPage from "./pages/TeamsPage";
 import ComparisonPage from "./pages/ComparisonPage";
 import PredictionPage from "./pages/PredictionPage";
 import TeamPage from "./pages/TeamPage";
+import MatchupPage from "./pages/MatchupPage";
 import Header from "./components/Header";
 import { appConfig } from "./constants";
 import { preloadTeamData } from "./branding/teamBranding";
@@ -51,6 +52,7 @@ function AnimatedRoutes() {
         <Route path="/comparison" element={<ComparisonPage />} />
         <Route path="/prediction" element={<PredictionPage />} />
         <Route path="/team/:teamName" element={<TeamPage />} />
+        <Route path="/matchup/:gameId" element={<MatchupPage />} />
       </Routes>
     </div>
   );

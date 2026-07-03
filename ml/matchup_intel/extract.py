@@ -14,7 +14,7 @@ out" is a headwind, but a blue-chip backup who's looked sharp reduces the magnit
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from typing import Optional
 from uuid import UUID
 
@@ -30,15 +30,39 @@ _SYSTEM = (
     "given team, and by how much.\n\n"
     "Rules:\n"
     "- direction: 'tailwind' (helps the team), 'headwind' (hurts), or 'neutral'.\n"
-    "- magnitude: 0..1, how much this factor matters for THIS game.\n"
     "- confidence: 0..1, how sure you are given the evidence.\n"
-    "- Weigh NET impact using the supporting data. A hurt starter is a headwind, "
-    "but a highly-touted backup who has played well REDUCES the magnitude, and the "
-    "explanation must say so.\n"
     "- explanation: one or two plain-language sentences a fan can read, carrying "
     "the nuance. No hedging boilerplate.\n"
-    "- Output ONLY the JSON object, nothing else."
+    "- Output ONLY the JSON object, nothing else.\n\n"
+    "MAGNITUDE is 0..1 and must reflect NET impact after mitigating context. Use "
+    "this rubric and let the supporting data move you WITHIN a band:\n"
+    "  0.00-0.20  negligible / routine\n"
+    "  0.20-0.40  modest — real but well-mitigated (e.g. starter hurt but an "
+    "elite, proven backup)\n"
+    "  0.40-0.60  notable — clear edge/hit with partial mitigation\n"
+    "  0.60-0.80  major — significant, little mitigation (e.g. starter OUT, "
+    "untested/walk-on backup)\n"
+    "  0.80-1.00  decisive — game-defining\n"
+    "The QUALITY of a replacement is the key dial: a highly-touted, sharp backup "
+    "pulls magnitude DOWN; an untested/walk-on backup pushes it UP."
 )
+
+# Few-shot calibration so backup quality actually separates the magnitude, not
+# just the prose. Kept deliberately generic (no real teams) to avoid biasing.
+_FEWSHOT = """CALIBRATION EXAMPLES (study how magnitude moves with mitigation):
+
+Example A — RAW: "Starting QB questionable with a shoulder issue."
+SUPPORTING: {"backup_qb": {"recruit_stars": 4, "recent_snaps": "210 yds, 2 TD in relief", "notes": "former blue-chip, looked sharp"}}
+OUTPUT: {"category": "QB", "direction": "headwind", "magnitude": 0.35, "confidence": 0.6, "explanation": "Losing the starter hurts, but a blue-chip backup who has already played well limits the drop-off, so the net impact is modest."}
+
+Example B — RAW: "Starting QB ruled OUT; backup is a converted walk-on making his first career start."
+SUPPORTING: {"backup_qb": {"recruit_stars": 0, "recent_snaps": "none", "notes": "untested"}}
+OUTPUT: {"category": "QB", "direction": "headwind", "magnitude": 0.72, "confidence": 0.75, "explanation": "The starter is out and the replacement is an untested walk-on making his first start, so the offense takes a major hit with little to cushion it."}
+
+Example C — RAW: "Starter fully healthy; no changes at QB."
+SUPPORTING: {}
+OUTPUT: {"category": "QB", "direction": "neutral", "magnitude": 0.10, "confidence": 0.7, "explanation": "No meaningful change at quarterback this week."}
+"""
 
 
 def build_prompt(category: str, raw_text: str, supporting: dict | None) -> str:
@@ -46,9 +70,12 @@ def build_prompt(category: str, raw_text: str, supporting: dict | None) -> str:
     supporting_json = json.dumps(supporting or {}, indent=2, default=str)
     return (
         f"{_SYSTEM}\n\n"
+        f"{_FEWSHOT}\n"
+        f"NOW DO THE SAME FOR THIS ONE.\n"
         f"FACTOR CATEGORY: {category}\n\n"
         f"RAW SIGNAL:\n{raw_text}\n\n"
-        f"SUPPORTING DATA (use this to judge NET impact):\n{supporting_json}\n\n"
+        f"SUPPORTING DATA (use this to judge NET impact and pick the magnitude band):\n"
+        f"{supporting_json}\n\n"
         f'Return JSON with keys: category, direction, magnitude, confidence, explanation.'
     )
 
@@ -101,7 +128,18 @@ def _safe_source(s: dict) -> Optional[Source]:
         return None
 
 
-def extract_factor(
+@dataclass
+class ExtractResult:
+    """The Factor plus the full LLM trace, so every call is auditable — including
+    ones that were DROPPED (factor is None) for producing invalid output."""
+
+    factor: Optional[Factor]
+    prompt: str
+    response: Optional[str]     # raw model text (None on transport failure)
+    valid: bool                # did the output validate into a factor?
+
+
+def extract_factor_traced(
     config: Config,
     *,
     raw_id: str,
@@ -109,26 +147,24 @@ def extract_factor(
     team_id: str,
     category: str,
     payload: dict,
-    as_of_timestamp: datetime,
+    as_of_timestamp,
     season: int | None = None,
     week: int | None = None,
     game_id: int | None = None,
-) -> Optional[Factor]:
+) -> ExtractResult:
     """Full Layer-1 step for one raw signal: prompt -> Ollama -> validate ->
-    assemble a Factor (scoring_method='llm'). Returns None if the LLM output is
-    unusable (dropped)."""
+    assemble a Factor (scoring_method='llm'). Returns the Factor (or None if
+    dropped) together with the exact prompt + raw response for the audit trail."""
     raw_text = payload.get("text") or payload.get("body") or ""
     supporting = payload.get("supporting")
     prompt = build_prompt(category, raw_text, supporting)
 
     response = call_ollama(config, prompt)
-    if response is None:
-        return None
-    llm = parse_response(response)
+    llm = parse_response(response) if response is not None else None
     if llm is None:
-        return None
+        return ExtractResult(factor=None, prompt=prompt, response=response, valid=False)
 
-    return Factor(
+    factor = Factor(
         ncaa_game_id=ncaa_game_id,
         game_id=game_id,
         season=season,
@@ -147,3 +183,10 @@ def extract_factor(
         derived_from_raw_ids=[UUID(raw_id)],
         as_of_timestamp=as_of_timestamp,
     )
+    return ExtractResult(factor=factor, prompt=prompt, response=response, valid=True)
+
+
+def extract_factor(config: Config, **kwargs) -> Optional[Factor]:
+    """Back-compat wrapper: just the Factor (or None). Used where the LLM trace
+    isn't needed (and by the unit tests)."""
+    return extract_factor_traced(config, **kwargs).factor

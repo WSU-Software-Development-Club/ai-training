@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { FiTarget } from "react-icons/fi";
 import styles from "../styles/components/ScoreCard.module.css";
 import { navigateToTeam, navigateToComparison } from "../utils/teamNavigation";
 import { useTeamBranding } from "../hooks/useTeamBranding";
@@ -7,6 +8,12 @@ import { useTeamBranding } from "../hooks/useTeamBranding";
 const ScoreCard = ({ game }) => {
   const navigate = useNavigate();
   const { home, away, game_state, epoch, prediction } = game;
+
+  // The scoreboard payload only surfaces the NCAA game ID nested inside the
+  // prediction (see backend/services/scoreboard_service.py) — there's no
+  // top-level id on the game itself. Games without a model prediction have no
+  // known NCAA game ID, so the matchup-intel affordance is hidden for them.
+  const ncaaGameId = prediction?.ncaa_game_id ?? null;
 
   const homeTeam = home?.names?.short || "Home";
   const awayTeam = away?.names?.short || "Away";
@@ -80,6 +87,13 @@ const ScoreCard = ({ game }) => {
     navigateToTeam(navigate, teamName);
   };
 
+  // Handle "Matchup intel" click to navigate to the Matchup Intelligence page.
+  const handleMatchupClick = (e) => {
+    e.stopPropagation();
+    if (!ncaaGameId) return;
+    navigate(`/matchup/${ncaaGameId}`);
+  };
+
   // TODO: this kind of formatting could be done on the backend side to reduce frontend overhead.
   const getFormattedDate = (epoch) => {
     const dateObject = new Date(epoch * 1000);
@@ -144,6 +158,18 @@ const ScoreCard = ({ game }) => {
       aria-label={`Compare ${awayTeamFull} and ${homeTeamFull}`}
     >
       <div className={styles.scoreCardHeader}>
+        {ncaaGameId && (
+          <button
+            type="button"
+            className={styles.scoreCardMatchupButton}
+            onClick={handleMatchupClick}
+            title="View matchup intel for this game"
+            aria-label={`View matchup intel for ${awayTeamFull} at ${homeTeamFull}`}
+          >
+            <FiTarget aria-hidden="true" />
+            Matchup intel
+          </button>
+        )}
         <span
           className={`${styles.scoreCardStatus} ${getStatusClass(game_state)}`}
         >
