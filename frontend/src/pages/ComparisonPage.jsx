@@ -1,8 +1,6 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Header from "../components/Header";
-import { appConfig } from "../constants";
 import styles from "../styles/pages/ComparisonPage.module.css";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -61,11 +59,6 @@ const ComparisonPage = () => {
   useEffect(() => {
     writeStoredTeam(STORAGE_KEY_B, selectedTeamB);
   }, [selectedTeamB]);
-
-  const handleSearch = (searchTerm) => {
-    // MOCK FUNCTIONALITY - Replace with actual search API call
-    console.log("Searching for:", searchTerm);
-  };
 
   // Fetch teams list on component mount
   useEffect(() => {
@@ -250,7 +243,6 @@ const ComparisonPage = () => {
 
   return (
     <div className={styles.comparisonPage}>
-      <Header title={appConfig.name} onSearch={handleSearch} />
       <main className={styles.comparisonPageMain}>
         <div className={styles.comparisonPageContainer}>
           <div className={styles.comparisonPageHeader}>

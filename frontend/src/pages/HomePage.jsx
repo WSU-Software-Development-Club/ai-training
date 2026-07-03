@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Header from "../components/Header";
 import ScoreCard from "../components/ScoreCard";
-import { appConfig } from "../constants";
 import api from "../services/api";
 import styles from "../styles/pages/HomePage.module.css";
 import { getCurrentWeek } from "../utils/helpers";
@@ -18,11 +16,6 @@ const HomePage = () => {
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const handleSearch = (searchTerm) => {
-    // TODO: Replace with API call to /api/search
-    console.log("Searching for:", searchTerm);
-  };
 
   // Reset date filter when week or year changes
   useEffect(() => {
@@ -163,8 +156,6 @@ const HomePage = () => {
 
   return (
     <div className={styles.homePage}>
-      <Header title={appConfig.name} onSearch={handleSearch} />
-
       <main className={styles.homePageMain}>
         <div className={styles.homePageContainer}>
           <div className={styles.homePageHeader}>

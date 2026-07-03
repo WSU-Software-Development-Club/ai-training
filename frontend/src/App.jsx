@@ -13,6 +13,8 @@ import ComparisonPage from "./pages/ComparisonPage";
 import PredictionPage from "./pages/PredictionPage";
 import TeamPage from "./pages/TeamPage";
 import MatchupPage from "./pages/MatchupPage";
+import Header from "./components/Header";
+import { appConfig } from "./constants";
 import { preloadTeamData } from "./branding/teamBranding";
 import { prefetchForRoute } from "./services/prefetchService";
 import "./App.css";
@@ -34,6 +36,9 @@ function RoutePrefetcher() {
 // Wraps the routed page in a container keyed by pathname, so each navigation
 // remounts it and replays a short fade-in (see `.pageFade` in index.css).
 // Keyed on pathname only, so in-page state changes (filters, week) don't fade.
+// Deliberately does NOT include the Header/Navigation — those live once in
+// <App> outside of <Routes> so they never remount (and the logo never
+// re-decodes/blinks) when navigating between tabs.
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -64,10 +69,20 @@ function App() {
     });
   }, []);
 
+  // Placeholder search handler shared by the single, persistent Header — no
+  // page currently wires up real search behavior (see TODOs on each page).
+  const handleSearch = (searchTerm) => {
+    console.log("Searching for:", searchTerm);
+  };
+
   return (
     <Router>
       <RoutePrefetcher />
       <div className="app">
+        {/* Persistent chrome: rendered once, outside <Routes>, so the nav bar
+            and logo stay mounted (no remount/re-decode blink) across every
+            navigation. Only the content below it swaps per route. */}
+        <Header title={appConfig.name} onSearch={handleSearch} />
         <AnimatedRoutes />
       </div>
     </Router>

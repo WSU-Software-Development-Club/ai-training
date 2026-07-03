@@ -153,9 +153,17 @@
 
 /* Smooth fade-in on each route change. The wrapper is keyed by pathname
    (see AnimatedRoutes in App.jsx), so it replays on every navigation. Opacity
-   only — no transform — so the sticky header doesn't shift during the fade. */
+   only — no transform — so the sticky header doesn't shift during the fade.
+   The header itself lives outside this wrapper entirely (persistent chrome in
+   App.jsx), so it never fades or remounts.
+   flex: 1 + column so this wrapper (and the routed page's own root element
+   inside it) stretch to fill the remaining height below the header, the same
+   way the page root used to via its own `min-height: 100vh`. */
 .pageFade {
   animation: pageFadeIn 0.2s var(--ease-smooth);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 @keyframes pageFadeIn {
