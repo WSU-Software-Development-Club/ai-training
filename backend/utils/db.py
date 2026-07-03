@@ -115,13 +115,21 @@ class PredictionsDB:
             (season, week),
         )
 
-    def get_prediction_by_ncaa_game_id(self, ncaa_game_id: int, season: int, week: int) -> Optional[Dict[str, Any]]:
-        """Precise lookup by NCAA game id + season + week."""
+    def get_prediction_by_ncaa_game_id(self, ncaa_game_id: int, season: Optional[int] = None,
+                                        week: Optional[int] = None) -> Optional[Dict[str, Any]]:
+        """Lookup by NCAA game id alone.
+
+        `ncaa_game_id` is UNIQUE (db/schema.sql), so this is a precise match on
+        its own — no season/week predicate needed (and requiring one is
+        actively wrong, since the ML writer's week numbering (CFBD week, with
+        postseason stored as cfbd_week+15) doesn't match the NCAA scoreboard's
+        display week (e.g. NCAA folds "Week 0" into "week 01")). `season` and
+        `week` are accepted-but-ignored for backward compatibility with
+        existing callers.
+        """
         rows = self._query(
-            "SELECT * FROM predictions "
-            "WHERE ncaa_game_id = %s AND season = %s AND week = %s "
-            "ORDER BY prediction_made_at DESC LIMIT 1",
-            (ncaa_game_id, season, week),
+            "SELECT * FROM predictions WHERE ncaa_game_id = %s LIMIT 1",
+            (ncaa_game_id,),
         )
         return rows[0] if rows else None
 

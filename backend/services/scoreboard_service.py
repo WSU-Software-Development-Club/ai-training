@@ -4,9 +4,9 @@ Includes predictions from the Postgres database when available
 """
 
 import requests
-from datetime import date
 from api_vars import NCAA_API_BASE_URL
 from utils.db import get_db
+from utils.helpers import get_current_season_year
 
 def process_games(raw_data: dict, predictions_map: dict = None, season: int = None, week: int = None, db=None):
     """
@@ -14,10 +14,14 @@ def process_games(raw_data: dict, predictions_map: dict = None, season: int = No
 
     Args:
         raw_data: Raw game data from NCAA API
-        predictions_map: Dictionary mapping ncaa_game_id to predictions (for quick lookup)
-        season: Season year for precise prediction matching
-        week: Week number for precise prediction matching
-        db: PredictionsDB instance for direct lookups if needed
+        predictions_map: Dictionary mapping ncaa_game_id to predictions (fast-path
+            lookup; pre-filtered by season/week by the caller, so it can miss
+            rows whose stored week numbering doesn't match - see db fallback below)
+        season: Season year requested (debug logging only - not used for matching)
+        week: Week number requested (debug logging only - not used for matching)
+        db: PredictionsDB instance for the id-only fallback lookup (matches on the
+            UNIQUE ncaa_game_id alone, so it's unaffected by week-numbering
+            mismatches between the ML writer and the NCAA scoreboard)
     """
     processed_games = []
     
@@ -71,22 +75,22 @@ def process_games(raw_data: dict, predictions_map: dict = None, season: int = No
             'epoch': game.get('startTimeEpoch')
         }
         
-        # Add prediction if available - match by NCAA game ID, season, and week
+        # Add prediction if available - match by NCAA game ID alone.
+        # ncaa_game_id is UNIQUE in the predictions table (db/schema.sql), so
+        # it's a precise match on its own; gating on season/week additionally
+        # is wrong because the ML writer's week numbering (CFBD week, with
+        # postseason stored as cfbd_week+15) does not line up with the NCAA
+        # scoreboard's display week.
         prediction = None
-        if ncaa_game_id and season and week:
+        if ncaa_game_id:
             # First try quick lookup from predictions_map
             if ncaa_game_id in predictions_map:
-                pred = predictions_map[ncaa_game_id]
-                # Verify season and week match for accuracy
-                if pred.get('season') == season and pred.get('week') == week:
-                    prediction = pred
-                    print(f"Debug: ✓ Prediction found in map for NCAA game ID: {ncaa_game_id}")
-                else:
-                    print(f"Debug: ⚠ Prediction in map doesn't match season/week for NCAA game ID: {ncaa_game_id}")
-            
+                prediction = predictions_map[ncaa_game_id]
+                print(f"Debug: ✓ Prediction found in map for NCAA game ID: {ncaa_game_id}")
+
             # If not found in map, try direct lookup (fallback)
             if prediction is None and db and db.is_connected:
-                prediction = db.get_prediction_by_ncaa_game_id(ncaa_game_id, season, week)
+                prediction = db.get_prediction_by_ncaa_game_id(ncaa_game_id)
                 if prediction:
                     print(f"Debug: ✓ Prediction found via direct lookup for NCAA game ID: {ncaa_game_id}")
         
@@ -121,17 +125,23 @@ def process_games(raw_data: dict, predictions_map: dict = None, season: int = No
     return processed_games
         
 
-def get_scoreboard_data(week, year = date.today().year):
+def get_scoreboard_data(week, year=None):
     """
     Args:
         week (int): Week number (required)
-        year (int): Season year
+        year (int, optional): Season year. Defaults to the current CFB season
+            year (not the calendar year - see get_current_season_year), so an
+            offseason (Jan-Jul) call without an explicit year queries the
+            season that just finished rather than the season that hasn't
+            started yet.
     Returns:
         dict or None: Scoreboard data or None if error occurred
 
         Data Processing: Loop through games and extract/format each one
         Includes predictions from the Postgres database if available
     """
+    if year is None:
+        year = get_current_season_year()
     try:
         # Fetch scoreboard data from NCAA API
         raw_response = requests.get(f"{NCAA_API_BASE_URL}/scoreboard/football/fbs/{year}/{week:02d}/all-conf", timeout=10)
@@ -178,7 +188,10 @@ def get_scoreboard_data(week, year = date.today().year):
             'updatedAt': raw_data.get('updated_at'),
             'games': processed_games,
             'totalGames': len(raw_data.get('games', [])),
-            'hasPredictions': len(predictions_map) > 0
+            # Derived from what actually attached (not from predictions_map,
+            # which is pre-filtered by season/week and can under-count when a
+            # prediction's stored week numbering doesn't match the scoreboard's).
+            'hasPredictions': any('prediction' in g for g in processed_games)
         }
 
         return game_data

@@ -15,16 +15,15 @@ def get_scoreboard_by_week(week):
     Args:
         week (int): Week number (1-16 typically)
     Query params:
-        year (int, optional): Season year (defaults to current year)
+        year (int, optional): Season year (defaults to the current CFB season
+            year - see services.scoreboard_service.get_scoreboard_data)
     Returns:
         JSON response with scoreboard data or error message
     """
-    # Get year from query parameter, default to current year
+    # Get year from query parameter; None falls through to
+    # get_scoreboard_data's own CFB-season-aware default.
     year = request.args.get('year', type=int)
-    if year is None:
-        from datetime import date
-        year = date.today().year
-    
+
     scoreboard_data = get_scoreboard_data(week, year)
 
     if scoreboard_data is None:
