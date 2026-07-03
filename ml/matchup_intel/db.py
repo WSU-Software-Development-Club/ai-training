@@ -60,14 +60,18 @@ def upsert_team(
     venue_name: Optional[str] = None,
     stadium_lat: Optional[float] = None,
     stadium_lon: Optional[float] = None,
+    stadium_timezone: Optional[str] = None,
 ) -> str:
-    """Insert or update a team by normalized_name; returns team_id (UUID str)."""
+    """Insert or update a team by normalized_name; returns team_id (UUID str).
+    Every optional field is COALESCE'd so a partial upsert (e.g. the weather
+    backfill passing only coords) never nulls out data a richer upsert set."""
     normalized = normalize_team_name(name)
     row = conn.execute(
         """
         INSERT INTO teams (name, normalized_name, cfbd_id, conference,
-                           venue_name, stadium_lat, stadium_lon, updated_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, now())
+                           venue_name, stadium_lat, stadium_lon,
+                           stadium_timezone, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, now())
         ON CONFLICT (normalized_name) DO UPDATE SET
             name       = COALESCE(EXCLUDED.name, teams.name),
             cfbd_id    = COALESCE(EXCLUDED.cfbd_id, teams.cfbd_id),
@@ -75,12 +79,33 @@ def upsert_team(
             venue_name = COALESCE(EXCLUDED.venue_name, teams.venue_name),
             stadium_lat = COALESCE(EXCLUDED.stadium_lat, teams.stadium_lat),
             stadium_lon = COALESCE(EXCLUDED.stadium_lon, teams.stadium_lon),
+            stadium_timezone = COALESCE(EXCLUDED.stadium_timezone, teams.stadium_timezone),
             updated_at = now()
         RETURNING team_id
         """,
-        (name, normalized, cfbd_id, conference, venue_name, stadium_lat, stadium_lon),
+        (name, normalized, cfbd_id, conference, venue_name,
+         stadium_lat, stadium_lon, stadium_timezone),
     ).fetchone()
     return str(row[0])
+
+
+def fetch_teams_with_coords(conn: psycopg.Connection) -> list[dict]:
+    """Every team that has stadium coordinates AND a timezone — the set the
+    weather backfill can ground. Returns [{name, stadium_lat, stadium_lon,
+    stadium_timezone}, ...]. Teams missing any of the three are skipped: the
+    UTC->local date join needs the tz, so a coord-only team can't be bucketed
+    correctly and is left out rather than joined against the wrong day."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        return cur.execute(
+            """
+            SELECT name, stadium_lat, stadium_lon, stadium_timezone
+            FROM teams
+            WHERE stadium_lat IS NOT NULL
+              AND stadium_lon IS NOT NULL
+              AND stadium_timezone IS NOT NULL
+            ORDER BY name
+            """
+        ).fetchall()
 
 
 # --- raw_signals + watermarks ---------------------------------------------

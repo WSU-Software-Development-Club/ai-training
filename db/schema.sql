@@ -59,9 +59,13 @@ CREATE TABLE IF NOT EXISTS teams (
     venue_name       TEXT,
     stadium_lat      DOUBLE PRECISION,            -- weather factor
     stadium_lon      DOUBLE PRECISION,
+    stadium_timezone TEXT,                        -- IANA tz of the venue; UTC->local date join for weather_history
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Additive backfill for DBs created before stadium_timezone existed (the live
+-- troyster DB already has a teams table, which CREATE ... IF NOT EXISTS skips).
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS stadium_timezone TEXT;
 CREATE INDEX IF NOT EXISTS idx_teams_normalized_name ON teams (normalized_name);
 
 -- Layer 0 raw landing. Source-agnostic: source_type + JSONB payload absorb news,
