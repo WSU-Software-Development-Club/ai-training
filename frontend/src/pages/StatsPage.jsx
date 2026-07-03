@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Header from "../components/Header";
 import StatsTable from "../components/StatsTable";
-import { appConfig } from "../constants";
 import { mockStats } from "../utils/mockData";
 import { statCategories } from "../utils/appData";
 import { getStats, hasBackendSupport, peekStats } from "../services/api";
@@ -13,11 +11,6 @@ const StatsPage = () => {
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  const handleSearch = (searchTerm) => {
-    // TODO: Replace with API call to /api/search
-    console.log("Searching for:", searchTerm);
-  };
 
   // Fetch stats data when category changes
   useEffect(() => {
@@ -83,8 +76,6 @@ const StatsPage = () => {
 
   return (
     <div className={styles.statsPage}>
-      <Header title={appConfig.name} onSearch={handleSearch} />
-
       <main className={styles.statsPageMain}>
         <div className={styles.statsPageContainer}>
           <div className={styles.statsPageHeader}>

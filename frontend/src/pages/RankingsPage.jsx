@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Header from "../components/Header";
 import RankingsTable from "../components/RankingsTable";
-import { appConfig } from "../constants";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import styles from "../styles/pages/RankingsPage.module.css";
@@ -11,10 +9,6 @@ const RankingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const handleSearch = (searchTerm) => {
-    console.log("Searching for:", searchTerm);
-  };
-  
   useEffect(() => {
     const controller = new AbortController();
 
@@ -47,8 +41,6 @@ const RankingsPage = () => {
 
   return (
     <div className={styles.rankingsPage}>
-      <Header title={appConfig.name} onSearch={handleSearch} />
-
       <main className={styles.rankingsPageMain}>
         <div className={styles.rankingsPageContainer}>
           <div className={styles.rankingsPageHeader}>

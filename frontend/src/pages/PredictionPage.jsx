@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { FiTarget, FiTrendingUp, FiCheckCircle, FiXCircle } from "react-icons/fi";
-import Header from "../components/Header";
 import TeamLogo from "../components/TeamLogo";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { appConfig } from "../constants";
 import api from "../services/api";
 import { getCurrentWeek, getCurrentYear } from "../utils/helpers";
 import styles from "../styles/pages/PredictionPage.module.css";
@@ -169,8 +167,6 @@ const PredictionPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const handleSearch = () => {};
-
   useEffect(() => {
     const controller = new AbortController();
 
@@ -245,8 +241,6 @@ const PredictionPage = () => {
 
   return (
     <div className={styles.predictionPage}>
-      <Header title={appConfig.name} onSearch={handleSearch} />
-
       <main className={styles.predictionPageMain}>
         <div className={styles.predictionPageContainer}>
           <div className={styles.predictionPageHeader}>

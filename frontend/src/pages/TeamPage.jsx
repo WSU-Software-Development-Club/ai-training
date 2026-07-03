@@ -1,8 +1,6 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Header from "../components/Header";
-import { appConfig } from "../constants";
 import styles from "../styles/pages/TeamPage.module.css";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -18,12 +16,6 @@ const TeamPage = () => {
 
   // Decode the team name from URL
   const teamName = encodedTeamName ? decodeURIComponent(encodedTeamName) : null;
-
-  const handleSearch = (searchTerm) => {
-    // Search functionality will be handled by Header/SearchBar
-    // This is just a placeholder to match the interface
-    console.log("Searching for:", searchTerm);
-  };
 
   // Fetch team data when component mounts or teamName changes
   useEffect(() => {
@@ -60,7 +52,6 @@ const TeamPage = () => {
   if (loading) {
     return (
       <div className={styles.teamPage}>
-        <Header title={appConfig.name} onSearch={handleSearch} />
         <main className={styles.teamPageMain}>
           <div className={styles.loadingContainer}>
             <LoadingSpinner />
@@ -73,7 +64,6 @@ const TeamPage = () => {
   if (error || !teamData) {
     return (
       <div className={styles.teamPage}>
-        <Header title={appConfig.name} onSearch={handleSearch} />
         <main className={styles.teamPageMain}>
           <div className={styles.teamPageContainer}>
             <div className={styles.errorContainer}>
@@ -93,7 +83,6 @@ const TeamPage = () => {
 
   return (
     <div className={styles.teamPage}>
-      <Header title={appConfig.name} onSearch={handleSearch} />
       <main className={styles.teamPageMain}>
         <div className={styles.teamPageContainer}>
           <div className={styles.teamPageHeader}>
