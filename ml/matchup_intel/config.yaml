@@ -1,0 +1,12 @@
+# Non-secret pipeline config. Secrets (DATABASE_URL, CFBD_API_KEY) come from the
+# environment / .env, never here. Env vars (UPPERCASE) override these.
+
+# LLM (self-hosted Ollama on troyster; reached over the compose network).
+ollama_url: http://ollama:11434
+ollama_model: gemma3
+
+# Sample-size guard: historical_rate is only served when sample_size >= this.
+sample_size_threshold: 30
+
+# HTTP timeout (seconds) for outbound calls (Ollama, data sources).
+request_timeout: 60

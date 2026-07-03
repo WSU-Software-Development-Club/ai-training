@@ -145,6 +145,22 @@ class PredictionsDB:
             (limit,),
         )
 
+    def get_factor_deck_by_game(self, ncaa_game_id: int) -> List[Dict[str, Any]]:
+        """Serving read for the Matchup Intelligence Engine: both teams' factor
+        decks for a game (guard already applied at write time), newest first,
+        joined to team names. [] if none / DB unreachable (graceful degrade)."""
+        return self._query(
+            """
+            SELECT fd.team_id, t.name AS team_name, t.normalized_name,
+                   fd.factors, fd.reference_panels, fd.as_of_timestamp
+            FROM factor_decks fd
+            JOIN teams t ON t.team_id = fd.team_id
+            WHERE fd.ncaa_game_id = %s
+            ORDER BY fd.as_of_timestamp DESC
+            """,
+            (ncaa_game_id,),
+        )
+
 
 # Global instance (mirrors the old module-level supabase_client)
 predictions_db = PredictionsDB()

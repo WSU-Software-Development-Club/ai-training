@@ -1,0 +1,10 @@
+# Matchup Intelligence Engine pipeline
+prefect>=3.0
+pydantic>=2.0
+psycopg[binary]>=3.1
+requests
+python-dotenv
+PyYAML
+# Reuses ml/training_data/collect_data.py fetchers for live CFBD data later;
+# those deps (pandas, numpy, etc.) come from ml/requirements.txt when needed.
+pytest
