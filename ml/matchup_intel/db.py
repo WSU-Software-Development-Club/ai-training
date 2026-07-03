@@ -235,6 +235,41 @@ def fetch_factors_for_game(conn: psycopg.Connection, ncaa_game_id: int) -> list[
         ).fetchall()
 
 
+# --- weather historical grounding -----------------------------------------
+
+def get_weather_history_rate(conn: psycopg.Connection, team_id, bucket: str) -> tuple[int, int]:
+    """Return (wins, total) for a team's past games in a weather bucket."""
+    tid = team_id if isinstance(team_id, UUID) else UUID(str(team_id))
+    row = conn.execute(
+        """
+        SELECT count(*) FILTER (WHERE won) AS wins, count(*) AS total
+        FROM weather_history WHERE team_id = %s AND condition_bucket = %s
+        """,
+        (tid, bucket),
+    ).fetchone()
+    return (int(row[0] or 0), int(row[1] or 0))
+
+
+def reset_weather_history(conn: psycopg.Connection, team_id: str, bucket: str) -> None:
+    conn.execute(
+        "DELETE FROM weather_history WHERE team_id = %s AND condition_bucket = %s",
+        (UUID(team_id), bucket),
+    )
+
+
+def insert_weather_history_bulk(
+    conn: psycopg.Connection, team_id: str, bucket: str, results: list[tuple[int, bool]],
+    source: str = "seed",
+) -> None:
+    """Bulk-insert (season, won) rows for a team+bucket."""
+    with conn.cursor() as cur:
+        cur.executemany(
+            "INSERT INTO weather_history (team_id, condition_bucket, season, won, source) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            [(UUID(team_id), bucket, season, won, source) for season, won in results],
+        )
+
+
 # --- reference panel + serving --------------------------------------------
 
 def get_model_reference_panel(conn: psycopg.Connection, ncaa_game_id: int) -> Optional[dict]:

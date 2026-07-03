@@ -13,8 +13,9 @@ reference demonstration of intellectual honesty, not a shortcut.
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable
 
+from . import db
 from .schemas import Factor
 
 
@@ -31,10 +32,37 @@ def ground_qb_factor(factor: Factor, conn=None) -> Factor:
     })
 
 
-# Registry: category -> grounding function. Weather (slice #2) will register a
-# real Open-Meteo-archive-backed query here; every other category is a variation.
+def ground_weather_factor(factor: Factor, conn=None) -> Factor:
+    """Real historical grounding: the team's win-rate in this weather bucket.
+    Produces the honest counts; the sample-size guard (at serving) decides
+    whether the rate is actually shown. The bucket is carried on the factor's
+    grounding dict by the weather scorer step."""
+    bucket = (factor.grounding or {}).get("condition_bucket")
+    if conn is None or bucket is None:
+        return factor.model_copy(update={
+            "historical_rate": None, "sample_size": 0,
+            "grounding": {"method": "weather_history", "reason": "no bucket/conn"},
+        })
+    wins, total = db.get_weather_history_rate(conn, factor.team_id, bucket)
+    rate = (wins / total) if total > 0 else None
+    return factor.model_copy(update={
+        "historical_rate": rate,
+        "sample_size": total,
+        "scoring_method": "hybrid",   # model magnitude + historical rate
+        "grounding": {
+            "method": "weather_history",
+            "condition_bucket": bucket,
+            "wins": wins,
+            "total": total,
+        },
+    })
+
+
+# Registry: category -> grounding function. Every new factor type is a variation
+# of one of these two templates (guard-null vs real historical query).
 _GROUNDERS: dict[str, Callable[..., Factor]] = {
     "QB": ground_qb_factor,
+    "weather": ground_weather_factor,
 }
 
 

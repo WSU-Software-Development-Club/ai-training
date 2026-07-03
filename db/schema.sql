@@ -135,6 +135,22 @@ CREATE TABLE IF NOT EXISTS llm_calls (
 CREATE INDEX IF NOT EXISTS idx_llm_calls_raw    ON llm_calls (raw_id);
 CREATE INDEX IF NOT EXISTS idx_llm_calls_factor ON llm_calls (factor_id);
 
+-- Historical grounding store for the WEATHER factor: a team's past results in a
+-- given weather bucket. The grounder aggregates win-rate + sample_size from here;
+-- the sample-size guard then decides whether the rate is served. (Seeded now;
+-- later backfilled from CFBD results x Open-Meteo archive by stadium coords.)
+CREATE TABLE IF NOT EXISTS weather_history (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id          UUID NOT NULL REFERENCES teams(team_id),
+    condition_bucket TEXT NOT NULL,          -- cold | wind | rain | heat | clear
+    season           INTEGER,
+    won              BOOLEAN NOT NULL,
+    source           TEXT,                   -- provenance (e.g. 'seed', 'cfbd+open-meteo')
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_weather_history_team_bucket
+    ON weather_history (team_id, condition_bucket);
+
 -- Layer 5 serving. The sample-size guard is applied when writing this table, so
 -- serving physically cannot emit a sub-threshold historical_rate.
 CREATE TABLE IF NOT EXISTS factor_decks (

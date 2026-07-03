@@ -41,7 +41,9 @@ _DEFAULTS = {
     "ollama_url": "http://ollama:11434",
     "ollama_model": "gemma3",
     "sample_size_threshold": 30,
-    "request_timeout": 60,
+    # Generous enough to tolerate a cold gemma3 load on the first inference
+    # (the model is lazy-loaded into memory on first call).
+    "request_timeout": 180,
 }
 
 
