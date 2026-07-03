@@ -35,6 +35,11 @@ class Config:
     # when sample_size >= this. Tune per how much evidence you require.
     sample_size_threshold: int
     request_timeout: int
+    # Kill-switch for the Polymarket reference-panel input (Gamma/CLOB are
+    # public, no-key endpoints — this exists for ops to disable lookups
+    # entirely, e.g. if troyster egress to polymarket.com is blocked or
+    # rate-limited, without a code change).
+    polymarket_enabled: bool
 
 
 _DEFAULTS = {
@@ -44,7 +49,14 @@ _DEFAULTS = {
     # Generous enough to tolerate a cold gemma3 load on the first inference
     # (the model is lazy-loaded into memory on first call).
     "request_timeout": 180,
+    "polymarket_enabled": True,
 }
+
+
+def _to_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
 def _load_yaml() -> dict:
@@ -77,4 +89,5 @@ def load_config() -> Config:
         ollama_model=pick("ollama_model"),
         sample_size_threshold=pick("sample_size_threshold", int),
         request_timeout=pick("request_timeout", int),
+        polymarket_enabled=pick("polymarket_enabled", _to_bool),
     )

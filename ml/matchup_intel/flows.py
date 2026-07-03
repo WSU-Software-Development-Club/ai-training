@@ -42,6 +42,7 @@ from . import db, serve
 from .config import Config, load_config
 from .extract import extract_factor_traced
 from .ground import ground_factor
+from .ingest.polymarket_ingest import ingest_seed_odds
 from .ingest.seed import ingest_seed, load_seed_games
 from .ingest.seed_weather import ingest_weather_seed
 from .schemas import Factor, Source
@@ -92,6 +93,11 @@ def ingest_stage(cfg: Config) -> dict:
     with db.connect(cfg.database_url) as conn:
         summary = ingest_seed(conn)
         summary.update(ingest_weather_seed(conn))
+        # Best-effort, gated by config: Polymarket coverage is sparse and the
+        # source is optional, so a disabled/unreachable Polymarket must never
+        # fail the ingest stage overall.
+        if cfg.polymarket_enabled:
+            summary.update(ingest_seed_odds(conn, timeout=cfg.request_timeout))
         return summary
 
 

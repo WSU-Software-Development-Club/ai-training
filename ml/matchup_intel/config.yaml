@@ -12,3 +12,10 @@ sample_size_threshold: 30
 # the first (cold) gemma3 inference, which loads the model into memory, doesn't
 # time out.
 request_timeout: 180
+
+# Polymarket (Layer-6 reference-panel input). Gamma/CLOB are public read-only
+# endpoints -- no API key needed. CFB coverage is sparse by nature (most games
+# have no market at all -> null, not an error). Set to false to skip
+# Polymarket lookups entirely, e.g. if troyster egress to polymarket.com is
+# blocked or rate-limited.
+polymarket_enabled: true
