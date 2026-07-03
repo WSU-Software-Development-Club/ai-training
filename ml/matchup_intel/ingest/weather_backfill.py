@@ -6,8 +6,9 @@ game, and writes the team's (bucket, won) history into weather_history. This
 replaces the seeded demo history with genuine data; the grounder + guard then
 serve (or withhold) a real win-rate depending on the real sample size.
 
-Bounded to a set of stadiums with known coordinates for now; extends by adding
-rows to STADIUMS (or, later, pulling coords from CFBD /venues).
+Stadiums are read from the teams dimension (coords + tz populated by
+ingest/teams_backfill.py from CFBD), so this covers every FBS venue with known
+coordinates rather than a hardcoded pair. Run teams_backfill first.
 """
 
 from __future__ import annotations
@@ -24,14 +25,27 @@ from ..sources import open_meteo
 
 _CSV = Path(__file__).resolve().parents[2] / "training_data" / "training_data.csv"
 
-# team display name -> (lat, lon, IANA tz) of home stadium. Public coordinates.
-# The tz is the stadium's local timezone — it must be passed to Open-Meteo
-# (instead of "auto") AND used to convert each game's UTC kickoff, so the two
-# sides of the date join agree (see _local_date()).
-STADIUMS = {
-    "Washington State": (46.7318, -117.1542, "America/Los_Angeles"),   # Martin Stadium, Pullman WA
-    "Oregon State": (44.5590, -123.2820, "America/Los_Angeles"),        # Reser Stadium, Corvallis OR
-}
+
+def _load_stadiums(database_url: str, only: set[str] | None = None) -> dict[str, tuple]:
+    """{team name: (lat, lon, IANA tz)} for every FBS team the teams dimension
+    has coords + tz for. The tz is the stadium's local timezone — passed to
+    Open-Meteo (instead of "auto") AND used to convert each game's UTC kickoff,
+    so the two sides of the date join agree (see _local_date()). ``only``
+    restricts to a subset of team names (handy for a quick test run)."""
+    with db.connect(database_url) as conn:
+        rows = db.fetch_teams_with_coords(conn)
+    stadiums = {
+        r["name"]: (r["stadium_lat"], r["stadium_lon"], r["stadium_timezone"])
+        for r in rows
+        if not only or r["name"] in only
+    }
+    if not stadiums:
+        raise RuntimeError(
+            "No teams have stadium coords + timezone yet. Run the teams "
+            "dimension backfill first: python -m ml.matchup_intel.ingest."
+            "teams_backfill"
+        )
+    return stadiums
 
 
 def _local_date(date_iso: str, tz_name: str) -> str:
@@ -69,16 +83,21 @@ def _home_games(teams: set[str], seasons: range) -> dict[str, list[tuple]]:
     return out
 
 
-def backfill(database_url: str, *, seasons: range = range(2003, 2025), timeout: int = 60) -> dict:
+def backfill(database_url: str, *, seasons: range = range(2003, 2025),
+             timeout: int = 60, only: set[str] | None = None) -> dict:
     """FETCH-THEN-WRITE, per team: all Open-Meteo HTTP calls happen with no DB
     connection open, results accumulate in memory, then a short-lived
     connection does the delete+bulk-insert and commits — so a mid-run network
     failure on one team doesn't lose already-completed teams, and no
-    transaction sits idle for the ~duration of a team's HTTP calls."""
-    games = _home_games(set(STADIUMS), seasons)
+    transaction sits idle for the ~duration of a team's HTTP calls.
+
+    Stadiums come from the teams dimension (see _load_stadiums); ``only`` limits
+    the run to a subset of team names for a quick smoke test."""
+    stadiums = _load_stadiums(database_url, only=only)
+    games = _home_games(set(stadiums), seasons)
     summary: dict[str, dict] = {}
 
-    for team, (lat, lon, tz_name) in STADIUMS.items():
+    for team, (lat, lon, tz_name) in stadiums.items():
         by_season: dict[int, list[tuple]] = defaultdict(list)
         for date_iso, season, won in games.get(team, []):
             by_season[season].append((_local_date(date_iso, tz_name), won))
@@ -102,7 +121,8 @@ def backfill(database_url: str, *, seasons: range = range(2003, 2025), timeout: 
 
         # --- write phase: short-lived connection, commits per team --------
         with db.connect(database_url) as conn:
-            team_id = db.upsert_team(conn, team, stadium_lat=lat, stadium_lon=lon)
+            team_id = db.upsert_team(conn, team, stadium_lat=lat, stadium_lon=lon,
+                                     stadium_timezone=tz_name)
             db.delete_weather_history_for_team(conn, team_id)   # idempotent refresh
             for bucket, results in bucket_rows.items():
                 db.insert_weather_history_bulk(conn, team_id, bucket, results,
