@@ -1,0 +1,444 @@
+openapi: 3.0.3
+
+info:
+  title: CFB Analytics & Predictions API
+  version: "1.0.0"
+  description: >
+    JSON API for the WSU Software Development Club's college-football analytics
+    and predictions app. Proxies live NCAA data (rankings, stats, scoreboards),
+    exposes team records, serves weekly ML game-score predictions, and assembles
+    per-game "matchup factor decks".
+
+
+    **Response shape.** Most domain endpoints wrap payloads as
+    `{"success": true, "data": ..., ...metadata}` on success, or
+    `{"success": false, "error": "..."}` on failure (HTTP 404 not found /
+    500 upstream error). The `/api/health` and `/api/status` endpoints are the
+    exception — they return bare objects with no `success` key.
+
+
+    Live public deployment: https://football.wsu-swdc.dev
+
+servers:
+  - url: http://localhost:5000
+    description: Local development (Flask / docker-compose)
+  - url: https://football.wsu-swdc.dev
+    description: Production (troyster backend via Cloudflare Tunnel)
+
+tags:
+  - name: Meta
+    description: Health, status, and app info
+  - name: Rankings
+    description: NCAA AP Top 25
+  - name: Stats
+    description: NCAA team statistics by category
+  - name: Scoreboard
+    description: Weekly game scoreboards
+  - name: Team
+    description: Team records and directory
+  - name: History
+    description: Championship history
+  - name: Matchup
+    description: Matchup Intelligence Engine factor decks
+
+paths:
+  /:
+    get:
+      tags: [Meta]
+      summary: Home / hello
+      description: Basic liveness message with app name and version.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Hello from Flask backend!" }
+                  app_name: { type: string, example: "React Flask Web App" }
+                  version: { type: string, example: "1.0.0" }
+                  timestamp: { type: string, format: date-time }
+
+  /about:
+    get:
+      tags: [Meta]
+      summary: About the app
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  version: { type: string }
+                  description: { type: string }
+                  status: { type: string, example: "running" }
+
+  /api/health:
+    get:
+      tags: [Meta]
+      summary: Health check
+      description: >
+        Liveness probe. **Bare object — no `success` wrapper.** Used by the
+        frontend on load.
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "healthy" }
+                  timestamp: { type: string, format: date-time }
+                  version: { type: string, example: "1.0.0" }
+
+  /api/status:
+    get:
+      tags: [Meta]
+      summary: Application status
+      description: >
+        Reports app status and database connectivity.
+        **Bare object — no `success` wrapper.**
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  version: { type: string }
+                  status: { type: string, example: "running" }
+                  uptime: { type: string, example: "active" }
+                  database:
+                    type: object
+                    properties:
+                      connected: { type: boolean }
+
+  /rankings/ap-top25:
+    get:
+      tags: [Rankings]
+      summary: AP Top 25 rankings
+      description: >
+        Proxies the NCAA API AP Top 25 poll for FBS football.
+      responses:
+        "200":
+          description: AP Top 25 rankings
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data_type: { type: string, example: "AP rankings" }
+        "500":
+          $ref: '#/components/responses/UpstreamError'
+
+  /stats/stat/{stat_id}:
+    get:
+      tags: [Stats]
+      summary: One stat category, all teams
+      description: >
+        Returns every team's value for the given NCAA stat category id.
+        See the `stat_id` enum for the supported categories.
+      parameters:
+        - $ref: '#/components/parameters/StatId'
+      responses:
+        "200":
+          description: Stats for all teams in the category
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      stat_name: { type: string, example: "Total Offense" }
+        "500":
+          $ref: '#/components/responses/UpstreamError'
+
+  /stats/stat/{stat_id}/team/{team_name}:
+    get:
+      tags: [Stats]
+      summary: One stat category, one team
+      parameters:
+        - $ref: '#/components/parameters/StatId'
+        - $ref: '#/components/parameters/TeamName'
+      responses:
+        "200":
+          description: The team's value in the category
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      stat_name: { type: string }
+                      team_name: { type: string }
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /stats/offense:
+    get:
+      tags: [Stats]
+      summary: Total offense, all teams
+      responses:
+        "200": { $ref: '#/components/responses/StatCategory' }
+        "500": { $ref: '#/components/responses/UpstreamError' }
+
+  /stats/offense/rushing:
+    get:
+      tags: [Stats]
+      summary: Rushing offense, all teams
+      responses:
+        "200": { $ref: '#/components/responses/StatCategory' }
+        "500": { $ref: '#/components/responses/UpstreamError' }
+
+  /stats/defense:
+    get:
+      tags: [Stats]
+      summary: Total defense, all teams
+      responses:
+        "200": { $ref: '#/components/responses/StatCategory' }
+        "500": { $ref: '#/components/responses/UpstreamError' }
+
+  /stats/defense/rushing:
+    get:
+      tags: [Stats]
+      summary: Rushing defense, all teams
+      responses:
+        "200": { $ref: '#/components/responses/StatCategory' }
+        "500": { $ref: '#/components/responses/UpstreamError' }
+
+  /stats/offense/team/{team_name}:
+    get:
+      tags: [Stats]
+      summary: Total offense for one team
+      parameters:
+        - $ref: '#/components/parameters/TeamName'
+      responses:
+        "200":
+          description: The team's total-offense stats
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      stat_name: { type: string, example: "Total Offense" }
+                      team_name: { type: string }
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /stats/defense/team/{team_name}:
+    get:
+      tags: [Stats]
+      summary: Total defense for one team
+      parameters:
+        - $ref: '#/components/parameters/TeamName'
+      responses:
+        "200":
+          description: The team's total-defense stats
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      stat_name: { type: string, example: "Total Defense" }
+                      team_name: { type: string }
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /scoreboard/week/{week}:
+    get:
+      tags: [Scoreboard]
+      summary: Scoreboard for a week
+      description: Game scoreboard for the given week of a season.
+      parameters:
+        - name: week
+          in: path
+          required: true
+          description: Week number (typically 1–16).
+          schema: { type: integer, minimum: 1, example: 5 }
+        - name: year
+          in: query
+          required: false
+          description: Season year. Defaults to the current year.
+          schema: { type: integer, example: 2025 }
+      responses:
+        "200":
+          description: Scoreboard data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data_type: { type: string, example: "Scoreboard data" }
+        "500":
+          $ref: '#/components/responses/UpstreamError'
+
+  /team:
+    get:
+      tags: [Team]
+      summary: All teams
+      description: All teams with conferences and stats.
+      responses:
+        "200":
+          description: Teams list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data_type: { type: string, example: "Teams list" }
+                      count: { type: integer, example: 133 }
+        "500":
+          $ref: '#/components/responses/UpstreamError'
+
+  /team/{team_name}/record:
+    get:
+      tags: [Team]
+      summary: One team's record
+      parameters:
+        - $ref: '#/components/parameters/TeamName'
+      responses:
+        "200":
+          description: Team record
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data_type: { type: string, example: "Team record" }
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /history/champions:
+    get:
+      tags: [History]
+      summary: Championship winners
+      description: National championship winners, proxied from the NCAA API.
+      responses:
+        "200":
+          description: Championship data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      count: { type: integer }
+                      message: { type: string }
+        "500":
+          $ref: '#/components/responses/UpstreamError'
+
+  /matchup/{ncaa_game_id}:
+    get:
+      tags: [Matchup]
+      summary: Matchup factor deck for a game
+      description: >
+        Both teams' ranked factor decks plus reference panels for a game, from
+        the Matchup Intelligence Engine. 404 when no deck has been assembled yet
+        (or the DB is unreachable — the reader degrades gracefully).
+      parameters:
+        - name: ncaa_game_id
+          in: path
+          required: true
+          description: NCAA game id.
+          schema: { type: integer, example: 6305900 }
+      responses:
+        "200":
+          description: Matchup factor deck
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data_type: { type: string, example: "Matchup factor deck" }
+        "404":
+          description: No deck available for this game
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+components:
+  parameters:
+    StatId:
+      name: stat_id
+      in: path
+      required: true
+      description: NCAA stat category id (see enum for supported categories).
+      schema:
+        type: integer
+        example: 21
+        enum:
+          [21, 22, 23, 24, 25, 27, 28, 29, 40, 96, 97, 98, 456, 457, 458, 459,
+           460, 461, 462, 463, 465, 466, 467, 468, 693, 694, 695, 696, 697, 698,
+           699, 700, 701, 702, 703, 704, 705, 741, 742, 756, 785, 786, 790, 791,
+           876, 877, 926]
+    TeamName:
+      name: team_name
+      in: path
+      required: true
+      description: Team name (URL-encoded), e.g. "Washington State".
+      schema: { type: string, example: "Washington State" }
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    UpstreamError:
+      description: Upstream fetch failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    StatCategory:
+      description: Stats for all teams in the category
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SuccessEnvelope'
+              - type: object
+                properties:
+                  stat_name: { type: string }
+
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          description: Endpoint-specific payload (object or array).
+          oneOf:
+            - type: object
+            - type: array
+              items: {}
+    ErrorEnvelope:
+      type: object
+      required: [success, error]
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string, example: "Failed to fetch data" }
