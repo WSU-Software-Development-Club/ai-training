@@ -1,0 +1,103 @@
+{
+  "_note": "Illustrative SEED data for the QB vertical slice (seed-first, per approved plan). Real live extractors (RSS/CFBD/Open-Meteo) replace this later; the schema and pipeline are identical. Team/player details here are synthetic placeholders for wiring, not verified facts.",
+  "games": [
+    {
+      "ncaa_game_id": 990001,
+      "cfbd_game_id": null,
+      "season": 2024,
+      "week": 7,
+      "kickoff": "2024-10-12T19:30:00Z",
+      "home_team": "Washington State",
+      "away_team": "Fresno State",
+      "signals": [
+        {
+          "source_type": "injury_report",
+          "team": "Washington State",
+          "category": "QB",
+          "published_at": "2024-10-09T15:00:00Z",
+          "as_of_timestamp": "2024-10-09T15:30:00Z",
+          "source_name": "Beat Writer Report",
+          "source_url": "https://example.com/wsu-qb-injury",
+          "payload": {
+            "text": "Washington State's starting QB left Wednesday's practice with a shoulder injury and is listed as questionable for Saturday. The staff says a decision will come closer to kickoff.",
+            "supporting": {
+              "starter": {"name": "Starter QB", "season_line": "1,850 yds, 14 TD, 4 INT, 68% comp"},
+              "backup_qb": {
+                "name": "Backup QB",
+                "recruit_stars": 4,
+                "recruit_rank": "top-120 national",
+                "recent_snaps": "Threw for 210 yards and 2 TDs in relief last week",
+                "notes": "Former blue-chip recruit; has looked sharp in limited action"
+              }
+            },
+            "sources": [
+              {
+                "url": "https://example.com/wsu-qb-injury",
+                "source_type": "injury_report",
+                "snippet": "starting QB ... questionable for Saturday",
+                "published_at": "2024-10-09T15:00:00Z"
+              }
+            ]
+          }
+        },
+        {
+          "source_type": "news",
+          "team": "Washington State",
+          "category": "QB",
+          "published_at": "2024-10-12T22:00:00Z",
+          "as_of_timestamp": "2024-10-12T22:00:00Z",
+          "source_name": "Post-game wire (POINT-IN-TIME TEST)",
+          "source_url": "https://example.com/postgame",
+          "payload": {
+            "text": "POST-KICKOFF signal: this news broke after kickoff and must NOT appear in the pre-game deck.",
+            "supporting": {},
+            "sources": [
+              {"url": "https://example.com/postgame", "source_type": "news", "published_at": "2024-10-12T22:00:00Z"}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "ncaa_game_id": 990002,
+      "cfbd_game_id": null,
+      "season": 2024,
+      "week": 7,
+      "kickoff": "2024-10-12T23:00:00Z",
+      "home_team": "Oregon State",
+      "away_team": "Colorado State",
+      "signals": [
+        {
+          "source_type": "injury_report",
+          "team": "Oregon State",
+          "category": "QB",
+          "published_at": "2024-10-10T18:00:00Z",
+          "as_of_timestamp": "2024-10-10T18:20:00Z",
+          "source_name": "Depth Chart Update",
+          "source_url": "https://example.com/osu-qb-out",
+          "payload": {
+            "text": "Oregon State's starting QB is ruled OUT for Saturday with a high ankle sprain. The backup, a converted walk-on, will make his first career start.",
+            "supporting": {
+              "starter": {"name": "Starter QB", "season_line": "1,600 yds, 11 TD, 5 INT"},
+              "backup_qb": {
+                "name": "Backup QB",
+                "recruit_stars": 0,
+                "recruit_rank": "unranked walk-on",
+                "recent_snaps": "No meaningful game snaps this season",
+                "notes": "First career start; untested"
+              }
+            },
+            "sources": [
+              {
+                "url": "https://example.com/osu-qb-out",
+                "source_type": "injury_report",
+                "snippet": "starting QB ruled OUT ... walk-on backup starts",
+                "published_at": "2024-10-10T18:00:00Z"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

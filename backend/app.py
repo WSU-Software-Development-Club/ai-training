@@ -9,6 +9,8 @@ from routes.rankings import rankings_bp
 from routes.stats import stats_bp
 from routes.scoreboard import scoreboard_bp
 from routes.team import team_bp
+from routes.matchup import matchup_bp
+from routes.docs import docs_bp, swagger_ui_bp, SWAGGER_UI_URL
 from utils.helpers import setup_logging
 
 def create_app(config_name=None):
@@ -34,7 +36,12 @@ def create_app(config_name=None):
     app.register_blueprint(stats_bp)
     app.register_blueprint(scoreboard_bp)
     app.register_blueprint(team_bp)
-    
+    app.register_blueprint(matchup_bp)
+
+    # API documentation: raw OpenAPI spec + interactive Swagger UI at /apidocs
+    app.register_blueprint(docs_bp)
+    app.register_blueprint(swagger_ui_bp, url_prefix=SWAGGER_UI_URL)
+
     return app
 
 # Create the Flask application

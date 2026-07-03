@@ -58,5 +58,39 @@ services:
     restart: unless-stopped
     command: npm start
 
+  # --- Matchup Intelligence Engine (opt-in via `--profile matchup`) ----------
+  # Gated behind a compose profile so a plain `docker compose up` (and the
+  # deploy.yml `up -d --build backend`) never starts them. Bring up with:
+  #   docker compose --profile matchup up -d --build ollama matchup-pipeline
+  #   docker compose exec ollama ollama pull gemma3   # one-time model pull
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["matchup"]
+    volumes:
+      - ollama_models:/root/.ollama
+    # Internal only — must NOT be exposed via the Cloudflare Tunnel.
+    restart: unless-stopped
+
+  matchup-pipeline:
+    build:
+      context: .
+      dockerfile: ml/matchup_intel/Dockerfile
+    profiles: ["matchup"]
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-aitraining}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aitraining}
+      - CFBD_API_KEY=${CFBD_API_KEY:-}
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3}
+      - SAMPLE_SIZE_THRESHOLD=${SAMPLE_SIZE_THRESHOLD:-30}
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    # Batch job (runs the flow once). For scheduled runs, override command to a
+    # Prefect worker/deployment.
+    restart: "no"
+
 volumes:
   pgdata:
+  ollama_models:
