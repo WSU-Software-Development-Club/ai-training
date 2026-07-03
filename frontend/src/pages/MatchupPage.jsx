@@ -11,10 +11,8 @@ import {
   FiBarChart2,
   FiInfo,
 } from "react-icons/fi";
-import Header from "../components/Header";
 import TeamLogo from "../components/TeamLogo";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { appConfig } from "../constants";
 import api from "../services/api";
 import styles from "../styles/pages/MatchupPage.module.css";
 
@@ -296,8 +294,6 @@ const MatchupPage = () => {
   // status: "loading" | "ready" | "empty" | "error"
   const [state, setState] = useState({ status: "loading", data: null, error: null });
 
-  const handleSearch = () => {};
-
   useEffect(() => {
     if (!gameId) {
       setState({ status: "error", data: null, error: "No game specified." });
@@ -344,8 +340,6 @@ const MatchupPage = () => {
 
   return (
     <div className={styles.matchupPage}>
-      <Header title={appConfig.name} onSearch={handleSearch} />
-
       <main className={styles.matchupPageMain}>
         <div className={styles.matchupPageContainer}>
           <button

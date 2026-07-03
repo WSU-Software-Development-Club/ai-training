@@ -7,11 +7,33 @@ import { getCurrentYear } from "../utils/helpers";
 import { formatConferenceName } from "../utils/helpers";
 import LoadingSpinner from "../components/LoadingSpinner";
 
+// Home's filters are persisted for the browser session so navigating away and
+// back (e.g. into a Matchup intel screen and hitting Back) restores the same
+// week/year/conference/status instead of snapping back to the current week.
+// sessionStorage (not local) so a brand-new visit still defaults to "now".
+const FILTERS_KEY = "homeFilters";
+
+const loadFilters = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(FILTERS_KEY)) || {};
+  } catch {
+    return {};
+  }
+};
+
 const HomePage = () => {
-  const [selectedConference, setSelectedConference] = useState("All");
-  const [selectedStatus, setSelectedStatus] = useState("All");
-  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeek());
-  const [selectedYear, setSelectedYear] = useState(getCurrentYear());
+  const [selectedConference, setSelectedConference] = useState(
+    () => loadFilters().conference ?? "All"
+  );
+  const [selectedStatus, setSelectedStatus] = useState(
+    () => loadFilters().status ?? "All"
+  );
+  const [selectedWeek, setSelectedWeek] = useState(
+    () => loadFilters().week ?? getCurrentWeek()
+  );
+  const [selectedYear, setSelectedYear] = useState(
+    () => loadFilters().year ?? getCurrentYear()
+  );
   const [selectedDate, setSelectedDate] = useState("All");
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,6 +43,21 @@ const HomePage = () => {
   useEffect(() => {
     setSelectedDate("All");
   }, [selectedWeek, selectedYear]);
+
+  // Persist the current filters so a later remount (e.g. returning from a
+  // Matchup intel screen) restores them. Date is intentionally omitted — it's
+  // week-specific and gets reset above on every mount anyway.
+  useEffect(() => {
+    sessionStorage.setItem(
+      FILTERS_KEY,
+      JSON.stringify({
+        conference: selectedConference,
+        status: selectedStatus,
+        week: selectedWeek,
+        year: selectedYear,
+      })
+    );
+  }, [selectedConference, selectedStatus, selectedWeek, selectedYear]);
 
   // Fetch weekly game data when the selected week/year changes.
   useEffect(() => {
