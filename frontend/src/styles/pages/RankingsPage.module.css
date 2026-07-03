@@ -1,5 +1,5 @@
 /* flex: 1 (not min-height: 100vh) — the persistent header now lives outside
-   this page in App.jsx, and the shared .pageFade wrapper (index.css) is the
+   this page in App.jsx, and the shared .routeOutlet wrapper (index.css) is the
    flex column that provides full-viewport height; this just fills the
    remaining space below the header. */
 .rankingsPage {

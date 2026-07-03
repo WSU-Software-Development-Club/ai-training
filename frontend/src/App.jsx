@@ -32,9 +32,14 @@ function RoutePrefetcher() {
   return null;
 }
 
-// Wraps the routed page in a container keyed by pathname, so each navigation
-// remounts it and replays a short fade-in (see `.pageFade` in index.css).
-// Keyed on pathname only, so in-page state changes (filters, week) don't fade.
+// Wraps the routed page in a plain layout container (see `.routeOutlet` in
+// index.css — flex:1 so the page fills the space below the persistent
+// header). Previously this div was keyed by pathname to force a remount and
+// replay a fade-in animation on every navigation; that key made the wrapper
+// itself (and everything inside it) tear down and rebuild on every nav,
+// which is exactly what produced the visible flicker. No key, no animation:
+// <Routes> still swaps the matched page normally, but nothing above it
+// remounts or fades.
 // Deliberately does NOT include the Header/Navigation — those live once in
 // <App> outside of <Routes> so they never remount (and the logo never
 // re-decodes/blinks) when navigating between tabs.
@@ -42,7 +47,7 @@ function AnimatedRoutes() {
   const location = useLocation();
 
   return (
-    <div key={location.pathname} className="pageFade">
+    <div className="routeOutlet">
       <Routes location={location}>
         <Route path="/" element={<HomePage />} />
         <Route path="/rankings" element={<RankingsPage />} />
