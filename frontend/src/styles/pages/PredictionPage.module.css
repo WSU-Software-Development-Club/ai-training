@@ -183,6 +183,30 @@
   color: var(--color-primary-light);
 }
 
+/* Matchup intel link */
+.matchupLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  align-self: flex-start;
+  background-color: var(--color-accent-soft);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  color: var(--color-primary-light);
+  font-size: var(--font-size-xxs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.matchupLink:hover {
+  background-color: var(--color-accent);
+  color: var(--color-text-light);
+}
+
 /* Team rows */
 .teams {
   display: flex;

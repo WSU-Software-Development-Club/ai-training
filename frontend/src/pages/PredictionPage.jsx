@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { FiTarget, FiTrendingUp, FiCheckCircle, FiXCircle } from "react-icons/fi";
 import Header from "../components/Header";
 import TeamLogo from "../components/TeamLogo";
@@ -24,7 +25,12 @@ const getConfidence = (margin) => {
 
 // One game's model prediction, rendered as a rich card.
 const PredictionCard = ({ game }) => {
+  const navigate = useNavigate();
   const { home, away, game_state, epoch, prediction } = game;
+
+  // Only surfaced nested inside the prediction (see scoreboard_service.py) —
+  // games without a model prediction have no known NCAA game ID here.
+  const ncaaGameId = prediction?.ncaa_game_id ?? null;
 
   const awayName = away?.names?.short || "Away";
   const homeName = home?.names?.short || "Home";
@@ -108,6 +114,18 @@ const PredictionCard = ({ game }) => {
         <span className={styles.predDate}>{dateLabel}</span>
         <span className={`${styles.statusPill} ${statusClass}`}>{status}</span>
       </div>
+
+      {ncaaGameId && (
+        <button
+          type="button"
+          className={styles.matchupLink}
+          onClick={() => navigate(`/matchup/${ncaaGameId}`)}
+          aria-label={`View matchup intel for ${awayFull} at ${homeFull}`}
+        >
+          <FiTarget aria-hidden="true" />
+          Matchup intel
+        </button>
+      )}
 
       <div className={styles.teams}>
         {renderTeam(awayName, awayFull, predAway, actualAway, predAwayWins)}

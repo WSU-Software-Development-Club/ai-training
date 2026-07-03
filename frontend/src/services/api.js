@@ -294,6 +294,14 @@ export const api = {
 
   // Get all teams
   getAllTeams: (options) => apiRequest(appConfig.endpoints.teams, options),
+
+  // Get the Matchup Intelligence factor deck for a game, keyed by its NCAA
+  // game ID (see scoreboard `prediction.ncaa_game_id`). 404s when no deck has
+  // been assembled yet for this game — callers should treat that as an empty
+  // state, not a hard error (apiRequest surfaces it as a thrown
+  // "HTTP error! status: 404").
+  getMatchup: (ncaaGameId, options) =>
+    apiRequest(`${appConfig.endpoints.matchup}${ncaaGameId}`, options),
 };
 
 export default api;
