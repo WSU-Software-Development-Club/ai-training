@@ -189,6 +189,45 @@ def insert_factor(conn: psycopg.Connection, factor: Factor) -> str:
     return str(row[0])
 
 
+def insert_llm_call(
+    conn: psycopg.Connection,
+    *,
+    raw_id: Optional[str],
+    factor_id: Optional[str],
+    model: Optional[str],
+    prompt: str,
+    response: Optional[str],
+    valid: bool,
+) -> None:
+    """Persist one LLM extraction call (prompt + raw response) for auditability."""
+    conn.execute(
+        """
+        INSERT INTO llm_calls (raw_id, factor_id, model, prompt, response, valid)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (
+            UUID(raw_id) if raw_id else None,
+            UUID(factor_id) if factor_id else None,
+            model, prompt, response, valid,
+        ),
+    )
+
+
+def reset_game_factors(conn: psycopg.Connection, ncaa_game_id: int) -> None:
+    """Make extraction re-runnable: clear a game's prior factors + their LLM call
+    records before re-extracting, so re-runs don't accumulate duplicates.
+    (Deletes calls first — including dropped-output rows keyed only by raw_id —
+    then the factors.)"""
+    conn.execute(
+        """
+        DELETE FROM llm_calls
+        WHERE raw_id IN (SELECT raw_id FROM raw_signals WHERE ncaa_game_id = %s)
+        """,
+        (ncaa_game_id,),
+    )
+    conn.execute("DELETE FROM factors WHERE ncaa_game_id = %s", (ncaa_game_id,))
+
+
 def fetch_factors_for_game(conn: psycopg.Connection, ncaa_game_id: int) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
         return cur.execute(

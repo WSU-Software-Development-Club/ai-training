@@ -38,7 +38,7 @@ except ImportError:  # pragma: no cover
 
 from . import db, serve
 from .config import Config, load_config
-from .extract import extract_factor
+from .extract import extract_factor_traced
 from .ground import ground_factor
 from .ingest.seed import ingest_seed, load_seed_games
 
@@ -59,11 +59,13 @@ def extract_and_ground_stage(cfg: Config, game: dict) -> int:
     log = get_run_logger()
     created = 0
     with db.connect(cfg.database_url) as conn:
+        # Idempotent re-run: clear this game's prior factors + call records first.
+        db.reset_game_factors(conn, game["ncaa_game_id"])
         rows = db.fetch_all_raw_signals_for_game(conn, game["ncaa_game_id"])
         for row in rows:
             if row.get("team_id") is None:
                 continue  # can't attribute a factor to a team
-            factor = extract_factor(
+            result = extract_factor_traced(
                 cfg,
                 raw_id=str(row["raw_id"]),
                 ncaa_game_id=game["ncaa_game_id"],
@@ -75,12 +77,23 @@ def extract_and_ground_stage(cfg: Config, game: dict) -> int:
                 week=game.get("week"),
                 game_id=game.get("cfbd_game_id"),
             )
-            if factor is None:
+            factor_id = None
+            if result.factor is not None:
+                factor = ground_factor(result.factor, conn)
+                factor_id = db.insert_factor(conn, factor)
+                created += 1
+            else:
                 log.warning("LLM output dropped for raw_id=%s (invalid/unreachable)", row["raw_id"])
-                continue
-            factor = ground_factor(factor, conn)
-            db.insert_factor(conn, factor)
-            created += 1
+            # Persist the call for audit — even when the output was dropped.
+            db.insert_llm_call(
+                conn,
+                raw_id=str(row["raw_id"]),
+                factor_id=factor_id,
+                model=cfg.ollama_model,
+                prompt=result.prompt,
+                response=result.response,
+                valid=result.valid,
+            )
     return created
 
 

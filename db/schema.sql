@@ -119,6 +119,22 @@ CREATE INDEX IF NOT EXISTS idx_factors_game     ON factors (ncaa_game_id);
 CREATE INDEX IF NOT EXISTS idx_factors_team_cat ON factors (team_id, category);
 CREATE INDEX IF NOT EXISTS idx_factors_asof     ON factors (as_of_timestamp);
 
+-- Full LLM audit trail: the exact prompt + raw model response for every
+-- extraction call, INCLUDING ones whose output was invalid and dropped
+-- (factor_id NULL, valid=false). Completes the raw_signal -> factor lineage.
+CREATE TABLE IF NOT EXISTS llm_calls (
+    call_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    raw_id      UUID REFERENCES raw_signals(raw_id),
+    factor_id   UUID REFERENCES factors(factor_id) ON DELETE CASCADE,  -- NULL if dropped
+    model       TEXT,
+    prompt      TEXT NOT NULL,
+    response    TEXT,                         -- raw model text (NULL on transport failure)
+    valid       BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_llm_calls_raw    ON llm_calls (raw_id);
+CREATE INDEX IF NOT EXISTS idx_llm_calls_factor ON llm_calls (factor_id);
+
 -- Layer 5 serving. The sample-size guard is applied when writing this table, so
 -- serving physically cannot emit a sub-threshold historical_rate.
 CREATE TABLE IF NOT EXISTS factor_decks (
