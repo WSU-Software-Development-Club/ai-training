@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/Header";
-import { appConfig } from "../constants";
 import api from "../services/api";
 import styles from "../styles/pages/TeamsPage.module.css";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -152,11 +150,6 @@ const TeamsPage = () => {
     });
   };
 
-  const handleSearch = (searchTerm) => {
-    // MOCK FUNCTIONALITY - Replace with actual search API call
-    console.log("Searching for:", searchTerm);
-  };
-
   useEffect(() => {
     const fetchTeams = async () => {
       setLoading(true);
@@ -212,8 +205,6 @@ const TeamsPage = () => {
 
   return (
     <div className={styles.teamsPage}>
-      <Header title={appConfig.name} onSearch={handleSearch} />
-
       <main className={styles.teamsPageMain}>
         <div className={styles.teamsPageContainer}>
           <div className={styles.teamsPageHeader}>

@@ -17,77 +17,50 @@ const NAV_ITEMS = [
   { to: "/comparison", label: "Team Comparison" },
 ];
 
-// The Header (and this Navigation) remounts on every route change because each
-// page renders its own <Header>. Persist state at module scope across those
-// remounts:
-//   - the tab row's horizontal scroll position, and
-//   - the sliding indicator's last position, so on the next page it can animate
-//     FROM the previously-active tab TO the new one (instead of just appearing).
-let savedTabsScrollLeft = 0;
-let savedIndicator = { left: 0, width: 0, visible: false };
-let hasMountedOnce = false;
-
 const Navigation = () => {
   const location = useLocation();
   const tabsRef = useRef(null);
   const tabRefs = useRef([]);
-  // Seed from the persisted position so a navigation starts the underline/pill
-  // at the previously-active tab, then slides it to the new one.
-  const [indicator, setIndicator] = useState(savedIndicator);
-  // Animate from the very first render on a navigation (we've mounted before);
-  // on the first-ever mount, start without animating so it doesn't slide in
-  // from the origin.
-  const [animate, setAnimate] = useState(hasMountedOnce);
+  // Navigation is rendered once, outside <Routes>, as part of the persistent
+  // Header in App.jsx — it never unmounts on navigation, so plain state (no
+  // module-scope persistence) already survives route changes. This ref just
+  // distinguishes the very first mount from later re-renders triggered by a
+  // navigation, so the indicator can start in place (no slide-in from the
+  // origin) the first time, then glide FROM the previous tab TO the new one
+  // on every navigation after that.
+  const hasMountedRef = useRef(false);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, visible: false });
+  const [animate, setAnimate] = useState(false);
 
   const activeIndex = NAV_ITEMS.findIndex(
     (item) => item.to === location.pathname
   );
 
-  // Measure the active tab and move the shared underline/pill to sit under it,
-  // persisting the position so it survives the next remount.
+  // Measure the active tab and move the shared underline/pill to sit under it.
   const updateIndicator = useCallback(() => {
     const el = activeIndex >= 0 ? tabRefs.current[activeIndex] : null;
     if (el) {
-      const next = { left: el.offsetLeft, width: el.offsetWidth, visible: true };
-      savedIndicator = next;
-      setIndicator(next);
+      setIndicator({ left: el.offsetLeft, width: el.offsetWidth, visible: true });
     } else {
       // No matching tab (e.g. on a team detail page): keep last position but
       // fade the indicator out.
-      setIndicator((prev) => {
-        const next = { ...prev, visible: false };
-        savedIndicator = next;
-        return next;
-      });
+      setIndicator((prev) => ({ ...prev, visible: false }));
     }
   }, [activeIndex]);
 
   // Position the indicator. On the first-ever mount, do it synchronously before
-  // paint so it appears in place (no slide from origin). On later mounts (a
-  // navigation) the state already holds the previous tab's position, so defer
-  // the move to the next frame — that lets the old position paint first, and
-  // the change to the new tab animates.
+  // paint so it appears in place (no slide from origin). On every later
+  // render (a navigation), the state still holds the previous tab's position,
+  // so defer the move to the next frame — that lets the old position paint
+  // first, and the change to the new tab animates.
   useLayoutEffect(() => {
-    if (hasMountedOnce) {
+    if (hasMountedRef.current) {
       const id = requestAnimationFrame(() => updateIndicator());
       return () => cancelAnimationFrame(id);
     }
     updateIndicator();
-    hasMountedOnce = true;
+    hasMountedRef.current = true;
   }, [updateIndicator]);
-
-  // Restore the tab row's horizontal scroll position on mount (before paint)
-  // so navigating between pages never makes the bar jump.
-  useLayoutEffect(() => {
-    const el = tabsRef.current;
-    if (el) {
-      el.scrollLeft = savedTabsScrollLeft;
-    }
-  }, []);
-
-  const handleTabsScroll = (e) => {
-    savedTabsScrollLeft = e.currentTarget.scrollLeft;
-  };
 
   // Ensure animation is enabled shortly after the first mount, so later resizes
   // and font swaps animate too.
@@ -121,11 +94,7 @@ const Navigation = () => {
   return (
     <nav className={styles.navigation}>
       <div className={styles.navigationContainer}>
-        <div
-          className={styles.navigationTabs}
-          ref={tabsRef}
-          onScroll={handleTabsScroll}
-        >
+        <div className={styles.navigationTabs} ref={tabsRef}>
           {/* Sliding background highlight that glides behind the active tab. */}
           <span className={styles.navigationHighlight} style={indicatorStyle} />
           {NAV_ITEMS.map((item, index) => (
