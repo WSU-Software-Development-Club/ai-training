@@ -5,8 +5,9 @@ never a verdict — same status as the "vegas"/"model" keys already in
 
 Two APIs, mirroring the task split:
 - Gamma API (gamma-api.polymarket.com): market DISCOVERY. No full-text search
-  we can rely on for CFB, so we pull a date-windowed slice of markets and match
-  team names locally against the market question.
+  we can rely on for CFB, so we pull a date-windowed slice of both `/markets`
+  (flat 2-way moneylines) and `/events` (event envelopes, incl. 3-way neg-risk
+  soccer events) and match team names locally against the market question/title.
 - CLOB API (clob.polymarket.com): current PRICE for a matched market's outcome
   tokens (the midpoint of the live order book), which is fresher than Gamma's
   cached ``outcomePrices``. Falls back to ``outcomePrices`` if a CLOB call
@@ -34,6 +35,7 @@ from typing import Optional
 import requests
 
 GAMMA_MARKETS_URL = "https://gamma-api.polymarket.com/markets"
+GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
 CLOB_MIDPOINT_URL = "https://clob.polymarket.com/midpoint"
 
 # How many days around the game date to pull candidate markets from. Polymarket
@@ -41,7 +43,15 @@ CLOB_MIDPOINT_URL = "https://clob.polymarket.com/midpoint"
 # shortly after kickoff, so a generous window costs nothing but a few extra
 # rows to filter locally.
 _DEFAULT_WINDOW_DAYS = 5
-_PAGE_LIMIT = 200
+# Gamma caps a `/events` page at 100 rows regardless of a larger ``limit``; use
+# that as the page size for both endpoints and walk the window with ``offset``.
+# A busy window (e.g. a World Cup slate mixed with earnings/crypto markets) runs
+# to several hundred rows, and the target game's event can sit on the 2nd-3rd
+# page — a single page silently misses it. ``_MAX_PAGES`` bounds the walk so a
+# no-market game (the common CFB case) can't page forever; discovery early-exits
+# the moment it matches, so a game that DOES have a market rarely pays the cap.
+_PAGE_LIMIT = 100
+_MAX_PAGES = 10
 
 
 def _get_with_retry(url: str, params: dict, timeout: int, max_retries: int = 3):
@@ -103,25 +113,61 @@ def _safe_float(value) -> Optional[float]:
         return None
 
 
-def search_markets(game_date: str, timeout: int, window_days: int = _DEFAULT_WINDOW_DAYS) -> list[dict]:
-    """Candidate Gamma markets whose window overlaps ``game_date`` (ISO 8601).
-    Returns ``[]`` (never None) on a bad date or an unreachable API — callers
-    filtering this list handle an empty list identically to 'no match'."""
+def _window_params(game_date: str, window_days: int) -> Optional[dict]:
+    """Shared date-window query params for both Gamma endpoints, or None on a
+    bad date (callers translate None → ``[]``)."""
     try:
         d = datetime.fromisoformat(game_date.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
-        return []
+        return None
     start = (d - timedelta(days=window_days)).date().isoformat()
     end = (d + timedelta(days=window_days)).date().isoformat()
-    params = {
+    return {
         "active": "true",
         "closed": "false",
         "start_date_min": start,
         "start_date_max": end,
         "limit": _PAGE_LIMIT,
     }
-    data = _get_with_retry(GAMMA_MARKETS_URL, params, timeout)
-    return data if isinstance(data, list) else []
+
+
+def _iter_endpoint(url: str, params: dict, timeout: int):
+    """Yield rows of one Gamma endpoint across the date window, paged by
+    ``offset``. Stops at the first empty/short/failed page or ``_MAX_PAGES``.
+    Never raises — a failed page (``_get_with_retry`` → None) just ends the walk,
+    so a transport hiccup degrades to fewer candidates, not an exception."""
+    for page in range(_MAX_PAGES):
+        page_params = dict(params, limit=_PAGE_LIMIT, offset=page * _PAGE_LIMIT)
+        data = _get_with_retry(url, page_params, timeout)
+        if not isinstance(data, list) or not data:
+            return
+        yield from data
+        if len(data) < _PAGE_LIMIT:
+            return  # last (short) page — nothing more in the window
+
+
+def iter_candidates(game_date: str, timeout: int, window_days: int = _DEFAULT_WINDOW_DAYS):
+    """Yield candidate Gamma markets/events whose window overlaps ``game_date``
+    (ISO 8601), lazily and paged, so a caller can stop the moment it finds its
+    game. Walks BOTH the flat ``/markets`` slice (2-way moneylines) first, then
+    the ``/events`` slice (event envelopes, incl. the 3-way neg-risk soccer
+    events that exist ONLY under ``/events``) — ``_match_market``/``extract_odds``
+    handle the shape difference downstream. Yields nothing on a bad date."""
+    params = _window_params(game_date, window_days)
+    if params is None:
+        return
+    yield from _iter_endpoint(GAMMA_MARKETS_URL, params, timeout)
+    yield from _iter_endpoint(GAMMA_EVENTS_URL, params, timeout)
+
+
+def search_markets(game_date: str, timeout: int, window_days: int = _DEFAULT_WINDOW_DAYS) -> list[dict]:
+    """Eager list form of ``iter_candidates`` — all candidate markets/events in
+    the window, both Gamma slices concatenated (flat ``/markets`` first to
+    preserve the original CFB matching precedence). Returns ``[]`` (never None)
+    on a bad date or an unreachable API. Prefer ``iter_candidates`` +
+    ``_match_market`` for discovery so a match short-circuits the paged walk;
+    this materializer stays for callers/tests that want the full slice."""
+    return list(iter_candidates(game_date, timeout, window_days))
 
 
 def _match_market(candidates: list[dict], home_team: str, away_team: str) -> Optional[dict]:
@@ -326,16 +372,16 @@ def find_game_market(home_team: str, away_team: str, game_date: str, timeout: in
     independently nullable (e.g. CLOB and Gamma both failed to price a leg) —
     always None-check before use.
 
-    NOTE: discovery via ``search_markets`` currently pulls the flat `/markets`
-    slice; matched 3-way EVENTS (which live under `/events`) are handled by
-    ``extract_odds`` once matched, but live 3-way discovery would additionally
-    need an `/events` query — see the module TODO.
+    Discovery walks BOTH the flat `/markets` slice and the `/events` slice
+    (paged), so live 3-way neg-risk EVENTS (which exist only under `/events`)
+    are found and priced end-to-end here — not just when an event is handed to
+    ``extract_odds`` directly. It early-exits on the first candidate that
+    mentions both teams, so a game with a market rarely walks the full window.
     """
-    candidates = search_markets(game_date, timeout)
-    market = _match_market(candidates, home_team, away_team)
-    if market is None:
-        return None
-    return extract_odds(market, home_team, away_team, timeout)
+    for candidate in iter_candidates(game_date, timeout):
+        if _match_market([candidate], home_team, away_team) is not None:
+            return extract_odds(candidate, home_team, away_team, timeout)
+    return None
 
 
 def fetch_game_odds(home_team: str, away_team: str, game_date: str, timeout: int = 30) -> Optional[dict]:

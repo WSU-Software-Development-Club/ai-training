@@ -97,13 +97,13 @@ def test_market_to_odds_none_when_team_not_in_outcomes(monkeypatch):
 # --- top-level entrypoints: explicit-missingness (never raise) ----------------
 
 def test_find_game_market_none_when_no_candidates(monkeypatch):
-    monkeypatch.setattr(polymarket, "search_markets", lambda game_date, timeout: [])
+    monkeypatch.setattr(polymarket, "iter_candidates", lambda game_date, timeout: [])
     assert polymarket.find_game_market("Ohio State", "Michigan", "2024-11-30") is None
 
 
 def test_find_game_market_returns_odds_on_match(monkeypatch):
-    monkeypatch.setattr(polymarket, "search_markets",
-                         lambda game_date, timeout: [_gamma_market()])
+    monkeypatch.setattr(polymarket, "iter_candidates",
+                        lambda game_date, timeout: [_gamma_market()])
     monkeypatch.setattr(polymarket, "clob_midpoint", lambda token, timeout: None)
     odds = polymarket.find_game_market("Ohio State", "Michigan", "2024-11-30")
     assert odds is not None

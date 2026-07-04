@@ -170,9 +170,65 @@ def test_find_game_market_three_way_end_to_end(monkeypatch):
     """Discovery → match → dispatch, with search_markets stubbed to return the
     captured event (no live call)."""
     event = _load_event("fifwc-par-fra-2026-07-04.json")
-    monkeypatch.setattr(polymarket, "search_markets", lambda game_date, timeout: [event])
+    monkeypatch.setattr(polymarket, "iter_candidates", lambda game_date, timeout: [event])
     monkeypatch.setattr(polymarket, "clob_midpoint", lambda token, timeout: None)
     odds = polymarket.find_game_market("Paraguay", "France", "2026-07-04")
     assert odds is not None
     assert odds["market_type"] == "3way"
     assert odds["away_win_prob"] == 0.815
+
+
+# --- discovery via the real /events query (HTTP boundary stubbed) -------------
+
+def _load_events(name: str) -> list:
+    """The full multi-event Gamma `/events` list fixture."""
+    return json.loads((FIXTURES / name).read_text())
+
+
+def _route_get(markets_result, events_result):
+    """Build a `_get_with_retry` replacement that answers per Gamma endpoint —
+    lets us exercise the REAL search_markets (which now fans out to both
+    /markets and /events) without any live network call."""
+    def _get(url, params, timeout, max_retries=3):
+        if url == polymarket.GAMMA_MARKETS_URL:
+            return markets_result
+        if url == polymarket.GAMMA_EVENTS_URL:
+            return events_result
+        raise AssertionError(f"unexpected Gamma URL: {url}")
+    return _get
+
+
+def test_search_markets_includes_events_slice(monkeypatch):
+    """search_markets must fan out to /events, not just /markets, so 3-way
+    neg-risk events become discoverable candidates."""
+    events = _load_events("world-cup-events.json")
+    monkeypatch.setattr(polymarket, "_get_with_retry", _route_get([], events))
+    candidates = polymarket.search_markets("2026-07-04", timeout=5)
+    slugs = {c.get("slug") for c in candidates}
+    assert "fifwc-par-fra-2026-07-04" in slugs
+
+
+def test_find_game_market_discovers_world_cup_event_via_events(monkeypatch):
+    """End-to-end through the REAL discovery: no /markets hit for the game, the
+    event is found only via the /events slice, then priced. Proves the /events
+    discovery path (not just extract_odds) resolves a live World Cup event."""
+    events = _load_events("world-cup-events.json")
+    monkeypatch.setattr(polymarket, "_get_with_retry", _route_get([], events))
+    monkeypatch.setattr(polymarket, "clob_midpoint", lambda token, timeout: None)
+    odds = polymarket.find_game_market("Paraguay", "France", "2026-07-04")
+    assert odds is not None
+    assert odds["market_type"] == "3way"
+    assert odds["slug"] == "fifwc-par-fra-2026-07-04"
+    # Cached outcomePrices from the full /events list fixture (captured slightly
+    # later than the single-game fixture, hence 0.055 vs 0.045 home).
+    assert odds["home_win_prob"] == 0.055
+    assert odds["draw_prob"] == 0.135
+    assert odds["away_win_prob"] == 0.815
+
+
+def test_find_game_market_events_endpoint_failure_degrades_to_none(monkeypatch):
+    """If BOTH Gamma slices come back empty/unreachable, discovery yields no
+    candidate and the never-raise contract holds → None, not an exception."""
+    monkeypatch.setattr(polymarket, "_get_with_retry", _route_get(None, None))
+    monkeypatch.setattr(polymarket, "clob_midpoint", lambda token, timeout: None)
+    assert polymarket.find_game_market("Paraguay", "France", "2026-07-04") is None
