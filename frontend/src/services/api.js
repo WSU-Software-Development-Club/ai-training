@@ -302,6 +302,9 @@ export const api = {
   // "HTTP error! status: 404").
   getMatchup: (ncaaGameId, options) =>
     apiRequest(`${appConfig.endpoints.matchup}${ncaaGameId}`, options),
+
+  getMatchupScore: (ncaaGameId, options) =>
+    apiRequest(`${appConfig.endpoints.matchup}${ncaaGameId}/score`, options),
 };
 
 export default api;

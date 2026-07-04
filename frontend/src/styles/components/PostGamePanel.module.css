@@ -1,0 +1,65 @@
+.finalScore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xxl);
+  padding: var(--spacing-xl) var(--spacing-lg);
+  text-align: center;
+}
+
+/* Home on the left, away on the right; the status label sits between them.
+   Each side fills half the row and pushes its content to the outer edge, so
+   the two scores sit far apart with the label centered. */
+.scoreSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.home {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.away {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.teamName {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.score {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.finalLabel {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-light);
+  background-color: var(--color-secondary);
+  border-radius: var(--radius-pill);
+  padding: var(--spacing-xxs) var(--spacing-md);
+}
+
+.state {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-xxl) var(--spacing-lg);
+  color: var(--color-text-secondary);
+}

@@ -3,14 +3,17 @@
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: var(--spacing-md);
+  padding: var(--spacing-lg);
   transition: var(--transition-all);
   cursor: pointer;
   overflow: hidden;
   /* Fill the grid row so all cards in the grid share the same height. */
   height: 100%;
+  min-height: 168px;
   display: flex;
   flex-direction: column;
+  /* Space the header / date / teams out to fill the taller card. */
+  justify-content: space-between;
   /* Establish a stacking context so the logo background layers (z-index: -1)
      sit above the card's surface color but behind the content. */
   position: relative;
@@ -62,7 +65,7 @@
 
 .scoreCardHeader {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
