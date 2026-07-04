@@ -516,8 +516,33 @@ const ReferencePanels = ({ panels }) => {
 
           <div className={styles.referenceCard}>
             <span className={styles.referenceCardLabel}>Polymarket</span>
-            {polymarket ? (
-              <pre className={styles.referenceRaw}>{JSON.stringify(polymarket)}</pre>
+            {polymarket && polymarket.home_win_prob != null ? (
+              <>
+                <div className={styles.referenceScoreRow}>
+                  <span className={styles.referenceScore}>
+                    {pct(polymarket.home_win_prob) ?? "–"}
+                  </span>
+                  <span className={styles.referenceDetail}>
+                    {polymarket.home_team || "Home"} win
+                  </span>
+                </div>
+                {polymarket.market_type === "3way" && (
+                  <div className={styles.referenceScoreRow}>
+                    <span className={styles.referenceScore}>
+                      {pct(polymarket.draw_prob) ?? "–"}
+                    </span>
+                    <span className={styles.referenceDetail}>Draw</span>
+                  </div>
+                )}
+                <div className={styles.referenceScoreRow}>
+                  <span className={styles.referenceScore}>
+                    {pct(polymarket.away_win_prob) ?? "–"}
+                  </span>
+                  <span className={styles.referenceDetail}>
+                    {polymarket.away_team || "Away"} win
+                  </span>
+                </div>
+              </>
             ) : (
               <span className={styles.referenceNA}>Not available</span>
             )}
