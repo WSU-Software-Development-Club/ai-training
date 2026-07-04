@@ -126,8 +126,10 @@ def search_markets(game_date: str, timeout: int, window_days: int = _DEFAULT_WIN
 
 def _match_market(candidates: list[dict], home_team: str, away_team: str) -> Optional[dict]:
     for market in candidates:
-        question = market.get("question") or market.get("slug") or ""
-        if _mentions_team(question, home_team) and _mentions_team(question, away_team):
+        # Flat `/markets` rows carry ``question``; `/events` envelopes (incl. the
+        # 3-way neg-risk soccer events) carry ``title`` instead — check both.
+        text = market.get("question") or market.get("title") or market.get("slug") or ""
+        if _mentions_team(text, home_team) and _mentions_team(text, away_team):
             return market
     return None
 
@@ -172,6 +174,7 @@ def _market_to_odds(market: dict, home_team: str, away_team: str, timeout: int) 
         return _safe_float(prices[i]) if i < len(prices) else None
 
     return {
+        "market_type": "2way",
         "market_id": str(market["id"]) if market.get("id") is not None else None,
         "question": market.get("question"),
         "slug": market.get("slug"),
@@ -187,21 +190,152 @@ def _market_to_odds(market: dict, home_team: str, away_team: str, timeout: int) 
     }
 
 
+# --- 3-way (soccer neg-risk) markets ------------------------------------------
+# A World Cup / soccer game is NOT a single 2-outcome market. It's a "neg-risk"
+# EVENT whose ``markets`` array holds three LINKED binary Yes/No submarkets —
+# home win / draw / away win. Each leg's implied probability is the "Yes" price
+# of that submarket; the three roughly sum to 1. This is a different Gamma shape
+# from the flat 2-way moneyline above, so it gets its own extractor and the
+# public ``extract_odds`` dispatcher routes between them.
+
+
+def _yes_index(outcomes: list) -> Optional[int]:
+    for i, label in enumerate(outcomes):
+        if str(label).strip().lower() == "yes":
+            return i
+    return None
+
+
+def _leg_yes_price(submarket: dict, timeout: int) -> Optional[float]:
+    """Implied probability of a Yes/No leg = its "Yes" price. Prefers the live
+    CLOB midpoint of the Yes token, falling back to Gamma's cached
+    outcomePrices — same freshness policy as the 2-way path."""
+    outcomes = _parse_json_field(submarket.get("outcomes")) or []
+    yi = _yes_index(outcomes)
+    if yi is None:
+        return None
+    token_ids = _parse_json_field(submarket.get("clobTokenIds")) or []
+    prices = _parse_json_field(submarket.get("outcomePrices")) or []
+    token = token_ids[yi] if yi < len(token_ids) else None
+    live = clob_midpoint(token, timeout) if token else None
+    if live is not None:
+        return live
+    return _safe_float(prices[yi]) if yi < len(prices) else None
+
+
+def _leg_slot(submarket: dict, home_team: str, away_team: str) -> Optional[str]:
+    """Classify one Yes/No leg as 'home' | 'draw' | 'away' from its OWN text —
+    or None if it can't be resolved unambiguously.
+
+    Never guesses: a leg that mentions BOTH teams (e.g. the draw leg's title
+    "Draw (Paraguay vs. France)") or NEITHER team is only accepted as 'draw'
+    when it carries a draw marker; otherwise it is ambiguous → None. Draw is
+    checked first precisely because the draw leg names both sides."""
+    meta = submarket.get("marketMetadata") or {}
+    line = str(meta.get("opticOddsSelectionLine") or "").strip().lower()
+    text = f"{submarket.get('groupItemTitle') or ''} {submarket.get('question') or ''}"
+    if line == "draw" or "draw" in text.lower():
+        return "draw"
+    home_match = _mentions_team(text, home_team)
+    away_match = _mentions_team(text, away_team)
+    if home_match and not away_match:
+        return "home"
+    if away_match and not home_match:
+        return "away"
+    return None  # ambiguous (both) or unclassifiable (neither) — never guess
+
+
+def _classify_three_way(submarkets: list, home_team: str, away_team: str) -> Optional[dict]:
+    """Map an event's submarkets to {'home','draw','away'} leg dicts, or None.
+
+    Returns None (never a partial/guessed mapping) unless there are exactly
+    three Yes/No binary legs that each classify to a DISTINCT slot filling all
+    of home/draw/away. Any unclassifiable, ambiguous, or duplicated leg fails
+    the whole event — a wrong home/away assignment is worse than no odds."""
+    if not isinstance(submarkets, list) or len(submarkets) != 3:
+        return None
+    slots: dict[str, dict] = {}
+    for m in submarkets:
+        outcomes = _parse_json_field(m.get("outcomes")) or []
+        if len(outcomes) != 2 or _yes_index(outcomes) is None:
+            return None  # every leg of a 3-way must be a Yes/No binary
+        slot = _leg_slot(m, home_team, away_team)
+        if slot is None or slot in slots:
+            return None  # unclassifiable, ambiguous, or duplicate slot
+        slots[slot] = m
+    if set(slots) != {"home", "draw", "away"}:
+        return None
+    return slots
+
+
+def _event_to_three_way_odds(event: dict, home_team: str, away_team: str, timeout: int) -> Optional[dict]:
+    slots = _classify_three_way(event.get("markets") or [], home_team, away_team)
+    if slots is None:
+        return None
+    slug = event.get("slug")
+    return {
+        "market_type": "3way",
+        "market_id": (
+            str(event["id"]) if event.get("id") is not None else event.get("negRiskMarketID")
+        ),
+        "question": event.get("title"),
+        "slug": slug,
+        "home_team": home_team,
+        "away_team": away_team,
+        "home_win_prob": _leg_yes_price(slots["home"], timeout),
+        "draw_prob": _leg_yes_price(slots["draw"], timeout),
+        "away_win_prob": _leg_yes_price(slots["away"], timeout),
+        "volume": _safe_float(event.get("volume")),
+        "liquidity": _safe_float(event.get("liquidity")),
+        "end_date": event.get("endDate"),
+        "closed": bool(event.get("closed")) if event.get("closed") is not None else None,
+        "source_url": f"https://polymarket.com/event/{slug}" if slug else None,
+    }
+
+
+def extract_odds(obj: dict, home_team: str, away_team: str, timeout: int) -> Optional[dict]:
+    """Shape-agnostic odds extraction. Routes between:
+    - a 3-way neg-risk EVENT (``markets`` = 3 linked Yes/No legs) → home/draw/away,
+    - an EVENT wrapping a single 2-team moneyline market → 2-way,
+    - a flat `/markets` 2-team moneyline row → 2-way (the original path).
+    Returns None for any shape it can't resolve — the caller treats that as
+    explicit missingness, identical to 'no market'."""
+    submarkets = obj.get("markets")
+    if isinstance(submarkets, list) and submarkets:
+        three = _event_to_three_way_odds(obj, home_team, away_team, timeout)
+        if three is not None:
+            return three
+        # Not a clean 3-way: only a single wrapped 2-team market is a valid 2-way.
+        if len(submarkets) == 1:
+            return _market_to_odds(submarkets[0], home_team, away_team, timeout)
+        return None
+    return _market_to_odds(obj, home_team, away_team, timeout)
+
+
 def find_game_market(home_team: str, away_team: str, game_date: str, timeout: int = 30) -> Optional[dict]:
     """Discover + price a CFB game's Polymarket market, if one exists.
 
     Returns ``None`` when there's no matching market (the common CFB case) —
-    NOT an error. On a match, returns implied win probabilities:
-        {market_id, question, slug, home_team, home_win_prob, away_team,
-         away_win_prob, volume, liquidity, end_date, closed, source_url}
-    ``*_win_prob`` values are themselves independently nullable (e.g. CLOB and
-    Gamma both failed to price one side) — always None-check before use.
+    NOT an error. On a match, returns implied win probabilities. The payload
+    carries a ``market_type`` discriminator:
+      - ``"2way"``  → {..., home_win_prob, away_win_prob}
+      - ``"3way"``  → {..., home_win_prob, draw_prob, away_win_prob}  (soccer/
+                       neg-risk events where a draw is a distinct outcome)
+    plus {market_type, market_id, question, slug, home_team, away_team, volume,
+    liquidity, end_date, closed, source_url}. ``*_prob`` values are themselves
+    independently nullable (e.g. CLOB and Gamma both failed to price a leg) —
+    always None-check before use.
+
+    NOTE: discovery via ``search_markets`` currently pulls the flat `/markets`
+    slice; matched 3-way EVENTS (which live under `/events`) are handled by
+    ``extract_odds`` once matched, but live 3-way discovery would additionally
+    need an `/events` query — see the module TODO.
     """
     candidates = search_markets(game_date, timeout)
     market = _match_market(candidates, home_team, away_team)
     if market is None:
         return None
-    return _market_to_odds(market, home_team, away_team, timeout)
+    return extract_odds(market, home_team, away_team, timeout)
 
 
 def fetch_game_odds(home_team: str, away_team: str, game_date: str, timeout: int = 30) -> Optional[dict]:
