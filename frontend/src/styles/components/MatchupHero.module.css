@@ -1,0 +1,145 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+  border-right-width: 4px;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-xl) var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* The home-vs-away banner row at the top of the container. */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+}
+
+/* Everything else (tabs, reference, active-tab content) stacks below. */
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Faint team-logo backdrops in the top corners: home top-left, away top-right.
+   Fixed square size (not a % of the container) so the logos read at the same
+   scale whether the tab below is tall (Post-Game) or short (Pre-Game/Live). */
+.hero::before,
+.hero::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--spacing-xl) * -1);
+  width: 300px;
+  height: 300px;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.hero::before {
+  left: calc(var(--spacing-xl) * -1);
+  background-image: var(--home-logo, none);
+  background-position: top left;
+}
+
+.hero::after {
+  right: calc(var(--spacing-xl) * -1);
+  background-image: var(--away-logo, none);
+  background-position: top right;
+}
+
+.side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.home {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.away {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.sideLabel {
+  font-size: var(--font-size-xxs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.team {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  min-width: 0;
+}
+
+.away .team {
+  flex-direction: row-reverse;
+}
+
+.teamName {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vs {
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--color-background-secondary);
+  border-radius: var(--border-radius);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: var(--spacing-lg) var(--spacing-md);
+    gap: var(--spacing-md);
+  }
+
+  .hero::before,
+  .hero::after {
+    width: 190px;
+    height: 190px;
+  }
+
+  .team {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    text-align: center;
+  }
+
+  .away .team {
+    flex-direction: column;
+  }
+
+  .teamName {
+    font-size: var(--font-size-md);
+  }
+}

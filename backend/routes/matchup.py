@@ -1,7 +1,7 @@
 """Matchup Intelligence Engine routes — serves the per-game factor deck."""
 
 from flask import Blueprint, jsonify
-from services.matchup_service import get_matchup_deck
+from services.matchup_service import get_matchup_deck, get_matchup_score
 
 matchup_bp = Blueprint('matchup', __name__, url_prefix='/matchup')
 
@@ -24,4 +24,27 @@ def get_matchup(ncaa_game_id):
         "success": True,
         "data": deck,
         "data_type": "Matchup factor deck"
+    })
+
+
+@matchup_bp.route('/<int:ncaa_game_id>/score', methods=['GET'])
+def get_score(ncaa_game_id):
+    """Return the actual final score for a game (best-effort, from the NCAA
+    scoreboard).
+
+    404 when the game has no prediction row at all. When the game exists but the
+    score can't be resolved (unplayed, synthetic seed id, or NCAA feed down),
+    this still returns 200 with null scores/status so the UI can show "—".
+    """
+    score = get_matchup_score(ncaa_game_id)
+    if score is None:
+        return jsonify({
+            "success": False,
+            "error": "No game found for this id"
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "data": score,
+        "data_type": "Matchup final score"
     })

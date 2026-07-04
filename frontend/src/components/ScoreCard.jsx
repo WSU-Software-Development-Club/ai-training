@@ -1,6 +1,5 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FiTarget } from "react-icons/fi";
 import styles from "../styles/components/ScoreCard.module.css";
 import { navigateToTeam, navigateToComparison } from "../utils/teamNavigation";
 import { useTeamBranding } from "../hooks/useTeamBranding";
@@ -39,22 +38,6 @@ const ScoreCard = ({ game }) => {
     awayScore !== null &&
     awayScore > homeScore;
 
-  // Get predicted scores (from prediction data) and round to nearest integer
-  const predictedHomeScore =
-    prediction?.home_score != null ? Math.round(prediction.home_score) : null;
-  const predictedAwayScore =
-    prediction?.away_score != null ? Math.round(prediction.away_score) : null;
-
-  // Determine predicted winner (if predicted scores are available)
-  const predictedHomeWins =
-    predictedHomeScore !== null &&
-    predictedAwayScore !== null &&
-    predictedHomeScore > predictedAwayScore;
-  const predictedAwayWins =
-    predictedHomeScore !== null &&
-    predictedAwayScore !== null &&
-    predictedAwayScore > predictedHomeScore;
-
   // Get over/under data
   const overUnderLine = prediction?.betting_over_under ?? null;
   const overProbability = prediction?.over_probability ?? null;
@@ -72,26 +55,29 @@ const ScoreCard = ({ game }) => {
   const { branding: homeBranding } = useTeamBranding(homeTeamFull);
   const { branding: awayBranding } = useTeamBranding(awayTeamFull);
 
-  // Handle card click to navigate to comparison
+  // Handle card click: go straight to the Matchup Intelligence page when we
+  // have an NCAA game id, otherwise fall back to the team comparison (cards
+  // without a prediction have no matchup to open).
   const handleCardClick = (e) => {
     // Don't navigate if clicking on team name (which goes to team page)
     if (e.target.closest(`.${styles.scoreCardTeamName}`)) {
       return;
     }
-    navigateToComparison(navigate, awayTeamFull, homeTeamFull);
+    if (ncaaGameId) {
+      // A finished game opens straight to the Post-Game (Final) tab.
+      navigate(
+        `/matchup/${ncaaGameId}`,
+        game_state?.isFinished ? { state: { initialTab: "post" } } : undefined
+      );
+    } else {
+      navigateToComparison(navigate, awayTeamFull, homeTeamFull);
+    }
   };
 
   // Handle team name click to navigate to team page
   const handleTeamNameClick = (e, teamName) => {
     e.stopPropagation();
     navigateToTeam(navigate, teamName);
-  };
-
-  // Handle "Matchup intel" click to navigate to the Matchup Intelligence page.
-  const handleMatchupClick = (e) => {
-    e.stopPropagation();
-    if (!ncaaGameId) return;
-    navigate(`/matchup/${ncaaGameId}`);
   };
 
   // TODO: this kind of formatting could be done on the backend side to reduce frontend overhead.
@@ -154,22 +140,18 @@ const ScoreCard = ({ game }) => {
       role="button"
       tabIndex={0}
       style={cardStyle}
-      title="Click to compare teams"
-      aria-label={`Compare ${awayTeamFull} and ${homeTeamFull}`}
+      title={
+        ncaaGameId
+          ? "View matchup intel for this game"
+          : "Click to compare teams"
+      }
+      aria-label={
+        ncaaGameId
+          ? `View matchup intel for ${awayTeamFull} at ${homeTeamFull}`
+          : `Compare ${awayTeamFull} and ${homeTeamFull}`
+      }
     >
       <div className={styles.scoreCardHeader}>
-        {ncaaGameId && (
-          <button
-            type="button"
-            className={styles.scoreCardMatchupButton}
-            onClick={handleMatchupClick}
-            title="View matchup intel for this game"
-            aria-label={`View matchup intel for ${awayTeamFull} at ${homeTeamFull}`}
-          >
-            <FiTarget aria-hidden="true" />
-            Matchup intel
-          </button>
-        )}
         <span
           className={`${styles.scoreCardStatus} ${getStatusClass(game_state)}`}
         >
@@ -210,18 +192,6 @@ const ScoreCard = ({ game }) => {
                     {awayScore ?? "-"}
                   </div>
                 </div>
-                <div className={styles.scoreCardScoreGroup}>
-                  <div className={styles.scoreCardScoreLabel}>Predicted</div>
-                  <div
-                    className={`${styles.scoreCardPredictedScore} ${
-                      predictedAwayWins
-                        ? styles.scoreCardPredictedScoreWinning
-                        : ""
-                    }`}
-                  >
-                    {predictedAwayScore ?? "-"}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -254,18 +224,6 @@ const ScoreCard = ({ game }) => {
                     }`}
                   >
                     {homeScore ?? "-"}
-                  </div>
-                </div>
-                <div className={styles.scoreCardScoreGroup}>
-                  <div className={styles.scoreCardScoreLabel}>Predicted</div>
-                  <div
-                    className={`${styles.scoreCardPredictedScore} ${
-                      predictedHomeWins
-                        ? styles.scoreCardPredictedScoreWinning
-                        : ""
-                    }`}
-                  >
-                    {predictedHomeScore ?? "-"}
                   </div>
                 </div>
               </div>

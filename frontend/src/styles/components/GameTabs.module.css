@@ -1,0 +1,71 @@
+.gameTabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Segmented tab strip — same surface/border language as the back button and
+   reference cards elsewhere on the matchup page. */
+.tabList {
+  display: inline-flex;
+  align-self: center;
+  gap: var(--spacing-xxs);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xxs);
+}
+
+.tab {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  transition: var(--transition-colors);
+}
+
+.tab:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-background-secondary);
+}
+
+.tabActive {
+  color: var(--color-text-primary);
+  background-color: var(--color-background-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Placeholder panel body — a muted, dashed drop zone until real data arrives. */
+.panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--border-radius-lg);
+  background-color: var(--color-surface);
+  padding: var(--spacing-xxl) var(--spacing-lg);
+}
+
+.panelPlaceholder {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 768px) {
+  .tabList {
+    align-self: stretch;
+  }
+
+  .tab {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+}
