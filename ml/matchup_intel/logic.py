@@ -77,10 +77,19 @@ def apply_sample_size_guard(factor: Factor, threshold: int) -> dict:
         "score": factor.score,
         "explanation": factor.explanation,
         "scoring_method": factor.scoring_method,
-        # Guard: only expose the rate when the sample clears the threshold.
+        # Guard: only expose the headline rate when the sample clears the
+        # threshold. The grounding block below still carries the raw counts +
+        # baseline so an information-dense surface can show the record and let
+        # the reader judge the sample themselves (marked thin when sub-threshold);
+        # the guarded ``historical_rate`` remains the value any fan-facing summary
+        # should trust.
         "historical_rate": factor.historical_rate if meets else None,
         "sample_size": factor.sample_size,
         "historical_rate_withheld": not meets,
+        # Structured grounding (condition bucket, wins/total, baseline,
+        # conditions, is_forecast) — previously dropped here, so the frontend
+        # only had the prose explanation to parse.
+        "grounding": factor.grounding,
         "sources": [s.model_dump(mode="json") for s in factor.sources],
         "raw_signal": factor.raw_signal,
     }
