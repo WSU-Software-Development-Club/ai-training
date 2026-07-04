@@ -201,3 +201,170 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
   by the ML pipeline and read by the API; schema changes require updating `db/schema.sql`,
   `ml/m1/predict_upcoming.py` (writer), and `backend/utils/db.py` (reader) together. Dropping
   `pgdata` (e.g. `docker compose down -v`) destroys all stored predictions.
+
+## 9. Matchup-intelligence pipeline
+
+### 9.1 What it is
+A second, newer ML subsystem living under **`ml/matchup_intel/`**, separate from the `ml/m1/`
+score models of §1–§8. Instead of predicting a final score, it builds a per-game **factor
+deck**: the individual tailwinds/headwinds that tilt a matchup (QB availability, weather, …),
+each scored for direction/magnitude/confidence, ranked, historically grounded, and traceable
+back to its source. It is surfaced at **`/matchup/:gameId`** in the SPA (a two-sided "edge
+board"), served by the Flask **`/matchup/<ncaa_game_id>`** endpoint, and reuses the **same
+troyster Postgres** as the rest of the app (its tables live in `db/schema.sql` alongside
+`predictions`). Currently shipped as a **QB + weather vertical slice**; other categories
+(OL/DL/rest/travel/…) are scaffolded but not yet populated.
+
+**Two non-negotiable invariants** shape the whole design:
+1. **The LLM is a feature EXTRACTOR/CONTEXTUALIZER, never a predictor.** It characterizes one
+   factor; it never sees or emits anything about the game outcome, score, or winner.
+2. **Point-in-time correctness + a sample-size guard** are enforced *structurally* (at the
+   serving boundary), not by convention — see §9.7 gotchas 4–5.
+
+### 9.2 Layered architecture
+The pipeline is a linear, idempotent, re-runnable set of layers (see `flows.py` for the DAG:
+`ingest → extract+ground → serve`). Each stage fails independently — one bad game does not
+corrupt the others.
+- **Layer 0 — ingest** (`ingest/`): raw signals land in `raw_signals` (idempotent, deduped on
+  `content_hash`). Sources: bundled `seed.py`/`seed_data.json` (demo games), `seed_weather.py`,
+  `polymarket_ingest.py`, plus the **prod backfills** `teams_backfill.py` (CFBD → `teams`
+  dimension: coords + IANA tz), `weather_backfill.py` (real results × Open-Meteo →
+  `weather_history` grounding), and `game_weather.py` (observed weather → real weather decks).
+- **Layer 1 — LLM extract/contextualize** (`extract.py`): one Ollama (`gemma3`) call per raw
+  signal with a **strict JSON schema** (Ollama structured outputs), validated through
+  `schemas.LLMFactorOutput` (`extra="forbid"`, bounds `[0,1]`). Invalid output is **dropped**,
+  never passed downstream; every call (including dropped ones) is persisted to `llm_calls` for
+  audit. The hard part is judging *net* impact ("starter out, but blue-chip backup" → magnitude
+  reduced) — a rubric + few-shot calibration in the prompt drive this.
+- **Layer 2 — quantitative scorers** (`score/weather.py`): deterministic, **no LLM**. Weather
+  magnitude comes from a calibrated severity rubric (wind/cold/heat/rain buckets), not the model.
+- **Layer 3/4/5 — assemble** (`logic.py`, pure/side-effect-free): `dedupe_factors`
+  (one per `(team, category)`, keep higher `magnitude×confidence`) → `rank_factors` (by
+  `magnitude×confidence` desc) → `apply_sample_size_guard`.
+- **Layer 4 — historical grounding** (`ground.py`): a per-category **registry** attaches
+  `historical_rate` + `sample_size` ("how has this factor type performed historically?"). Weather
+  → real team win-rate in that condition bucket (`weather_history`); QB → `sample_size=0` on
+  purpose (no injury-outcome dataset yet, so the guard withholds any rate — intentional honesty).
+- **Layer 5 — serve** (`serve.py`): reads persisted factors, applies point-in-time
+  (`as_of ≤ kickoff`), assembles both teams' decks, attaches the Layer-6 reference panel, and
+  materializes to `factor_decks`.
+- **Layer 6 — reference panel** (`db.get_model_reference_panel`): the existing XGBoost
+  prediction (`model`), the `vegas` over/under, and `polymarket` implied win-probs — framed as
+  outside **inputs, not the deck's verdict**, and rendered as such in the UI.
+
+### 9.3 Stack (additions to §2)
+- **Python 3.11**: `pydantic>=2.0` (the validation boundary), `psycopg[binary]>=3.1`, `requests`,
+  `python-dotenv`, `PyYAML`. **Prefect is optional** — if absent, the `@task`/`@flow` decorators
+  degrade to plain functions so the pipeline still runs via `python -m ml.matchup_intel.flows`.
+- **LLM**: self-hosted **Ollama** running **`gemma3`**, reached over the compose network at
+  `http://ollama:11434` (internal only). No hosted-LLM / API-key dependency.
+- **External data**: College Football Data (`CFBD_API_KEY`, teams/results), **Open-Meteo**
+  (weather, no key), **Polymarket** Gamma + CLOB APIs (public, no key; sparse CFB coverage).
+- **Config** (`config.py` + `config.yaml`): precedence **env var > `config.yaml` > defaults**.
+  Secrets (`DATABASE_URL`, `CFBD_API_KEY`) come from the env/`.env` **only**, never the committed
+  yaml. Tunables: `ollama_url`, `ollama_model`, `sample_size_threshold` (30), `request_timeout`
+  (180s, sized for a cold `gemma3` load), `polymarket_enabled`.
+
+### 9.4 Directory layout
+```
+ml/matchup_intel/
+├── flows.py            # Prefect DAG (degrades to plain fns): ingest → extract+ground → serve
+├── config.py/.yaml     # env > yaml > defaults; secrets env-only
+├── schemas.py          # Pydantic validation boundary (LLMFactorOutput, Factor, Source, ...)
+├── extract.py          # Layer 1 — Ollama/gemma3 extract+contextualize (strict JSON, drop-if-invalid)
+├── ground.py           # Layer 4 — per-category historical grounding registry
+├── logic.py            # Layers 3/4/5 — pure dedupe/rank/point-in-time/guard (unit-testable)
+├── serve.py            # Layer 5 — assemble + materialize factor_decks
+├── db.py               # psycopg3 persistence (teams/raw_signals/factors/llm_calls/decks/weather)
+├── score/weather.py    # Layer 2 — deterministic weather scorer (no LLM)
+├── sources/            # cfbd.py, open_meteo.py, polymarket.py (Gamma discovery + CLOB pricing)
+├── ingest/             # Layer 0: seed*, *_backfill (teams/weather), game_weather, polymarket_ingest
+├── tests/              # point-in-time, sample-size guard, weather, polymarket, validation, extract
+└── Dockerfile          # matchup-pipeline image (copies ml/ tree; `python -m ...flows` by default)
+```
+
+### 9.5 How it runs & is surfaced
+- **Compose (opt-in profile):** the `ollama` and `matchup-pipeline` services in the base
+  `docker-compose.yml` are gated behind **`--profile matchup`**, so a plain `docker compose up`
+  and the `deploy.yml` `up -d --build backend` **never start them**. Bring up with
+  `docker compose --profile matchup up -d --build ollama matchup-pipeline`, then a one-time
+  `docker compose exec ollama ollama pull gemma3`. `matchup-pipeline` is a batch job
+  (`restart: "no"`) that runs the flow once.
+- **Prod data backfill → GitHub Actions** (`.github/workflows/matchup_backfill.yml`,
+  **manual `workflow_dispatch` only**): a GitHub-hosted runner joins the tailnet (`tag:ci`,
+  `TS_AUTHKEY`) and, against the troyster Postgres, runs in order: apply `schema.sql` →
+  `teams_backfill` → `weather_backfill` (optional) → `game_weather`. Deliberately **does not
+  install Prefect** (so it exercises the degrade-to-plain-functions path). Secrets:
+  `DATABASE_URL`, `CFBD_API_KEY`, `TS_AUTHKEY`.
+- **Backend serving:** `routes/matchup.py` (`matchup_bp`, `url_prefix='/matchup'`) →
+  `services/matchup_service.py` → `utils/db.py::get_factor_deck_by_game`. Response uses the
+  standard `{"success": true, "data": ...}` wrapper; **404** = no deck assembled yet.
+- **Frontend:** route `/matchup/:gameId` → `pages/MatchupPage.jsx`, reached from
+  `PredictionPage.jsx` and `ScoreCard.jsx` (`navigate(`/matchup/${ncaaGameId}`)`). API method
+  `api.getMatchup(ncaaGameId)`; endpoint registered as `appConfig.endpoints.matchup` (`/matchup/`).
+  Weather is a single shared row across both teams; team-specific factors split into "Working
+  for/against them"; a reference panel shows model/vegas/polymarket as context.
+
+### 9.6 Data model & conventions
+- **Tables** (all in `db/schema.sql`, auto-loaded on DB init): `teams` (UUID identity + stadium
+  coords/tz), `raw_signals` (+ `ingest_watermarks`), `factors`, `llm_calls`, `weather_history`,
+  `factor_decks`. (`feature_definitions`/`feature_values`/`feature_sets`/`feature_snapshots` are a
+  further, separate feature-store scaffold — not part of the QB/weather serving path.)
+- **Identity/joins:** the engine keys teams by **UUID `team_id`**; the older `predictions` table
+  keys teams by **TEXT name**. Bridge via `normalize_team_name()` → `teams.normalized_name`
+  (lowercase, punctuation collapsed), exactly as `matchup_service._norm` and `db.py` do.
+- **DB access:** psycopg3, parameterized SQL only (`%s`/named), TIMESTAMPTZ + UTC. The backend
+  reader degrades to `[]`/`None` when Postgres is unreachable (same graceful-degrade as §7 #5).
+- **Serving read shape:** `{ncaa_game_id, home_team, away_team, reference_panels, teams:[{team_id,
+  team_name, is_home, factors:[...], betting:{...}, as_of_timestamp}]}`. Both teams are always
+  returned when a prediction row exists (a team with no factors still gets a column).
+- **Auditability:** every factor carries `derived_from_raw_ids` + `sources`; every LLM call
+  (prompt + raw response, valid/dropped) is persisted to `llm_calls`. Re-runs are idempotent —
+  ingest dedupes on `content_hash`, extraction `reset_game_factors` clears a game's prior
+  factors + calls first, decks upsert on `(ncaa_game_id, team_id, as_of_timestamp)`.
+
+### 9.7 Known gotchas
+1. **Ollama is internal-only and cold-starts slowly.** `http://ollama:11434` must **NOT** be
+   exposed via the Cloudflare Tunnel. The **first** `gemma3` inference lazy-loads the model into
+   memory — hence the deliberately generous 180s `request_timeout`. The model must be pulled once
+   (`ollama pull gemma3`) or every extraction fails and its output is dropped.
+2. **Prefect is optional and its presence changes execution.** With Prefect absent (the tests,
+   local runs, and `matchup_backfill.yml` all run this way), `@task`/`@flow` degrade to plain
+   functions. Installing the full `requirements.txt` pulls Prefect and changes how stages
+   execute — do not "fix" the backfill workflow by installing Prefect.
+3. **Two team-identity schemes.** UUID `team_id` (engine) vs. TEXT name (`predictions`). Joins go
+   through `normalize_team_name`/`normalized_name`; a casing/punctuation drift between the two
+   normalizers silently yields an unmatched team (empty factor column), not an error.
+4. **Point-in-time is the #1 silent-cheat vector — but the reference panel is exempt by design.**
+   `logic.filter_point_in_time` is strict: a signal is visible only if **both** `as_of_timestamp`
+   **and** `published_at` are ≤ kickoff (missing `published_at` falls back to `as_of`). However
+   the Layer-6 reference panel (model/vegas/**polymarket**) intentionally reads *current* state,
+   not point-in-time — consistent with how `model`/`vegas` always behaved; don't "fix" it to
+   filter.
+5. **Sample-size guard withholds the rate, not the record.** Below `sample_size_threshold` (30)
+   the headline `historical_rate` is set to `None` and `historical_rate_withheld=true` — a
+   small-sample percentage physically cannot reach the UI. The `grounding` block still carries
+   raw wins/total/baseline, which the frontend shows muted + flagged "thin". **QB grounding
+   always returns `sample_size=0`** (no injury-outcome dataset in v1), so QB rates are *always*
+   withheld — that's intentional, not a bug.
+6. **Polymarket `None` is data, never an error.** Most CFB games have no market, so
+   `find_game_market`/`fetch_game_odds` return `None` (and write nothing) for both "no market
+   exists" and "not ingested yet" — treat identically as an explicit null; never retry/alert on
+   it. Egress is to `gamma-api.polymarket.com`/`clob.polymarket.com` over the **open internet**
+   (not the compose network, not the tunnel); disable with `POLYMARKET_ENABLED=false` if troyster
+   egress is blocked. Price snapshots are intentionally **not** deduped across runs (prices move).
+7. **A 404 from `/matchup/<id>` is expected for most games.** It means no factor deck has been
+   assembled yet (only seeded/backfilled games have one). The frontend treats a 404 as an "empty"
+   state, not an error — don't surface it as a failure.
+8. **Shared schema & volume.** The matchup tables live in the same `db/schema.sql` and `pgdata`
+   volume as `predictions`; `docker compose down -v` destroys factor decks too. Schema changes
+   must stay in sync across `db/schema.sql`, `ml/matchup_intel/db.py` (writer), and
+   `backend/utils/db.py` (reader).
+
+### 9.8 Do-not-touch additions (see §8)
+- **`ml/matchup_intel/config.yaml`** — the `ollama_url` is an internal compose address; never
+  point it at a public/tunnelled host. Secrets belong in the env, never here.
+- **`matchup_backfill.yml`** and its secrets (`DATABASE_URL`, `CFBD_API_KEY`, `TS_AUTHKEY`) —
+  a manual prod migration that writes directly to the live troyster Postgres.
+- **`ml/matchup_intel/ingest/seed_data.json`** — the bundled demo games the pipeline and tests
+  key on; changing it shifts what the seeded decks contain.
