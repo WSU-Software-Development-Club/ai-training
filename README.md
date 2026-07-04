@@ -2,6 +2,14 @@
 
 A web application with a React.js frontend and Flask backend, containerized with Docker.
 
+## Documentation
+
+Comprehensive reference docs live in **[`docs/`](docs/README.md)** — architecture, the
+backend API, the frontend, the ML score models, the Matchup Intelligence Engine, the database
+schema, deployment, and a [known-issues / tech-debt register](docs/known-issues.md). Start
+with **[docs/architecture.md](docs/architecture.md)** for the big picture or
+**[docs/development.md](docs/development.md)** to run it locally.
+
 ## Project Structure
 
 ```
