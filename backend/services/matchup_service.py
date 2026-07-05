@@ -50,6 +50,18 @@ def _model_panel(pred):
     }
 
 
+def _resolve_prediction(db, game_id):
+    """Fetch a prediction row for an id from a game card. The id is an NCAA game
+    id for played/current games, but future-season games (2026+) have no NCAA id
+    yet and are opened by their CFBD game id instead — so try both.
+
+    Returns the prediction row or None (also None when the DB is unreachable)."""
+    if not db.is_connected:
+        return None
+    return (db.get_prediction_by_ncaa_game_id(game_id)
+            or db.get_prediction_by_game_id(game_id))
+
+
 def get_matchup_deck(ncaa_game_id):
     """Return the assembled matchup for a game, or None if nothing exists.
 
@@ -67,7 +79,7 @@ def get_matchup_deck(ncaa_game_id):
     """
     db = get_db()
     rows = db.get_factor_deck_by_game(ncaa_game_id)
-    pred = db.get_prediction_by_ncaa_game_id(ncaa_game_id) if db.is_connected else None
+    pred = _resolve_prediction(db, ncaa_game_id)
     if not rows and not pred:
         return None
 
@@ -138,7 +150,7 @@ def get_matchup_polymarket_history(ncaa_game_id):
     window instead of the full ingested span.
     """
     db = get_db()
-    pred = db.get_prediction_by_ncaa_game_id(ncaa_game_id) if db.is_connected else None
+    pred = _resolve_prediction(db, ncaa_game_id)
     if not pred:
         return None
 
@@ -249,7 +261,7 @@ def get_matchup_score(ncaa_game_id):
         status: "pre" | "live" | "final" | None
     """
     db = get_db()
-    pred = db.get_prediction_by_ncaa_game_id(ncaa_game_id) if db.is_connected else None
+    pred = _resolve_prediction(db, ncaa_game_id)
     if not pred:
         return None
 
