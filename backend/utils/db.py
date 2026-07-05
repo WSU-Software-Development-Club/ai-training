@@ -169,6 +169,38 @@ class PredictionsDB:
             (ncaa_game_id,),
         )
 
+    def get_polymarket_history(self, ncaa_game_id: int) -> List[Dict[str, Any]]:
+        """Full Polymarket implied-win-probability time series for a game.
+
+        Each pipeline run persists its own (non-deduped) snapshot to
+        raw_signals, so ordering by as_of_timestamp ascending yields the market
+        history that `get_latest_polymarket_odds` only reports the tail of.
+        Returns rows shaped {as_of, home_win_prob, away_win_prob, question,
+        source_url}; [] if no market/DB unreachable (graceful degrade)."""
+        rows = self._query(
+            """
+            SELECT as_of_timestamp,
+                   (payload->>'home_win_prob')::float8 AS home_win_prob,
+                   (payload->>'away_win_prob')::float8 AS away_win_prob,
+                   payload->>'question'   AS question,
+                   payload->>'source_url' AS source_url
+            FROM raw_signals
+            WHERE source_type = 'polymarket' AND ncaa_game_id = %s
+            ORDER BY as_of_timestamp ASC
+            """,
+            (ncaa_game_id,),
+        )
+        return [
+            {
+                "as_of": r["as_of_timestamp"].isoformat() if r.get("as_of_timestamp") else None,
+                "home_win_prob": r.get("home_win_prob"),
+                "away_win_prob": r.get("away_win_prob"),
+                "question": r.get("question"),
+                "source_url": r.get("source_url"),
+            }
+            for r in rows
+        ]
+
 
 # Global instance (mirrors the old module-level supabase_client)
 predictions_db = PredictionsDB()

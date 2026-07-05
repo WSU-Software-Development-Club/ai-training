@@ -102,6 +102,57 @@ def get_matchup_deck(ncaa_game_id):
     }
 
 
+def get_matchup_polymarket_history(ncaa_game_id):
+    """Polymarket implied-win-probability history for a game, or None if the
+    game has no prediction row at all (same 404 semantics as the score route).
+
+    Team names come from the prediction (so the chart can label home/away); the
+    series itself is the ordered list of Polymarket snapshots. An empty series
+    (`points: []`) is legitimate and common — most CFB games never had a market
+    — and is returned as 200, not 404, so the UI shows an "no market" state.
+
+    Shape:
+        {ncaa_game_id, home_team, away_team, kickoff, question, source_url,
+         points: [{as_of, home_win_prob, away_win_prob}, ...]}
+    `kickoff` (ISO-8601 or None) lets the chart default its view to the game
+    window instead of the full ingested span.
+    """
+    db = get_db()
+    pred = db.get_prediction_by_ncaa_game_id(ncaa_game_id) if db.is_connected else None
+    if not pred:
+        return None
+
+    history = db.get_polymarket_history(ncaa_game_id)
+    # Market metadata is game-level; take it from the latest snapshot that has it.
+    question = source_url = None
+    for row in reversed(history):
+        question = question or row.get("question")
+        source_url = source_url or row.get("source_url")
+        if question and source_url:
+            break
+
+    kickoff = pred.get("game_date")
+    if hasattr(kickoff, "isoformat"):
+        kickoff = kickoff.isoformat()
+
+    return {
+        "ncaa_game_id": ncaa_game_id,
+        "home_team": pred.get("home_team"),
+        "away_team": pred.get("away_team"),
+        "kickoff": kickoff,
+        "question": question,
+        "source_url": source_url,
+        "points": [
+            {
+                "as_of": row.get("as_of"),
+                "home_win_prob": row.get("home_win_prob"),
+                "away_win_prob": row.get("away_win_prob"),
+            }
+            for row in history
+        ],
+    }
+
+
 def _int_or_none(v):
     """NCAA scores can be ints, numeric strings, or '' before a game is played."""
     if v in ("", None):

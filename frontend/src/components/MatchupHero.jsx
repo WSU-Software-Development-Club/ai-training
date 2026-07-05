@@ -9,9 +9,19 @@ import styles from "../styles/components/MatchupHero.module.css";
 // as ScoreCard, and team colors tinting the matching side border. Everything
 // else for the game (tabs, reference panel, the active tab's content) renders
 // inside via `children`, below the banner.
-const MatchupHero = ({ homeTeam, awayTeam, children }) => {
+const MatchupHero = ({
+  homeTeam,
+  awayTeam,
+  homeScore,
+  awayScore,
+  statusLabel,
+  children,
+}) => {
   const { branding: homeBranding } = useTeamBranding(homeTeam);
   const { branding: awayBranding } = useTeamBranding(awayTeam);
+  // Show the score block (and the centered status) only once a score exists —
+  // an unplayed game keeps the plain home/away banner.
+  const hasScore = homeScore != null || awayScore != null;
 
   // Prefer the dark-mode logo variant for the backdrops (see ScoreCard) so
   // otherwise-dark logos stay visible against the dark surface.
@@ -33,14 +43,20 @@ const MatchupHero = ({ homeTeam, awayTeam, children }) => {
           <div className={styles.team}>
             <TeamLogo teamName={homeTeam} size="large" />
             <span className={styles.teamName}>{homeTeam || "Home"}</span>
+            {hasScore && <span className={styles.score}>{homeScore ?? "—"}</span>}
           </div>
         </div>
+
+        {hasScore && statusLabel && (
+          <span className={styles.status}>{statusLabel}</span>
+        )}
 
         <div className={`${styles.side} ${styles.away}`}>
           <span className={styles.sideLabel}>Away</span>
           <div className={styles.team}>
             <TeamLogo teamName={awayTeam} size="large" />
             <span className={styles.teamName}>{awayTeam || "Away"}</span>
+            {hasScore && <span className={styles.score}>{awayScore ?? "—"}</span>}
           </div>
         </div>
       </div>

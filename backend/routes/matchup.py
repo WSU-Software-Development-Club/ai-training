@@ -1,7 +1,11 @@
 """Matchup Intelligence Engine routes — serves the per-game factor deck."""
 
 from flask import Blueprint, jsonify
-from services.matchup_service import get_matchup_deck, get_matchup_score
+from services.matchup_service import (
+    get_matchup_deck,
+    get_matchup_polymarket_history,
+    get_matchup_score,
+)
 
 matchup_bp = Blueprint('matchup', __name__, url_prefix='/matchup')
 
@@ -47,4 +51,26 @@ def get_score(ncaa_game_id):
         "success": True,
         "data": score,
         "data_type": "Matchup final score"
+    })
+
+
+@matchup_bp.route('/<int:ncaa_game_id>/polymarket', methods=['GET'])
+def get_polymarket(ncaa_game_id):
+    """Return the Polymarket implied-win-probability history for a game.
+
+    404 when the game has no prediction row at all. When the game exists but
+    never had a Polymarket market (the common CFB case), this returns 200 with
+    an empty `points` list so the UI can render a "no market" state.
+    """
+    history = get_matchup_polymarket_history(ncaa_game_id)
+    if history is None:
+        return jsonify({
+            "success": False,
+            "error": "No game found for this id"
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "data": history,
+        "data_type": "Matchup Polymarket history"
     })

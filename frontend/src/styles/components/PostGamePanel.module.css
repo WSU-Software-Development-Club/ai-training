@@ -1,3 +1,9 @@
+.postGame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
 .finalScore {
   display: flex;
   align-items: center;
@@ -62,4 +68,11 @@
   justify-content: center;
   padding: var(--spacing-xxl) var(--spacing-lg);
   color: var(--color-text-secondary);
+}
+
+.emptyState {
+  padding: var(--spacing-xxl) var(--spacing-lg);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
