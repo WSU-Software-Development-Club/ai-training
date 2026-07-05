@@ -186,6 +186,7 @@ def ingest_seed_odds(conn, timeout: int = 30) -> dict:
 
 
 if __name__ == "__main__":
+    import os
     import sys
 
     from ..config import load_config
@@ -197,6 +198,11 @@ if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "seed"
     with db.connect(cfg.database_url) as conn:
         if mode == "history":
-            print(backfill_all_history(conn, timeout=cfg.request_timeout))
+            # In-game sampling resolution (minutes); env override for the CI job.
+            try:
+                fidelity = int(os.environ.get("POLYMARKET_FIDELITY", "1"))
+            except ValueError:
+                fidelity = 1
+            print(backfill_all_history(conn, timeout=cfg.request_timeout, fidelity=fidelity))
         else:
             print(ingest_seed_odds(conn, timeout=cfg.request_timeout))
