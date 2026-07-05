@@ -583,10 +583,13 @@ class TestServices(unittest.TestCase):
 
     @patch('services.matchup_service.get_db')
     def test_polymarket_history_no_prediction_returns_none(self, mock_get_db):
-        """No prediction row for the game -> None (route turns this into a 404)."""
+        """No prediction row for the game -> None (route turns this into a 404).
+        Both id lookups miss: the NCAA-id one and the CFBD game-id fallback that
+        _resolve_prediction also tries for future-season games."""
         mock_db = Mock()
         mock_db.is_connected = True
         mock_db.get_prediction_by_ncaa_game_id.return_value = None
+        mock_db.get_prediction_by_game_id.return_value = None
         mock_get_db.return_value = mock_db
 
         self.assertIsNone(get_matchup_polymarket_history(6459454))
