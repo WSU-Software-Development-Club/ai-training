@@ -122,9 +122,3 @@
     min-width: 120px;
   }
 }
-
-@media (max-width: 480px) {
-  .statsTableCellRank {
-    display: none;
-  }
-}
