@@ -1486,6 +1486,84 @@ def get_current_week() -> tuple:
     return year, 1
 
 
+def run_full_season(year: int) -> None:
+    """Backfill an entire season's predictions in one run.
+
+    Loops every regular-season week present in CFBD for the year, then the
+    postseason, generating predictions for each and upserting them all to
+    Postgres at the end (deduped on ncaa_game_id). Intended for loading a whole
+    upcoming schedule at once, e.g. `predict_upcoming.py 2026 season`.
+
+    Each game still needs an NCAA match to get its ncaa_game_id (the upsert key),
+    so weeks the NCAA feed hasn't published yet contribute nothing — that's
+    expected and reported, not an error.
+    """
+    print("="*70)
+    print(f"FULL-SEASON BACKFILL — {year}")
+    print("="*70)
+
+    # One CFBD call gets the whole regular season; use it to discover the weeks.
+    all_regular = fetch_upcoming_games(year, week=None, season_type="regular")
+    weeks = sorted({g.get("week") for g in all_regular if g.get("week") is not None})
+    print(f"\n[INFO] Regular-season weeks found for {year}: {weeks or 'none'}")
+
+    all_predictions: List[Dict] = []
+    total_cfbd = 0
+    total_skipped = 0
+
+    # Each (season_type, week, cfbd_games) unit is matched to NCAA and predicted.
+    units = [("regular", wk, [g for g in all_regular if g.get("week") == wk]) for wk in weeks]
+    # Postseason has no week filter — fetch it as one bucket.
+    postseason_games = fetch_upcoming_games(year, week=None, season_type="postseason")
+    if postseason_games:
+        units.append(("postseason", None, postseason_games))
+
+    for season_type, wk, cfbd_games in units:
+        label = f"Week {wk}" if wk is not None else "Postseason"
+        print("\n" + "-"*70)
+        print(f"[{label}] {len(cfbd_games)} CFBD games")
+        if not cfbd_games:
+            continue
+        total_cfbd += len(cfbd_games)
+
+        ncaa_games, _ = fetch_ncaa_games(year, week=wk, season_type=season_type)
+        if not ncaa_games:
+            print(f"  [WARNING] No NCAA games for {label} — these games can't be matched yet.")
+
+        predictions, skipped, _matched, _ids = predict_games(
+            cfbd_games, year, season_type, ncaa_games
+        )
+        total_skipped += skipped
+        all_predictions.extend(predictions)
+        print(f"  [{label}] predictions: {len(predictions)}, skipped (no NCAA match): {skipped}")
+
+    # Dedupe on ncaa_game_id (the DB upsert key) — keep the last seen per id.
+    by_id = {}
+    for p in all_predictions:
+        nid = p.get("ncaa_game_id")
+        if nid is not None:
+            by_id[nid] = p
+    deduped = list(by_id.values())
+
+    print("\n" + "="*70)
+    print(f"SEASON BACKFILL SUMMARY — {year}")
+    print("="*70)
+    print(f"Total CFBD games processed: {total_cfbd}")
+    print(f"Predictions generated:      {len(all_predictions)}")
+    print(f"Unique games (by NCAA id):  {len(deduped)}")
+    print(f"Skipped (no NCAA match):    {total_skipped}")
+
+    if not deduped:
+        print("\n[INFO] No matched games to save (the NCAA feed may not list this "
+              "season yet). Nothing written.")
+        return
+
+    if PSYCOPG_AVAILABLE and DATABASE_URL:
+        save_to_postgres(deduped)
+    else:
+        print("\n[INFO] DATABASE_URL not configured - skipping save")
+
+
 def main():
     """
     Main function to orchestrate weekly predictions with auto-detection
@@ -1494,7 +1572,9 @@ def main():
     appropriate games. No command-line arguments needed for GitHub Actions.
     
     Optional command-line arguments for manual override:
-        python predict_upcoming.py [year] [week|postseason]
+        python predict_upcoming.py [year] [week|postseason|season]
+        - `season` (aliases: `all`, `full`) backfills every week + postseason
+          for the year in one run (see run_full_season).
     """
     print("="*70)
     print("COLLEGE FOOTBALL WEEKLY PREDICTIONS")
@@ -1508,8 +1588,13 @@ def main():
         
         if len(sys.argv) >= 3:
             second_arg = sys.argv[2].lower()
-            
-            if second_arg == "postseason":
+
+            if second_arg in ("season", "all", "full"):
+                # Whole-season backfill: every week + postseason in one run.
+                print(f"\n[MANUAL] Full-season backfill - Year {year} (command-line override)")
+                run_full_season(year)
+                return
+            elif second_arg == "postseason":
                 # Explicit postseason request
                 season_type = "postseason"
                 phase = "postseason"

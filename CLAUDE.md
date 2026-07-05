@@ -20,6 +20,8 @@ used — see §5 and the tech-debt note in §7.)
   matplotlib, seaborn, `psycopg`. Models are XGBoost regressors (separate home/away score models).
 - **Data stores / external APIs:** self-hosted Postgres on troyster (`predictions` table), NCAA API
   (`ncaa-api.henrygd.me`), College Football Data API (`collegefootballdata.com`, needs `CFBD_API_KEY`).
+  CFBD is used by the ML pipeline **and** by the backend team route for historical
+  (past-season) records — the NCAA standings feed only ever returns the current season.
 
 ## 3. Directory layout
 ```
@@ -78,7 +80,8 @@ cd ml && pip install -r requirements.txt
 cd m1 && python predict_upcoming.py [year] [week]   # args optional; auto-detects
 ```
 Env vars (names only — see `env.example`, `backend/env.example`, `ml/env.example`):
-- Backend/ML: `DATABASE_URL`, `CFBD_API_KEY` (ML only),
+- Backend/ML: `DATABASE_URL`, `CFBD_API_KEY` (ML **and** backend — the latter uses it
+  only for historical team records; optional, current-season data works without it),
   `FLASK_ENV`, `FLASK_DEBUG`, `CORS_ORIGINS`.
 - Ports/CORS/DB (compose): `BACKEND_PORT` (5000), `FRONTEND_PORT` (3000),
   `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` (backend derives `DATABASE_URL` from these);
@@ -99,7 +102,10 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
   SWDC project, "Sentiment Trends" — don't touch or confuse it with this one.)
 - **Backend container:** `ai-training-backend-1`, built from local image `ai-training-backend`,
   listening on `0.0.0.0:5000` on the host. This is an **API-only** service (see §6 — Flask
-  returns JSON at `/`; it does **not** serve the SPA).
+  returns JSON at `/`; it does **not** serve the SPA). Its compose env now also passes
+  `CFBD_API_KEY=${CFBD_API_KEY:-}` (both compose files) so the team route can serve historical
+  records; set `CFBD_API_KEY` in the troyster `.env` to enable it (absent → past-season lookups
+  404, current season still works).
 - **Backend start command — PRODUCTION ISSUE:** both the `Dockerfile` CMD and the compose
   `command` run **`python app.py`**, i.e. the **Flask development server with the reloader**.
   `gunicorn` is in `requirements.txt` but unused. This should be switched to a WSGI server
@@ -125,6 +131,9 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
   - `weekly_predictions.yml` — Tue 09:00 UTC (+ manual): joins the tailnet (auth key) and runs
     `ml/m1/predict_upcoming.py` on a **GitHub-hosted runner**, writing predictions (upsert on
     `ncaa_game_id`) to the **troyster Postgres over Tailscale**. The API reads them back.
+    `predict_upcoming.py` runs one week at a time; passing **`<year> season`** (aliases
+    `all`/`full`) instead of a week runs `run_full_season()` to backfill every week + postseason
+    of a year in one shot (dispatch the workflow with `week=season` to load a whole schedule).
 - **GitHub Actions secrets:** `TS_AUTHKEY` (ephemeral, tagged `tag:ci`), `DEPLOY_KEY` (SSH),
   `DATABASE_URL`, `CFBD_API_KEY`.
 - **ML → GitHub Actions** (`weekly_predictions.yml`): still active. Runs
@@ -138,6 +147,14 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
 - **Routes:** one Blueprint per file in `backend/routes/`, each with a `url_prefix`
   (`/api`, `/rankings`, `/stats`, `/scoreboard`, `/team`, `/history`; `main` has none),
   all registered in `create_app()`. Routes are thin and delegate to `services/`.
+- **Team records are dual-sourced by season:** `/team/<name>/record?year=` returns the
+  **current** season from the NCAA standings feed (rich: points for/against + streak) and any
+  **past** season from CFBD `/records` (win/loss splits only — PF/PA/streak come back `None`),
+  reshaped into the same standings-row keys so the frontend renders both identically.
+  `/team/seasons` lists the selectable years (current → 2000). "Current season" = calendar year
+  if month ≥ August else previous year (`team_service.current_season_year()`), which matches
+  what the NCAA feed serves. Team-name joins go through `canonical_team_key()` (see §7 gotcha 8);
+  CFBD names already match the frontend CSV school names, so no aliasing is needed there.
 - **API response shape (domain routes):** success →
   `{"success": true, "data": <payload>, ...metadata}` (e.g. `stat_name`, `team_name`);
   failure → `{"success": false, "error": "<msg>"}` with HTTP `404` (not found) or `500`
@@ -178,10 +195,32 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
    `tailscale/github-action` joins the tailnet (auth key, `tag:ci`). If `TS_AUTHKEY` expires
    or the ACL `tag:ci` loses
    access to `tcp:5432`, the save fails and the job falls back to writing a local JSON artifact.
+8. **Team-name spellings differ across feeds — join via `canonical_team_key`.** The NCAA
+   standings feed abbreviates schools (`South Fla.`, `Central Mich.`, `FIU`, `Miami (FL)`,
+   `Southern California`) while the frontend navigates using the CSV's full canonical name
+   (`South Florida`, `USC`). `team_service.normalize_team_name()` expands state abbreviations
+   (`fla`→`florida`, `mich`→`michigan`, …) and `canonical_team_key()` folds in acronym/qualifier
+   aliases (`FIU`↔Florida International, `Miami (FL)`↔Miami, keeping Miami (OH) distinct). Use
+   `canonical_team_key` for any cross-feed team lookup; a drift here silently 404s a team page.
+   Separately, the **frontend** matcher's `cleanNameForMatching` must not strip `state`/`st`
+   (only `university`/`college`) — stripping `state` made "Ohio State University" resolve to Ohio.
+9. **NCAA standings are current-season only.** `ncaa-api.henrygd.me/standings/football/fbs`
+   ignores any year in the path and always returns the in-progress/most-recent season — so
+   historical team records **must** come from CFBD (see §6, team route). Don't try to get past
+   seasons out of the NCAA feed.
+10. **Scoreboard falls back to CFBD when the NCAA feed is empty.** The NCAA scoreboard doesn't
+    publish a season until it's near/underway, so a future season (or any week NCAA hasn't posted)
+    comes back with no games. `scoreboard_service.get_scoreboard_data` then builds the week from
+    CFBD `/games` (`source: "cfbd"`, schedule-only — no live scores, no native NCAA id; predictions
+    are matched to those games by team name instead). Needs `CFBD_API_KEY` in the backend env.
+    The frontend defaults (`helpers.getCurrentYear/Week`) point at the **upcoming** season's week 1
+    during the offseason (Feb–Jul), the in-progress week Aug–Dec, and the prior season's postseason
+    in January — so in, e.g., July 2026 the Home page opens on 2026 Week 1.
 
 ## 8. Do-not-touch list
-- **`/.env`, `backend/.env`** and any real env values — contain the Postgres password / `DATABASE_URL`. They are
-  gitignored (not tracked); never commit them or paste values into code/docs. Edit
+- **`/.env`, `backend/.env`** and any real env values — contain the Postgres password /
+  `DATABASE_URL` (and, if historical team records are enabled, the backend's `CFBD_API_KEY`).
+  They are gitignored (not tracked); never commit them or paste values into code/docs. Edit
   `*env.example` files instead.
 - **GitHub Actions secrets** (`CFBD_API_KEY`, `DATABASE_URL`, `TS_AUTHKEY`, `DEPLOY_KEY`) — configured in
   the repo settings, not in code.

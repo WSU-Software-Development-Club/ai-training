@@ -69,32 +69,33 @@ export const debounce = (func, wait) => {
   };
 };
 
-// Get current week
+// Default season week for the scoreboard/predictions views. A CFB season is
+// named for the year it starts (late August) and runs into January.
+//   - January: the prior year's season is still in its postseason (bowls /
+//     playoff) → week 19.
+//   - Feb–Jul: offseason before the upcoming season → default to opening week 1
+//     (the new schedule is already published, so we point at it, not last year).
+//   - Aug–Dec: in season → count weeks from the ~Aug 23 opener so it advances
+//     week-by-week as games happen.
 export const getCurrentWeek = () => {
-  const startDate = new Date();
-  startDate.setMonth(7);
-  startDate.setDate(23);
+  const now = new Date();
+  const month = now.getMonth(); // 0 = Jan … 11 = Dec
 
-  const currentDate = new Date();
+  if (month === 0) return 19; // January postseason of the prior season
+  if (month <= 6) return 1; // Feb–Jul: upcoming season, opening week
 
-  if (currentDate.getMonth() < 7)
-  {
-    return 19;
-  }
-
-  const daysSinceStart = Math.floor(
-    (currentDate - startDate) / (1000 * 60 * 60 * 24)
-  );
-
-  const weeks = Math.floor(daysSinceStart / 7 + 1);
-
-  return weeks > 19 ? 19 : weeks;
+  const start = new Date(now.getFullYear(), 7, 23); // Aug 23 opener
+  const daysSinceStart = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+  const week = Math.floor(daysSinceStart / 7) + 1;
+  return Math.min(19, Math.max(1, week));
 };
 
+// Default season year, paired with getCurrentWeek above. In January we're still
+// in the prior year's season (its bowls/playoff), so that season's year applies;
+// from February on (offseason through the in-progress season) the current
+// calendar year's season is the one to show.
 export const getCurrentYear = () => {
-  const currentDate = new Date();
-  if (currentDate.getMonth() < 7) {
-    return currentDate.getFullYear() - 1;
-  }
-  return currentDate.getFullYear();
-}
+  const now = new Date();
+  if (now.getMonth() === 0) return now.getFullYear() - 1;
+  return now.getFullYear();
+};

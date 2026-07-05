@@ -21,6 +21,11 @@ class Config:
     # e.g. postgresql://aitraining:PASSWORD@db:5432/aitraining
     DATABASE_URL = os.environ.get('DATABASE_URL')
 
+    # College Football Data API key (Bearer token). Optional: used only for
+    # historical, year-specific team records. Without it, past-season lookups
+    # return no data (the current season still works via the NCAA feed).
+    CFBD_API_KEY = os.environ.get('CFBD_API_KEY')
+
 class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True

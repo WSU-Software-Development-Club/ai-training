@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { FiSearch, FiX } from "react-icons/fi";
 import ScoreCard from "../components/ScoreCard";
 import api from "../services/api";
 import styles from "../styles/pages/HomePage.module.css";
@@ -35,6 +36,7 @@ const HomePage = () => {
     () => loadFilters().year ?? getCurrentYear()
   );
   const [selectedDate, setSelectedDate] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -170,6 +172,7 @@ const HomePage = () => {
   ];
 
   // Filter scores based on selected filters
+  const query = searchQuery.trim().toLowerCase();
   const filteredScores = games.filter((game) => {
     const conferenceMatch =
       selectedConference === "All" ||
@@ -188,7 +191,19 @@ const HomePage = () => {
       selectedDate === "All" ||
       !game.epoch ||
       new Date(game.epoch * 1000).toISOString().split("T")[0] === selectedDate;
-    return conferenceMatch && statusMatch && dateMatch;
+    // Free-text search on either team's name (short or full), so a user can
+    // jump straight to the game they want without hunting the dropdowns.
+    const searchMatch =
+      !query ||
+      [
+        game.away?.names?.short,
+        game.away?.names?.full,
+        game.home?.names?.short,
+        game.home?.names?.full,
+      ]
+        .filter(Boolean)
+        .some((name) => name.toLowerCase().includes(query));
+    return conferenceMatch && statusMatch && dateMatch && searchMatch;
   });
 
   return (
@@ -200,6 +215,28 @@ const HomePage = () => {
             <p className={styles.homePageSubtitle}>
               Latest scores from across all conferences
             </p>
+          </div>
+
+          <div className={styles.homePageSearch}>
+            <FiSearch className={styles.homePageSearchIcon} aria-hidden="true" />
+            <input
+              type="text"
+              className={styles.homePageSearchInput}
+              placeholder="Search for a game or team…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search games by team"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className={styles.homePageSearchClear}
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+              >
+                <FiX aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           <div className={styles.homePageFilters}>

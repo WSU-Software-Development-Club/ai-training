@@ -10,7 +10,11 @@ from services.rankings_service import get_ap_rankings
 from services.stats_service import get_all_teams_stats, get_offense_stats
 from services.scoreboard_service import get_scoreboard_data
 from services.matchup_service import get_matchup_polymarket_history
-from services.team_service import canonical_team_key, get_team_record
+from services.team_service import (
+    canonical_team_key,
+    get_team_record,
+    _get_team_record_cfbd,
+)
 
 
 class TestServices(unittest.TestCase):
@@ -711,6 +715,119 @@ class TestTeamNameMatching(unittest.TestCase):
         record = get_team_record("South Florida")
         self.assertIsNotNone(record)
         self.assertEqual(record["School"], "South Fla.")
+
+
+class TestScoreboardCfbdFallback(unittest.TestCase):
+    """When the NCAA scoreboard has no games for a week (e.g. a future season),
+    the service falls back to the CFBD schedule so those games still show."""
+
+    @patch.dict('os.environ', {'CFBD_API_KEY': 'test-key'})
+    @patch('services.scoreboard_service.get_db')
+    @patch('services.scoreboard_service.requests.get')
+    def test_falls_back_to_cfbd_when_ncaa_empty(self, mock_get, mock_get_db):
+        # DB not connected → no predictions attached.
+        mock_db = Mock()
+        mock_db.is_connected = False
+        mock_get_db.return_value = mock_db
+
+        ncaa_resp = Mock()
+        ncaa_resp.raise_for_status = Mock()
+        ncaa_resp.json.return_value = {"games": []}  # NCAA has nothing
+
+        cfbd_resp = Mock()
+        cfbd_resp.raise_for_status = Mock()
+        cfbd_resp.json.return_value = [{
+            "id": 401856766, "week": 1, "startDate": "2026-08-29T16:00:00.000Z",
+            "completed": False, "neutralSite": True,
+            "homeTeam": "TCU", "homeConference": "Big 12", "homePoints": None,
+            "awayTeam": "North Carolina", "awayConference": "ACC", "awayPoints": None,
+        }]
+        # 1st requests.get = NCAA (empty), 2nd = CFBD (schedule).
+        mock_get.side_effect = [ncaa_resp, cfbd_resp]
+
+        data = get_scoreboard_data(1, 2026)
+        self.assertEqual(data["source"], "cfbd")
+        self.assertEqual(len(data["games"]), 1)
+        g = data["games"][0]
+        self.assertEqual(g["home"]["names"]["short"], "TCU")
+        self.assertEqual(g["away"]["names"]["short"], "North Carolina")
+        self.assertTrue(g["game_state"]["isUpcoming"])
+        self.assertIsNotNone(g["epoch"])
+
+    @patch.dict('os.environ', {}, clear=True)
+    @patch('services.scoreboard_service.get_db')
+    @patch('services.scoreboard_service.requests.get')
+    def test_no_cfbd_key_stays_empty(self, mock_get, mock_get_db):
+        mock_db = Mock()
+        mock_db.is_connected = False
+        mock_get_db.return_value = mock_db
+        ncaa_resp = Mock()
+        ncaa_resp.raise_for_status = Mock()
+        ncaa_resp.json.return_value = {"games": []}
+        mock_get.return_value = ncaa_resp
+        # No CFBD key → fallback yields nothing → the empty NCAA payload is
+        # returned unchanged (no games, no cfbd source flag).
+        data = get_scoreboard_data(1, 2026)
+        self.assertEqual(data["games"], [])
+        self.assertNotIn("source", data)
+
+
+class TestHistoricalTeamRecord(unittest.TestCase):
+    """Past-season records come from CFBD and are reshaped into the NCAA
+    standings row the frontend renders, with points/streak left as None."""
+
+    @staticmethod
+    def _resp(payload):
+        m = Mock()
+        m.raise_for_status = Mock()
+        m.json.return_value = payload
+        return m
+
+    @patch.dict('os.environ', {'CFBD_API_KEY': 'test-key'})
+    @patch('services.team_service.requests.get')
+    def test_cfbd_record_reshaped_to_standings_row(self, mock_get):
+        records = [{
+            "year": 2023,
+            "team": "Alabama",
+            "total": {"games": 14, "wins": 12, "losses": 2, "ties": 0},
+            "conferenceGames": {"wins": 9, "losses": 0},
+            "homeGames": {"wins": 6, "losses": 1},
+            "awayGames": {"wins": 5, "losses": 0},
+        }]
+        # Two completed games: win 30-7 (home), then loss 10-20 (away) -> a
+        # current streak of "Lost 1", PF 40, PA 27.
+        games = [
+            {"startDate": "2023-09-02", "completed": True, "homeTeam": "Alabama",
+             "awayTeam": "X", "homePoints": 30, "awayPoints": 7},
+            {"startDate": "2023-09-09", "completed": True, "homeTeam": "Y",
+             "awayTeam": "Alabama", "homePoints": 20, "awayPoints": 10},
+        ]
+        # /records first, then /games.
+        mock_get.side_effect = [self._resp(records), self._resp(games)]
+
+        rec = _get_team_record_cfbd("Alabama", 2023)
+        self.assertEqual(rec["Overall W"], 12)
+        self.assertEqual(rec["Overall L"], 2)
+        self.assertEqual(rec["Conference W"], 9)
+        self.assertEqual(rec["Overall HOME"], "6-1")
+        self.assertEqual(rec["Overall AWAY"], "5-0")
+        # Derived from the season's games.
+        self.assertEqual(rec["Overall PF"], 40)
+        self.assertEqual(rec["Overall PA"], 27)
+        self.assertEqual(rec["Overall STREAK"], "Lost 1")
+
+    @patch.dict('os.environ', {}, clear=True)
+    def test_missing_api_key_returns_none(self):
+        self.assertIsNone(_get_team_record_cfbd("Alabama", 2023))
+
+    @patch.dict('os.environ', {'CFBD_API_KEY': 'test-key'})
+    @patch('services.team_service.requests.get')
+    def test_team_with_no_season_record_returns_none(self, mock_get):
+        mock_resp = Mock()
+        mock_resp.raise_for_status = Mock()
+        mock_resp.json.return_value = []  # CFBD returns [] for a team/year miss
+        mock_get.return_value = mock_resp
+        self.assertIsNone(_get_team_record_cfbd("Alabama", 1899))
 
 
 if __name__ == '__main__':
