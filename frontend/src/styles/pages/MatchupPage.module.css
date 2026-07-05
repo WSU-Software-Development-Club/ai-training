@@ -255,11 +255,19 @@
    Semantic edge color: tailwind = success green, headwind = error crimson,
    neutral = muted border. */
 .factorCard {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  /* Elevated-surface treatment matching ScoreCard/hero: lighter base + a
+     faint top-lit sheen. The semantic border-left (tailwind/headwind color)
+     below stays intact and is unaffected by this base border-color change. */
+  background-color: var(--color-surface-light);
+  background-image: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  border: 1px solid var(--color-border-strong);
   border-left: 3px solid var(--color-border-strong);
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   padding: var(--spacing-sm) var(--spacing-md);
   transition: var(--transition-all);
 }
@@ -273,7 +281,7 @@
 }
 
 .factorCard:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 
 .factorCardHead {
@@ -611,11 +619,18 @@
    rate rather than a competing line — keeps a 320px-wide card from
    feeling cramped while still surfacing the record at a glance. */
 .wxCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  /* Same elevated-surface treatment as the factor cards it sits alongside. */
+  background-color: var(--color-surface-light);
+  background-image: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  border: 1px solid var(--color-border-strong);
   border-left-width: 3px;
   border-radius: var(--border-radius);
-  transition: var(--transition-colors);
+  box-shadow: var(--shadow-md);
+  transition: var(--transition-all);
 }
 .wxCard.up {
   border-left-color: var(--color-success);
@@ -624,7 +639,7 @@
   border-left-color: var(--color-error);
 }
 .wxCard:hover {
-  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-lg);
 }
 
 .wxHead {
@@ -787,10 +802,19 @@
 /* Shared weather row — one condition, two teams side by side. Deliberately
    compact (tiebreaker, not a thesis): a single hairline band, not a hero card. */
 .wxRow {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  /* Lifted one tier like the other cards on this page (surface -> surface-light),
+     plus the same faint sheen showing through the body below the header. The
+     header is bumped a further tier (background-tertiary) so the
+     header/body two-tone contrast this component relies on isn't flattened. */
+  background-color: var(--color-surface-light);
+  background-image: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   margin-bottom: var(--spacing-xl);
   overflow: hidden;
 }
@@ -800,7 +824,7 @@
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-background-secondary);
+  background: var(--color-background-tertiary);
   border: none;
   cursor: pointer;
   color: inherit;

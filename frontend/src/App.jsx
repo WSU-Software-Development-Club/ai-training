@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   useLocation,
+  useNavigationType,
 } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import RankingsPage from "./pages/RankingsPage";
@@ -29,6 +30,25 @@ function RoutePrefetcher() {
   useEffect(() => {
     prefetchForRoute(location.pathname);
   }, [location.pathname]);
+
+  return null;
+}
+
+// Resets the window scroll to the top when navigating to a new route (e.g.
+// clicking a game card while scrolled partway down the Home grid should land at
+// the top of the Matchup page, not carry the old scroll offset over). Only acts
+// on fresh PUSH/REPLACE navigations — on POP (browser back/forward) it does
+// nothing, so the browser's native scroll restoration returns you to where you
+// were. Renders nothing.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  const navigationType = useNavigationType();
+
+  useEffect(() => {
+    if (navigationType !== "POP") {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname, navigationType]);
 
   return null;
 }
@@ -78,6 +98,7 @@ function App() {
   return (
     <Router>
       <RoutePrefetcher />
+      <ScrollToTop />
       <div className="app">
         {/* Persistent chrome: rendered once, outside <Routes>, so the nav bar
             and logo stay mounted (no remount/re-decode blink) across every
