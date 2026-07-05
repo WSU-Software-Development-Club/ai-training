@@ -217,28 +217,6 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className={styles.homePageSearch}>
-            <FiSearch className={styles.homePageSearchIcon} aria-hidden="true" />
-            <input
-              type="text"
-              className={styles.homePageSearchInput}
-              placeholder="Search for a game or team…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search games by team"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                className={styles.homePageSearchClear}
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear search"
-              >
-                <FiX aria-hidden="true" />
-              </button>
-            )}
-          </div>
-
           <div className={styles.homePageFilters}>
             {/* Year Dropdown */}
             <div className={styles.homePageFilterGroup}>
@@ -314,6 +292,29 @@ const HomePage = () => {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Full-width game search, sitting below the filter dropdowns. */}
+          <div className={styles.homePageSearch}>
+            <FiSearch className={styles.homePageSearchIcon} aria-hidden="true" />
+            <input
+              type="text"
+              className={styles.homePageSearchInput}
+              placeholder="Search for a game or team…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search games by team"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className={styles.homePageSearchClear}
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+              >
+                <FiX aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           {/* Scores grouped by date to make it easier to scan */}
