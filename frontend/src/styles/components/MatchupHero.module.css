@@ -37,7 +37,7 @@
   flex-direction: column;
 }
 
-/* Faint team-logo backdrops in the top corners: home top-left, away top-right.
+/* Faint team-logo backdrops in the top corners: away top-left, home top-right.
    Fixed square size (not a % of the container) so the logos read at the same
    scale whether the tab below is tall (Post-Game) or short (Pre-Game/Live). */
 .hero::before,
@@ -56,13 +56,13 @@
 
 .hero::before {
   left: calc(var(--spacing-xl) * -1);
-  background-image: var(--home-logo, none);
+  background-image: var(--away-logo, none);
   background-position: top left;
 }
 
 .hero::after {
   right: calc(var(--spacing-xl) * -1);
-  background-image: var(--away-logo, none);
+  background-image: var(--home-logo, none);
   background-position: top right;
 }
 
@@ -74,12 +74,14 @@
   gap: var(--spacing-sm);
 }
 
-.home {
+/* Left slot (away): left-aligned, logo before the name. */
+.left {
   align-items: flex-start;
   text-align: left;
 }
 
-.away {
+/* Right slot (home): right-aligned, logo after the name (row-reverse). */
+.right {
   align-items: flex-end;
   text-align: right;
 }
@@ -99,7 +101,7 @@
   min-width: 0;
 }
 
-.away .team {
+.right .team {
   flex-direction: row-reverse;
 }
 
@@ -168,7 +170,7 @@
     text-align: center;
   }
 
-  .away .team {
+  .right .team {
     flex-direction: column;
   }
 

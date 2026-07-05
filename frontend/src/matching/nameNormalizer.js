@@ -88,23 +88,26 @@ export function generateNameVariations(normalizedName) {
 }
 
 /**
- * Clean a normalized name by removing common suffixes
- * 
- * This helps with fuzzy matching by removing words like "State", "University", etc.
- * 
+ * Clean a normalized name by removing a generic institutional suffix.
+ *
+ * Strips a trailing "University"/"College" (and a leading "The") so
+ * "Ohio State University" matches "Ohio State". It deliberately does NOT strip
+ * "State"/"St" — those are discriminative, not generic: dropping "state" made
+ * "Ohio State University" collapse to "Ohio" and match the wrong team (Ohio
+ * Bobcats). State/St. spelling variants are handled separately by the matcher's
+ * dedicated State/St strategy.
+ *
  * @param {string} normalizedName - Already normalized team name
  * @returns {string} Cleaned name
- * 
+ *
  * @example
- * cleanNameForMatching("washington state university")
- * // returns "washington"
+ * cleanNameForMatching("ohio state university") // returns "ohio state"
+ * cleanNameForMatching("washington state university") // returns "washington state"
  */
 export function cleanNameForMatching(normalizedName) {
   return normalizedName
-    .replace(/\s+(st|state|university|college)$/i, '')
     .replace(/^the\s+/i, '')
-    .replace(/\s+st\s*$/i, '')
-    .replace(/\s+state\s*$/i, '')
+    .replace(/\s+(university|college)$/i, '')
     .trim();
 }
 

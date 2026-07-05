@@ -5,6 +5,8 @@ from services.matchup_service import (
     get_matchup_deck,
     get_matchup_polymarket_history,
     get_matchup_score,
+    get_matchup_scoring_summary,
+    get_matchup_team_stats,
 )
 
 matchup_bp = Blueprint('matchup', __name__, url_prefix='/matchup')
@@ -51,6 +53,48 @@ def get_score(ncaa_game_id):
         "success": True,
         "data": score,
         "data_type": "Matchup final score"
+    })
+
+
+@matchup_bp.route('/<int:ncaa_game_id>/team-stats', methods=['GET'])
+def get_team_stats(ncaa_game_id):
+    """Return the ESPN-style team-stats comparison for a finished game.
+
+    404 when the NCAA box score isn't available (unplayed game, synthetic seed
+    id, or the feed is down) — the Post-Game panel treats that as "hide".
+    """
+    stats = get_matchup_team_stats(ncaa_game_id)
+    if stats is None:
+        return jsonify({
+            "success": False,
+            "error": "No team stats available for this game"
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "data": stats,
+        "data_type": "Matchup team stats"
+    })
+
+
+@matchup_bp.route('/<int:ncaa_game_id>/scoring-summary', methods=['GET'])
+def get_scoring_summary(ncaa_game_id):
+    """Return the quarter-by-quarter scoring feed for a finished game.
+
+    404 when the NCAA scoring summary isn't available — the Post-Game panel
+    treats that as "hide".
+    """
+    summary = get_matchup_scoring_summary(ncaa_game_id)
+    if summary is None:
+        return jsonify({
+            "success": False,
+            "error": "No scoring summary available for this game"
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "data": summary,
+        "data_type": "Matchup scoring summary"
     })
 
 

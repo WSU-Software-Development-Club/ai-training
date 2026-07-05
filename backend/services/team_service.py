@@ -9,6 +9,53 @@ import requests
 from api_vars import NCAA_API_BASE_URL
 
 
+# NCAA standings abbreviate a school's state with a period ("South Fla.",
+# "Central Mich."), while the frontend's team CSV spells it out ("South
+# Florida", "Central Michigan"). Expanding these abbreviations to the full word
+# on BOTH sides of the comparison makes the two feeds join. Only unambiguous
+# state-name abbreviations belong here — a token that could name more than one
+# school (e.g. "miss" for Mississippi vs. Southern Miss) is safe because the
+# expansion is applied identically to both spellings, so it can never split a
+# match, only merge the two spellings of the same word.
+_STATE_ABBREVIATIONS = {
+    "ala": "alabama",
+    "ariz": "arizona",
+    "ark": "arkansas",
+    "calif": "california",
+    "colo": "colorado",
+    "conn": "connecticut",
+    "fla": "florida",
+    "ga": "georgia",
+    "ill": "illinois",
+    "ind": "indiana",
+    "ky": "kentucky",
+    "mich": "michigan",
+    "minn": "minnesota",
+    "miss": "mississippi",
+    "okla": "oklahoma",
+    "ore": "oregon",
+    "tenn": "tennessee",
+    "tex": "texas",
+    "wash": "washington",
+    "wis": "wisconsin",
+}
+
+# A handful of schools can't be reconciled by word-level expansion because the
+# two feeds use entirely different names: an acronym on one side and the full
+# name on the other, or an extra/parenthetical qualifier. These map a
+# normalized (already state-expanded) name to a shared canonical key. Applied to
+# both the requested name and the standings name, so either spelling resolves.
+_TEAM_ALIASES = {
+    "fiu": "florida international",
+    "niu": "northern illinois",
+    "ulm": "ul monroe",
+    "army west point": "army",
+    "miami fl": "miami",              # standings "Miami (FL)"; keeps Miami (OH) distinct
+    "southern california": "usc",
+    "hawai i": "hawaii",             # CSV "Hawai'i" -> "hawai i"; standings "Hawaii"
+}
+
+
 def normalize_team_name(name):
     """
     Normalize a team name so different spellings resolve to the same team.
@@ -20,6 +67,8 @@ def normalize_team_name(name):
       - letter case ("USC" vs "usc")
       - punctuation and accents ("San José St." vs "San Jose St")
       - the "State"/"St." abbreviation (both collapse to a single token)
+      - state-name abbreviations ("Fla." -> "florida", "Central Mich." ->
+        "central michigan") via {@link _STATE_ABBREVIATIONS}
 
     Args:
         name (str): Team name to normalize.
@@ -40,11 +89,27 @@ def normalize_team_name(name):
     # Replace any non-alphanumeric character (periods, parens, etc.) with space.
     cleaned = re.sub(r"[^a-z0-9]+", " ", lowered)
 
-    # Treat "state" and "st" as the same word so "Washington State" matches
-    # "Washington St.".
-    tokens = ["st" if token == "state" else token for token in cleaned.split()]
+    tokens = []
+    for token in cleaned.split():
+        # Treat "state" and "st" as the same word so "Washington State" matches
+        # "Washington St.".
+        if token == "state":
+            token = "st"
+        else:
+            token = _STATE_ABBREVIATIONS.get(token, token)
+        tokens.append(token)
 
     return " ".join(tokens)
+
+
+def canonical_team_key(name):
+    """Normalized team name with acronym/special-case aliases folded in, so two
+    feeds that name the same school entirely differently (e.g. "FIU" vs.
+    "Florida International") still compare equal. Use this for cross-feed team
+    lookups; use {@link normalize_team_name} when you only need spelling
+    normalization."""
+    normalized = normalize_team_name(name)
+    return _TEAM_ALIASES.get(normalized, normalized)
 
 
 def get_team_record(team_name):
@@ -60,11 +125,11 @@ def get_team_record(team_name):
         response = requests.get(f'{NCAA_API_BASE_URL}/standings/football/fbs', timeout=10)
         response.raise_for_status()
         raw_data = response.json()
-        target = normalize_team_name(team_name)
+        target = canonical_team_key(team_name)
         for conf_block in raw_data.get('data', []):
             for row in conf_block.get('standings', []):
                 school = row.get("School", "")
-                if normalize_team_name(school) == target:
+                if canonical_team_key(school) == target:
                     return row
         return None
 
