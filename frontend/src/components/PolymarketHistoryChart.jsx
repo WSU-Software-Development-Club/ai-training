@@ -201,12 +201,12 @@ const PolymarketHistoryChart = ({ points, homeTeam, awayTeam, sourceUrl, kickoff
         <span className={styles.title}>Polymarket win probability</span>
         <div className={styles.legend} aria-hidden="true">
           <span className={styles.legendItem}>
-            <span className={styles.swatch} style={{ background: HOME_COLOR }} />
-            {homeTeam || "Home"}
-          </span>
-          <span className={styles.legendItem}>
             <span className={styles.swatch} style={{ background: AWAY_COLOR }} />
             {awayTeam || "Away"}
+          </span>
+          <span className={styles.legendItem}>
+            <span className={styles.swatch} style={{ background: HOME_COLOR }} />
+            {homeTeam || "Home"}
           </span>
         </div>
       </figcaption>
@@ -319,14 +319,14 @@ const PolymarketHistoryChart = ({ points, homeTeam, awayTeam, sourceUrl, kickoff
           >
             <div className={styles.tooltipDate}>{fmtFull(hover.t)}</div>
             <div className={styles.tooltipRow}>
-              <span className={styles.swatch} style={{ background: HOME_COLOR }} />
-              <span className={styles.tooltipName}>{homeTeam || "Home"}</span>
-              <span className={styles.tooltipVal}>{hover.home != null ? pct(hover.home) : "—"}</span>
-            </div>
-            <div className={styles.tooltipRow}>
               <span className={styles.swatch} style={{ background: AWAY_COLOR }} />
               <span className={styles.tooltipName}>{awayTeam || "Away"}</span>
               <span className={styles.tooltipVal}>{hover.away != null ? pct(hover.away) : "—"}</span>
+            </div>
+            <div className={styles.tooltipRow}>
+              <span className={styles.swatch} style={{ background: HOME_COLOR }} />
+              <span className={styles.tooltipName}>{homeTeam || "Home"}</span>
+              <span className={styles.tooltipVal}>{hover.home != null ? pct(hover.home) : "—"}</span>
             </div>
           </div>
         )}

@@ -310,6 +310,16 @@ export const api = {
   // `points` list is expected for the many games that never had a market.
   getMatchupPolymarketHistory: (ncaaGameId, options) =>
     apiRequest(`${appConfig.endpoints.matchup}${ncaaGameId}/polymarket`, options),
+
+  // ESPN-style team-stats comparison for a finished game. 404 when the NCAA box
+  // score isn't available (unplayed / feed down) — callers treat it as "hide".
+  getMatchupTeamStats: (ncaaGameId, options) =>
+    apiRequest(`${appConfig.endpoints.matchup}${ncaaGameId}/team-stats`, options),
+
+  // Quarter-by-quarter scoring feed for a finished game. 404 when the NCAA
+  // scoring summary isn't available — callers treat it as "hide".
+  getMatchupScoringSummary: (ncaaGameId, options) =>
+    apiRequest(`${appConfig.endpoints.matchup}${ncaaGameId}/scoring-summary`, options),
 };
 
 export default api;

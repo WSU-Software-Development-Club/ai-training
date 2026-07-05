@@ -10,6 +10,7 @@ from services.rankings_service import get_ap_rankings
 from services.stats_service import get_all_teams_stats, get_offense_stats
 from services.scoreboard_service import get_scoreboard_data
 from services.matchup_service import get_matchup_polymarket_history
+from services.team_service import canonical_team_key, get_team_record
 
 
 class TestServices(unittest.TestCase):
@@ -640,6 +641,76 @@ class TestServices(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["points"], [])
         self.assertIsNone(result["question"])
+
+
+class TestTeamNameMatching(unittest.TestCase):
+    """The frontend navigates to a team page using the CSV's canonical school
+    name (e.g. "South Florida"), but the NCAA standings feed spells many schools
+    differently ("South Fla.", "FIU", "Miami (FL)"). These verify the two feeds
+    join so every team's record page loads."""
+
+    def test_state_abbreviation_join(self):
+        """A CSV full state name matches the standings' abbreviated form."""
+        pairs = [
+            ("South Florida", "South Fla."),
+            ("Florida Atlantic", "Fla. Atlantic"),
+            ("Central Michigan", "Central Mich."),
+            ("Georgia Southern", "Ga. Southern"),
+            ("Middle Tennessee", "Middle Tenn."),
+            ("Western Kentucky", "Western Ky."),
+        ]
+        for csv_name, standings_name in pairs:
+            self.assertEqual(
+                canonical_team_key(csv_name),
+                canonical_team_key(standings_name),
+                f"{csv_name!r} should join {standings_name!r}",
+            )
+
+    def test_acronym_and_special_case_join(self):
+        """Acronym/qualifier mismatches are reconciled by the alias map."""
+        pairs = [
+            ("Florida International", "FIU"),
+            ("Northern Illinois", "NIU"),
+            ("UL Monroe", "ULM"),
+            ("Army", "Army West Point"),
+            ("Miami", "Miami (FL)"),
+            ("USC", "Southern California"),
+            ("Hawai'i", "Hawaii"),
+        ]
+        for csv_name, standings_name in pairs:
+            self.assertEqual(
+                canonical_team_key(csv_name),
+                canonical_team_key(standings_name),
+                f"{csv_name!r} should join {standings_name!r}",
+            )
+
+    def test_distinct_teams_do_not_collide(self):
+        """The reconciliation must not merge genuinely different schools."""
+        self.assertNotEqual(
+            canonical_team_key("Miami"), canonical_team_key("Miami (OH)")
+        )
+        self.assertNotEqual(
+            canonical_team_key("Ohio State"), canonical_team_key("Ohio")
+        )
+
+    @patch('services.team_service.requests.get')
+    def test_get_team_record_resolves_abbreviated_standings(self, mock_get):
+        """Requesting the CSV name finds the abbreviated standings row."""
+        mock_resp = Mock()
+        mock_resp.raise_for_status = Mock()
+        mock_resp.json.return_value = {
+            "data": [
+                {"standings": [
+                    {"School": "South Fla.", "Overall W": 7, "Overall L": 5},
+                    {"School": "Miami (OH)", "Overall W": 4, "Overall L": 8},
+                ]}
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        record = get_team_record("South Florida")
+        self.assertIsNotNone(record)
+        self.assertEqual(record["School"], "South Fla.")
 
 
 if __name__ == '__main__':

@@ -1,0 +1,108 @@
+.card {
+  padding: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+}
+
+.header {
+  margin-bottom: var(--spacing-md);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* Team-abbrev header row aligned to the value columns below. */
+.columns,
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.columns {
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--spacing-xs);
+}
+
+.colTeam {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.colAway {
+  text-align: left;
+}
+
+.colHome {
+  text-align: right;
+}
+
+.colSpacer {
+  min-width: 8rem;
+}
+
+.rows {
+  margin: 0;
+}
+
+.row {
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  text-align: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.value {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.away {
+  text-align: left;
+}
+
+.home {
+  text-align: right;
+}
+
+/* The greater side of the row is emphasized in the accent color. */
+.leads {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+@media (max-width: 480px) {
+  .colSpacer {
+    min-width: 5rem;
+  }
+
+  .label {
+    white-space: normal;
+  }
+}
