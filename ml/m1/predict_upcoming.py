@@ -1537,25 +1537,28 @@ def run_full_season(year: int) -> None:
         all_predictions.extend(predictions)
         print(f"  [{label}] predictions: {len(predictions)}, skipped (no NCAA match): {skipped}")
 
-    # Dedupe on ncaa_game_id (the DB upsert key) — keep the last seen per id.
-    by_id = {}
+    # Dedupe within this run, keeping the last seen per game. Use the NCAA id
+    # when present (the DB upsert key); otherwise fall back to the CFBD game id
+    # so future-season games — which have no NCAA match yet (ncaa_game_id is
+    # None) — are STILL kept. The scoreboard matches those to games by team
+    # name, so they don't need an NCAA id to surface.
+    by_key = {}
     for p in all_predictions:
         nid = p.get("ncaa_game_id")
-        if nid is not None:
-            by_id[nid] = p
-    deduped = list(by_id.values())
+        key = ("ncaa", nid) if nid is not None else ("cfbd", p.get("game_id"))
+        by_key[key] = p
+    deduped = list(by_key.values())
+    with_ncaa = sum(1 for p in deduped if p.get("ncaa_game_id") is not None)
 
     print("\n" + "="*70)
     print(f"SEASON BACKFILL SUMMARY — {year}")
     print("="*70)
     print(f"Total CFBD games processed: {total_cfbd}")
     print(f"Predictions generated:      {len(all_predictions)}")
-    print(f"Unique games (by NCAA id):  {len(deduped)}")
-    print(f"Skipped (no NCAA match):    {total_skipped}")
+    print(f"Unique games to save:       {len(deduped)} ({with_ncaa} matched to an NCAA id)")
 
     if not deduped:
-        print("\n[INFO] No matched games to save (the NCAA feed may not list this "
-              "season yet). Nothing written.")
+        print("\n[INFO] No predictions generated (features unavailable?). Nothing written.")
         return
 
     if PSYCOPG_AVAILABLE and DATABASE_URL:
