@@ -1,6 +1,11 @@
 # NCAA API base URL
 NCAA_API_BASE_URL = "https://ncaa-api.henrygd.me"
 
+# College Football Data API base URL (used for historical, year-specific team
+# records — the NCAA standings feed only ever returns the current season).
+# Requires a Bearer token from CFBD_API_KEY.
+CFBD_API_BASE_URL = "https://api.collegefootballdata.com"
+
 # Stat category mappings
 STAT_CATEGORIES = {
     21: "Total Offense",

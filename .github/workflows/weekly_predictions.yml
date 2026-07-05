@@ -19,7 +19,7 @@ on:
         required: false
         type: string
       week:
-        description: "Week number (leave empty for auto-detect next week)"
+        description: "Week number, 'postseason', or 'season' to backfill the whole year (empty = auto-detect next week)"
         required: false
         type: string
 

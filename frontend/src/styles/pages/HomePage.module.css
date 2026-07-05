@@ -57,6 +57,68 @@
   color: var(--color-text-primary);
 }
 
+/* Free-text game search, sitting above the filter dropdowns. */
+.homePageSearch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.homePageSearchIcon {
+  position: absolute;
+  left: var(--spacing-md);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.homePageSearchInput {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-md)
+    calc(var(--spacing-md) * 2 + 16px);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius-lg);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  transition: var(--transition-colors);
+}
+
+.homePageSearchInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.homePageSearchInput:hover {
+  border-color: var(--color-border-strong);
+}
+
+.homePageSearchInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.homePageSearchClear {
+  position: absolute;
+  right: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  transition: var(--transition-colors);
+}
+
+.homePageSearchClear:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-light);
+}
+
 .homePageFilters {
   display: flex;
   gap: var(--spacing-lg);

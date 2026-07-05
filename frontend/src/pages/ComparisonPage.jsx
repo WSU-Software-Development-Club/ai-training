@@ -133,7 +133,7 @@ const ComparisonPage = () => {
       setErrorA(null);
 
       try {
-        const response = await api.getTeamData(selectedTeamA, {
+        const response = await api.getTeamData(selectedTeamA, null, {
           signal: controller.signal,
         });
         if (response.success) {
@@ -176,7 +176,7 @@ const ComparisonPage = () => {
       setErrorB(null);
 
       try {
-        const response = await api.getTeamData(selectedTeamB, {
+        const response = await api.getTeamData(selectedTeamB, null, {
           signal: controller.signal,
         });
         if (response.success) {

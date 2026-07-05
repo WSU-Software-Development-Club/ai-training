@@ -3,8 +3,12 @@ Scoreboard service for fetching NCAA football game data by week
 Includes predictions from the Postgres database when available
 """
 
+import os
+from datetime import datetime
+
 import requests
-from api_vars import NCAA_API_BASE_URL
+from api_vars import CFBD_API_BASE_URL, NCAA_API_BASE_URL
+from services.team_service import canonical_team_key
 from utils.db import get_db
 from utils.helpers import get_current_season_year
 
@@ -125,6 +129,135 @@ def process_games(raw_data: dict, predictions_map: dict = None, season: int = No
     return processed_games
         
 
+def _iso_to_epoch(iso):
+    """Convert a CFBD ISO-8601 startDate to a Unix epoch (seconds), or None."""
+    if not iso:
+        return None
+    try:
+        return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp())
+    except (ValueError, AttributeError):
+        return None
+
+
+def _fetch_cfbd_games(year, week):
+    """Fetch a week's FBS games from CFBD (schedule source when the NCAA feed
+    has none — e.g. a future season). Returns a list, or [] on any miss."""
+    api_key = os.environ.get("CFBD_API_KEY")
+    if not api_key:
+        return []
+    try:
+        resp = requests.get(
+            f"{CFBD_API_BASE_URL}/games",
+            params={"year": year, "week": week, "seasonType": "regular",
+                    "classification": "fbs"},
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json() or []
+    except (requests.exceptions.RequestException, ValueError):
+        return []
+
+
+def _build_games_from_cfbd(cfbd_games, predictions_by_name):
+    """Shape CFBD games into the scoreboard game dicts the frontend renders.
+
+    CFBD carries no NCAA game id, so predictions (and the ncaa_game_id that
+    powers the matchup link) are matched by normalized home/away team name from
+    `predictions_by_name` — keyed (canonical_home, canonical_away)."""
+    games = []
+    for g in cfbd_games:
+        home_name = g.get("homeTeam") or ""
+        away_name = g.get("awayTeam") or ""
+        completed = bool(g.get("completed"))
+        home_pts = g.get("homePoints")
+        away_pts = g.get("awayPoints")
+
+        game_data = {
+            "game_state": {
+                "isUpcoming": not completed,
+                "isLive": False,   # CFBD schedule has no in-progress state
+                "isFinished": completed,
+            },
+            "away": {
+                "score": away_pts if away_pts is not None else None,
+                "names": {"full": away_name, "short": away_name, "char6": away_name},
+                "rank": None,
+                "conference": g.get("awayConference"),
+            },
+            "home": {
+                "score": home_pts if home_pts is not None else None,
+                "names": {"full": home_name, "short": home_name, "char6": home_name},
+                "rank": None,
+                "conference": g.get("homeConference"),
+            },
+            "epoch": _iso_to_epoch(g.get("startDate")),
+        }
+
+        pred = predictions_by_name.get(
+            (canonical_team_key(home_name), canonical_team_key(away_name))
+        )
+        if pred:
+            game_data["prediction"] = {
+                "id": pred.get("id"),
+                "game_id": pred.get("game_id"),
+                "ncaa_game_id": pred.get("ncaa_game_id"),
+                "season": pred.get("season"),
+                "week": pred.get("week"),
+                "game_date": pred.get("game_date"),
+                "home_team": pred.get("home_team"),
+                "away_team": pred.get("away_team"),
+                "home_score": pred.get("predicted_home_score"),
+                "away_score": pred.get("predicted_away_score"),
+                "winner": pred.get("predicted_winner"),
+                "margin": pred.get("predicted_margin"),
+                "predicted_total": pred.get("predicted_total"),
+                "betting_over_under": pred.get("betting_over_under"),
+                "over_probability": pred.get("over_probability"),
+                "under_probability": pred.get("under_probability"),
+                "neutral_site": pred.get("neutral_site", False),
+                "predicted_at": pred.get("prediction_made_at"),
+                "created_at": pred.get("created_at"),
+            }
+
+        games.append(game_data)
+    return games
+
+
+def _cfbd_scoreboard_fallback(week, year):
+    """Build the scoreboard payload from CFBD for a week the NCAA feed doesn't
+    cover (e.g. a season NCAA.com hasn't published yet). Returns the same
+    game_data shape as the NCAA path, or None when CFBD also has nothing."""
+    cfbd_games = _fetch_cfbd_games(year, week)
+    if not cfbd_games:
+        return None
+
+    # Match any stored predictions for this week by team name (CFBD games have
+    # no NCAA id to join on).
+    predictions_by_name = {}
+    try:
+        db = get_db()
+        if db.is_connected:
+            for pred in db.get_predictions_by_week(year, week):
+                if pred.get("season") == year and pred.get("week") == week:
+                    key = (canonical_team_key(pred.get("home_team")),
+                           canonical_team_key(pred.get("away_team")))
+                    predictions_by_name[key] = pred
+    except Exception as e:
+        print(f"Warning: Could not fetch predictions for CFBD fallback: {e}")
+
+    processed_games = _build_games_from_cfbd(cfbd_games, predictions_by_name)
+    return {
+        "week": week,
+        "year": year,
+        "updatedAt": None,
+        "games": processed_games,
+        "totalGames": len(cfbd_games),
+        "hasPredictions": any("prediction" in g for g in processed_games),
+        "source": "cfbd",   # flag so callers/UI know this is schedule-only data
+    }
+
+
 def get_scoreboard_data(week, year=None):
     """
     Args:
@@ -147,7 +280,16 @@ def get_scoreboard_data(week, year=None):
         raw_response = requests.get(f"{NCAA_API_BASE_URL}/scoreboard/football/fbs/{year}/{week:02d}/all-conf", timeout=10)
         raw_response.raise_for_status()
         raw_data = raw_response.json()
-        
+
+        # The NCAA feed only publishes the current/most-recent season, so a
+        # future season (or any week it hasn't posted) comes back empty. Fall
+        # back to the CFBD schedule so those games still show (schedule-only —
+        # no live scores until NCAA posts them).
+        if not raw_data.get("games"):
+            fallback = _cfbd_scoreboard_fallback(week, year)
+            if fallback is not None:
+                return fallback
+
         # Fetch predictions from the database
         predictions_map = {}
         db = None
@@ -198,6 +340,11 @@ def get_scoreboard_data(week, year=None):
 
     except requests.exceptions.HTTPError as e:
         print(f"HTTP error occurred: {e}")
+        # A future/unpublished week can 404 on the NCAA feed — try CFBD before
+        # giving up so a season NCAA.com hasn't posted yet still populates.
+        fallback = _cfbd_scoreboard_fallback(week, year)
+        if fallback is not None:
+            return fallback
     except requests.exceptions.RequestException as e:
         print(f"Request error occurred: {e}")
     return None

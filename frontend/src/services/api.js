@@ -288,9 +288,17 @@ export const api = {
   // Synchronously read a cached scoreboard week (or undefined if not cached).
   peekScoreboardByWeek: (week, year) => peekCache(scoreboardEndpoint(week, year)),
 
-  // Get a given team's current season data
-  getTeamData: (team, options) =>
-    apiRequest(appConfig.endpoints.team + team + "/record", options),
+  // Get a given team's season record. Omit `year` for the current season
+  // (rich NCAA data); pass a past season to fetch it from CFBD (win/loss splits
+  // only — no points for/against or streak).
+  getTeamData: (team, year, options) => {
+    const query = year ? `?year=${encodeURIComponent(year)}` : "";
+    return apiRequest(appConfig.endpoints.team + team + "/record" + query, options);
+  },
+
+  // Seasons the team-record view can request (newest first), for the year dropdown.
+  getSeasons: (options) =>
+    apiRequest(appConfig.endpoints.team + "seasons", options),
 
   // Get all teams
   getAllTeams: (options) => apiRequest(appConfig.endpoints.teams, options),

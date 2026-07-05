@@ -2,11 +2,31 @@
 Service file for team-specific data like record, ppg, etc.
 """
 
+import os
 import re
 import unicodedata
+from datetime import datetime, timezone
 
 import requests
-from api_vars import NCAA_API_BASE_URL
+from api_vars import CFBD_API_BASE_URL, NCAA_API_BASE_URL
+
+# Oldest season the year dropdown offers. CFBD has data well before this, but a
+# ~25-season window keeps the list sane and covers the modern era.
+EARLIEST_SEASON = 2000
+
+
+def current_season_year():
+    """The football season currently in scope. A CFB season is named for the
+    calendar year it starts in and runs Aug–Jan, so from August onward we're in
+    the new season; before that the most recent completed season is last year.
+    (In July 2026, this returns 2025 — matching what the NCAA feed serves.)"""
+    now = datetime.now(timezone.utc)
+    return now.year if now.month >= 8 else now.year - 1
+
+
+def available_seasons():
+    """Descending list of seasons the UI can request, newest first."""
+    return list(range(current_season_year(), EARLIEST_SEASON - 1, -1))
 
 
 # NCAA standings abbreviate a school's state with a period ("South Fla.",
@@ -112,15 +132,30 @@ def canonical_team_key(name):
     return _TEAM_ALIASES.get(normalized, normalized)
 
 
-def get_team_record(team_name):
+def get_team_record(team_name, year=None):
     """
-    Fetch team records for a given team from NCAA API
+    Fetch a team's season record.
+
+    The current season comes from the NCAA standings feed (richest data: points
+    for/against and current streak). Any earlier season comes from the College
+    Football Data API, which supplies win/loss splits but not points or streak —
+    those fields are returned as None for past years.
 
     Args:
-        team_name (str): Team name (required)
+        team_name (str): Team name (required).
+        year (int, optional): Season to fetch. Defaults to the current season.
     Returns:
-        dict or None: Comprehensive team record data or None if not found or error occured
+        dict or None: Team record row (NCAA standings shape) or None if not
+        found / the upstream fetch failed.
     """
+    season = year or current_season_year()
+    if int(season) == current_season_year():
+        return _get_team_record_ncaa(team_name)
+    return _get_team_record_cfbd(team_name, int(season))
+
+
+def _get_team_record_ncaa(team_name):
+    """Current-season record from the NCAA standings feed."""
     try:
         response = requests.get(f'{NCAA_API_BASE_URL}/standings/football/fbs', timeout=10)
         response.raise_for_status()
@@ -139,6 +174,116 @@ def get_team_record(team_name):
     except requests.exceptions.RequestException as e:
         print(f"Request error occurred: {e}")
         return None
+
+
+def _wl(games):
+    """Format a CFBD wins/losses block as a "W-L" string, or None if absent."""
+    if not games:
+        return None
+    return f"{games.get('wins', 0)}-{games.get('losses', 0)}"
+
+
+def _cfbd_get(path, params, api_key):
+    """GET a CFBD endpoint with the Bearer token. Returns parsed JSON, or None
+    on any network/parse failure."""
+    try:
+        response = requests.get(
+            f'{CFBD_API_BASE_URL}/{path}',
+            params=params,
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"CFBD request error occurred: {e}")
+        return None
+    except ValueError:
+        return None
+
+
+def _cfbd_points_and_streak(team_name, year, api_key):
+    """Points for/against and the end-of-season streak for a team, computed from
+    that season's completed games (CFBD /records carries none of these).
+
+    Returns (points_for, points_against, streak) where streak is a string like
+    "Won 3"/"Lost 4" matching the NCAA feed's format, or (None, None, None) if
+    the games can't be fetched or none are completed."""
+    games = _cfbd_get("games", {"year": year, "team": team_name, "seasonType": "both"}, api_key)
+    if not games:
+        return None, None, None
+
+    played = [
+        g for g in games
+        if g.get("completed")
+        and g.get("homePoints") is not None
+        and g.get("awayPoints") is not None
+    ]
+    if not played:
+        return None, None, None
+
+    played.sort(key=lambda g: g.get("startDate") or "")
+    points_for = points_against = 0
+    results = []  # "W" / "L" / "T" in chronological order
+    for g in played:
+        is_home = g.get("homeTeam") == team_name
+        mine, opp = (
+            (g["homePoints"], g["awayPoints"]) if is_home
+            else (g["awayPoints"], g["homePoints"])
+        )
+        points_for += mine
+        points_against += opp
+        results.append("W" if mine > opp else "L" if mine < opp else "T")
+
+    # Trailing run of the most recent result → "Won N" / "Lost N" / "Tied N".
+    last = results[-1]
+    run = 0
+    for r in reversed(results):
+        if r != last:
+            break
+        run += 1
+    label = {"W": "Won", "L": "Lost", "T": "Tied"}[last]
+    return points_for, points_against, f"{label} {run}"
+
+
+def _get_team_record_cfbd(team_name, year):
+    """Historical (past-season) record from the College Football Data API,
+    reshaped to the NCAA standings row the frontend already renders. Win/loss
+    splits come from /records; points for/against and the streak are derived
+    from that season's games (see {@link _cfbd_points_and_streak}).
+
+    Returns None if the CFBD key is unset, the request fails, or the team has no
+    record for that season. CFBD team names match the frontend CSV school names,
+    so the requested name is passed through directly."""
+    api_key = os.environ.get('CFBD_API_KEY')
+    if not api_key:
+        print("CFBD_API_KEY not set — cannot fetch historical team records.")
+        return None
+
+    rows = _cfbd_get("records", {"year": year, "team": team_name}, api_key)
+    if not rows:
+        return None
+
+    rec = rows[0]
+    total = rec.get("total") or {}
+    conf = rec.get("conferenceGames") or {}
+    # CFBD names the team consistently across endpoints; use its spelling so the
+    # per-game home/away comparison in the points/streak helper lines up.
+    cfbd_team = rec.get("team", team_name)
+    points_for, points_against, streak = _cfbd_points_and_streak(cfbd_team, year, api_key)
+    return {
+        "School": cfbd_team,
+        "Conference W": conf.get("wins", 0),
+        "Conference L": conf.get("losses", 0),
+        "Overall W": total.get("wins", 0),
+        "Overall L": total.get("losses", 0),
+        "Overall PF": points_for,
+        "Overall PA": points_against,
+        "Overall HOME": _wl(rec.get("homeGames")),
+        "Overall AWAY": _wl(rec.get("awayGames")),
+        "Overall STREAK": streak,
+        "year": rec.get("year", year),
+    }
 
 
 def get_all_teams():
