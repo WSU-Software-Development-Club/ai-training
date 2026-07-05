@@ -34,14 +34,21 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
 
       - name: Pull latest and rebuild backend
+        env:
+          # Source of truth for the backend's CFBD key is this GitHub secret;
+          # it's injected into the compose `up` below so the container gets it.
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: |
           ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new \
-            "${DEPLOY_USER}@${DEPLOY_HOST}" bash -se <<'REMOTE'
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "CFBD_API_KEY='${CFBD_API_KEY}' bash -se" <<'REMOTE'
           set -euo pipefail
           cd /home/troymuehlbauer/ai-training
           git fetch origin && git reset --hard origin/main
           # Rebuild only the backend; the db service (and its pgdata volume) keep running.
           # depends_on ensures db is up. Frontend is hosted on Vercel, not troyster.
+          # CFBD_API_KEY was passed in via the remote env above (from the GitHub
+          # secret) and compose reads it through ${CFBD_API_KEY} in docker-compose.yml.
           docker compose up -d --build backend
           docker image prune -f
           REMOTE

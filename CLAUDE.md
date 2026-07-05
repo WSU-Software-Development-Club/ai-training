@@ -104,8 +104,10 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
   listening on `0.0.0.0:5000` on the host. This is an **API-only** service (see §6 — Flask
   returns JSON at `/`; it does **not** serve the SPA). Its compose env now also passes
   `CFBD_API_KEY=${CFBD_API_KEY:-}` (both compose files) so the team route can serve historical
-  records; set `CFBD_API_KEY` in the troyster `.env` to enable it (absent → past-season lookups
-  404, current season still works).
+  records and the scoreboard can fall back to CFBD. The key's **source of truth is the
+  `CFBD_API_KEY` GitHub secret**, which `deploy.yml` injects into the remote `docker compose up`
+  (no manual troyster `.env` edit) — absent → past-season records + future-season scoreboard 404,
+  current season still works.
 - **Backend start command — PRODUCTION ISSUE:** both the `Dockerfile` CMD and the compose
   `command` run **`python app.py`**, i.e. the **Flask development server with the reloader**.
   `gunicorn` is in `requirements.txt` but unused. This should be switched to a WSGI server
@@ -126,8 +128,9 @@ hosted on Vercel**. Compose files are the source of truth for what runs on troys
   - `ci.yml` — on PRs and push to `main`: `lint` (ruff, backend only — see `ruff.toml`) and
     `test` (pytest against a `postgres:16` service container, schema loaded from `db/schema.sql`).
   - `deploy.yml` — on push to `main`: joins the tailnet (Tailscale auth key, `tag:ci`), SSHes to
-    troyster with `DEPLOY_KEY`, then `git pull` + `docker compose up -d --build backend`.
-    Serialized via a `concurrency` group; `db`/`pgdata` are left running.
+    troyster with `DEPLOY_KEY`, then `git pull` + `docker compose up -d --build backend`,
+    **injecting the `CFBD_API_KEY` secret into the remote env** so compose bakes it into the
+    backend container. Serialized via a `concurrency` group; `db`/`pgdata` are left running.
   - `weekly_predictions.yml` — Tue 09:00 UTC (+ manual): joins the tailnet (auth key) and runs
     `ml/m1/predict_upcoming.py` on a **GitHub-hosted runner**, writing predictions (upsert on
     `ncaa_game_id`) to the **troyster Postgres over Tailscale**. The API reads them back.
