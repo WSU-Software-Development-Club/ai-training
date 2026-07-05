@@ -8,11 +8,12 @@ const ScoreCard = ({ game }) => {
   const navigate = useNavigate();
   const { home, away, game_state, epoch, prediction } = game;
 
-  // The scoreboard payload only surfaces the NCAA game ID nested inside the
-  // prediction (see backend/services/scoreboard_service.py) — there's no
-  // top-level id on the game itself. Games without a model prediction have no
-  // known NCAA game ID, so the matchup-intel affordance is hidden for them.
-  const ncaaGameId = prediction?.ncaa_game_id ?? null;
+  // Id used to open the Matchup Intelligence page. Prefer the NCAA game id
+  // (nested in the prediction — see backend/services/scoreboard_service.py);
+  // future-season games (2026+) have a prediction but no NCAA id yet, so fall
+  // back to the CFBD game id (the backend resolves either). Only a game with NO
+  // prediction at all has no matchup to open.
+  const matchupId = prediction?.ncaa_game_id ?? prediction?.game_id ?? null;
 
   const homeTeam = home?.names?.short || "Home";
   const awayTeam = away?.names?.short || "Away";
@@ -63,10 +64,10 @@ const ScoreCard = ({ game }) => {
     if (e.target.closest(`.${styles.scoreCardTeamName}`)) {
       return;
     }
-    if (ncaaGameId) {
+    if (matchupId) {
       // A finished game opens straight to the Post-Game (Final) tab.
       navigate(
-        `/matchup/${ncaaGameId}`,
+        `/matchup/${matchupId}`,
         game_state?.isFinished ? { state: { initialTab: "post" } } : undefined
       );
     } else {
@@ -141,12 +142,12 @@ const ScoreCard = ({ game }) => {
       tabIndex={0}
       style={cardStyle}
       title={
-        ncaaGameId
+        matchupId
           ? "View matchup intel for this game"
           : "Click to compare teams"
       }
       aria-label={
-        ncaaGameId
+        matchupId
           ? `View matchup intel for ${awayTeamFull} at ${homeTeamFull}`
           : `Compare ${awayTeamFull} and ${homeTeamFull}`
       }
