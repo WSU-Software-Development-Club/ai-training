@@ -133,23 +133,33 @@ function matchTeam(teamName) {
     return lookupMap.get(expanded);
   }
 
-  // Strategy 5: Partial substring matching (last resort)
-  // Only use if both strings are reasonably long to avoid false matches
+  // Strategy 5: Partial matching (last resort), but only when the two names are
+  // the SAME team apart from generic filler words. A looser substring check used
+  // to collapse DISTINCT schools that merely contain an FBS team's name — e.g.
+  // "Northern Arizona" → Arizona, "University of West Georgia" → Georgia. Those
+  // are almost always FCS opponents absent from our FBS branding set, and must
+  // fall through to no match (a neutral placeholder) rather than a wrong logo.
+  // The rule: every word that differs between the two names must be a generic
+  // filler ("university"/"of"/…); any distinguishing extra word — a direction
+  // ("northern"/"west"), a qualifier ("a&m"), or another proper noun — means
+  // they're different teams.
   if (normalized.length >= 5) {
+    const queryWords = normalized.split(" ").filter(Boolean);
+    const querySet = new Set(queryWords);
     for (const [key, team] of lookupMap.entries()) {
-      if (key.length >= 5) {
-        // Check if one string contains the other
-        if (key.includes(normalized) || normalized.includes(key)) {
-          const minLength = Math.min(key.length, normalized.length);
-          const matchLength = key.includes(normalized)
-            ? normalized.length
-            : key.length;
+      if (key.length < 5) continue;
+      if (!(key.includes(normalized) || normalized.includes(key))) continue;
 
-          // Require at least 70% of the shorter name to match
-          if (matchLength >= minLength * 0.7) {
-            return team;
-          }
-        }
+      const keySet = new Set(key.split(" ").filter(Boolean));
+      const differing = [...querySet, ...keySet].filter(
+        (w) => !(querySet.has(w) && keySet.has(w))
+      );
+      const sharedMeaningful = queryWords.some(
+        (w) => keySet.has(w) && !GENERIC_WORDS.has(w)
+      );
+
+      if (sharedMeaningful && differing.every((w) => GENERIC_WORDS.has(w))) {
+        return team;
       }
     }
   }
@@ -157,6 +167,11 @@ function matchTeam(teamName) {
   // No match found
   return null;
 }
+
+// Filler words that don't distinguish one school from another. Used by the
+// last-resort partial matcher: two names that differ only by these are treated
+// as the same team; a difference in any other word is not.
+const GENERIC_WORDS = new Set(["university", "college", "the", "of", "at"]);
 
 /**
  * Synchronously find a team by name using already-cached data.
