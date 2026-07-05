@@ -1,0 +1,246 @@
+.figure {
+  margin: 0;
+  padding: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.title {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.legend {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-text-secondary);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.pan {
+  display: flex;
+  gap: var(--spacing-xxs);
+}
+
+.panBtn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.panBtn:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-background-tertiary);
+}
+
+.panBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.presets {
+  display: flex;
+  gap: var(--spacing-xxs);
+}
+
+.presetBtn {
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.presetBtn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-background-tertiary);
+}
+
+.presetActive {
+  color: var(--color-text-light);
+  background-color: var(--color-secondary);
+  border-color: var(--color-border-strong);
+}
+
+.plot {
+  position: relative;
+  width: 100%;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* Recessive grid; the 50% line is slightly stronger as the coin-flip reference. */
+.grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.gridMid {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.yLabel {
+  fill: var(--color-text-muted);
+  font-size: 12px;
+  text-anchor: end;
+  dominant-baseline: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.xLabel {
+  fill: var(--color-text-muted);
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.endLabel {
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  dominant-baseline: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.crosshair {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.dot {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+
+.tooltip {
+  position: absolute;
+  transform: translateX(-50%);
+  pointer-events: none;
+  min-width: 150px;
+  padding: var(--spacing-sm);
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--border-radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+
+.tooltipDate {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+}
+
+.tooltipRow + .tooltipRow {
+  margin-top: 2px;
+}
+
+.tooltipName {
+  color: var(--color-text-secondary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tooltipVal {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.footnote {
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.sourceLink {
+  color: var(--color-highlight);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sourceLink:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--border-radius-lg);
+}

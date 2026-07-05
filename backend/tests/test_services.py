@@ -9,6 +9,7 @@ from services.history_service import get_championship_winners
 from services.rankings_service import get_ap_rankings
 from services.stats_service import get_all_teams_stats, get_offense_stats
 from services.scoreboard_service import get_scoreboard_data
+from services.matchup_service import get_matchup_polymarket_history
 
 
 class TestServices(unittest.TestCase):
@@ -573,6 +574,72 @@ class TestServices(unittest.TestCase):
         self.assertEqual(calls[0][0][0], f"{NCAA_API_BASE_URL}/stats/football/fbs/current/team/21")  # Page 1
         self.assertEqual(calls[1][0][0], f"{NCAA_API_BASE_URL}/stats/football/fbs/current/team/21/p2")  # Page 2
         self.assertEqual(calls[2][0][0], f"{NCAA_API_BASE_URL}/stats/football/fbs/current/team/21")  # Metadata fetch
+
+
+    @patch('services.matchup_service.get_db')
+    def test_polymarket_history_no_prediction_returns_none(self, mock_get_db):
+        """No prediction row for the game -> None (route turns this into a 404)."""
+        mock_db = Mock()
+        mock_db.is_connected = True
+        mock_db.get_prediction_by_ncaa_game_id.return_value = None
+        mock_get_db.return_value = mock_db
+
+        self.assertIsNone(get_matchup_polymarket_history(6459454))
+
+    @patch('services.matchup_service.get_db')
+    def test_polymarket_history_shapes_series(self, mock_get_db):
+        """A prediction + snapshots -> ordered points, team names from the
+        prediction, and market metadata backfilled from the latest snapshot."""
+        mock_db = Mock()
+        mock_db.is_connected = True
+        mock_db.get_prediction_by_ncaa_game_id.return_value = {
+            "ncaa_game_id": 6459454,
+            "home_team": "New Mexico State",
+            "away_team": "Sam Houston State",
+        }
+        # db.get_polymarket_history returns ascending snapshots; the latest one
+        # carries the market question/url used for the whole series.
+        mock_db.get_polymarket_history.return_value = [
+            {"as_of": "2025-10-01T00:00:00+00:00", "home_win_prob": 0.55,
+             "away_win_prob": 0.45, "question": None, "source_url": None},
+            {"as_of": "2025-10-02T00:00:00+00:00", "home_win_prob": 0.62,
+             "away_win_prob": 0.38, "question": "Who wins?",
+             "source_url": "https://polymarket.com/event/x"},
+        ]
+        mock_get_db.return_value = mock_db
+
+        result = get_matchup_polymarket_history(6459454)
+
+        self.assertEqual(result["home_team"], "New Mexico State")
+        self.assertEqual(result["away_team"], "Sam Houston State")
+        self.assertEqual(result["question"], "Who wins?")
+        self.assertEqual(result["source_url"], "https://polymarket.com/event/x")
+        self.assertEqual(len(result["points"]), 2)
+        # Points keep only the series fields (no metadata duplicated per point).
+        self.assertEqual(result["points"][0],
+                         {"as_of": "2025-10-01T00:00:00+00:00",
+                          "home_win_prob": 0.55, "away_win_prob": 0.45})
+        self.assertEqual(result["points"][1]["home_win_prob"], 0.62)
+
+    @patch('services.matchup_service.get_db')
+    def test_polymarket_history_no_market_returns_empty_points(self, mock_get_db):
+        """A game with a prediction but no Polymarket market -> 200 with an
+        empty points list (not a 404), so the UI shows a 'no market' state."""
+        mock_db = Mock()
+        mock_db.is_connected = True
+        mock_db.get_prediction_by_ncaa_game_id.return_value = {
+            "ncaa_game_id": 6459454,
+            "home_team": "New Mexico State",
+            "away_team": "Sam Houston State",
+        }
+        mock_db.get_polymarket_history.return_value = []
+        mock_get_db.return_value = mock_db
+
+        result = get_matchup_polymarket_history(6459454)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["points"], [])
+        self.assertIsNone(result["question"])
 
 
 if __name__ == '__main__':

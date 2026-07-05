@@ -1,47 +1,47 @@
 import React, { useEffect, useState } from "react";
 import LoadingSpinner from "./LoadingSpinner";
+import PolymarketHistoryChart from "./PolymarketHistoryChart";
 import api from "../services/api";
 import styles from "../styles/components/PostGamePanel.module.css";
 
-// Post-Game tab — the final score: home score over away score, with a status
-// label (Final / Live / Scheduled) beneath.
-//
-// The score is fetched lazily (this panel only mounts while the Post-Game tab is
-// active) from /matchup/<id>/score, which resolves the actual score from the
-// NCAA scoreboard. When it can't be resolved (unplayed game, seed id, feed
-// down), the scores render as "—".
+// Post-Game tab. The final score now lives in the hero (next to the team
+// titles), so this tab is the historical Polymarket win-probability chart for
+// the game — fetched from /matchup/<id>/polymarket. Most CFB games never had a
+// market, in which case the endpoint returns an empty series and this renders
+// an empty state.
 const PostGamePanel = ({ gameId, matchup }) => {
-  const [state, setState] = useState({ status: "loading", data: null });
+  const [poly, setPoly] = useState({ status: "loading", data: null });
 
   useEffect(() => {
     if (!gameId) {
-      setState({ status: "empty", data: null });
+      setPoly({ status: "empty", data: null });
       return;
     }
 
     const controller = new AbortController();
 
-    const load = async () => {
-      setState({ status: "loading", data: null });
+    const loadPoly = async () => {
+      setPoly({ status: "loading", data: null });
       try {
-        const res = await api.getMatchupScore(gameId, { signal: controller.signal });
-        setState({
+        const res = await api.getMatchupPolymarketHistory(gameId, {
+          signal: controller.signal,
+        });
+        setPoly({
           status: res && res.success ? "ready" : "empty",
           data: res && res.success ? res.data : null,
         });
       } catch (err) {
         if (err?.name === "AbortError") return;
-        // A 404 (no game row) or any other failure just means no score to show;
-        // the placeholders below still render with the team names we have.
-        setState({ status: "empty", data: null });
+        // A 404 (no game row) — treat as no chart.
+        setPoly({ status: "empty", data: null });
       }
     };
 
-    load();
+    loadPoly();
     return () => controller.abort();
   }, [gameId]);
 
-  if (state.status === "loading") {
+  if (poly.status === "loading") {
     return (
       <div className={styles.state}>
         <LoadingSpinner />
@@ -49,29 +49,27 @@ const PostGamePanel = ({ gameId, matchup }) => {
     );
   }
 
-  const score = state.data || {};
   const deck = matchup?.data || {};
-  // Team names: prefer the score payload, fall back to the matchup deck.
-  const homeTeam = score.home_team || deck.home_team || "Home";
-  const awayTeam = score.away_team || deck.away_team || "Away";
-  const statusLabel =
-    score.status === "live"
-      ? "Live"
-      : score.status === "pre"
-      ? "Scheduled"
-      : "Final";
+  const polyData = poly.data;
+  const hasPolyPoints = (polyData?.points?.length || 0) > 0;
+
+  if (!hasPolyPoints) {
+    return (
+      <div className={styles.emptyState}>
+        No Polymarket market history for this game.
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.finalScore}>
-      <div className={`${styles.scoreSide} ${styles.home}`}>
-        <span className={styles.teamName}>{homeTeam}</span>
-        <span className={styles.score}>{score.home_score ?? "—"}</span>
-      </div>
-      <span className={styles.finalLabel}>{statusLabel}</span>
-      <div className={`${styles.scoreSide} ${styles.away}`}>
-        <span className={styles.teamName}>{awayTeam}</span>
-        <span className={styles.score}>{score.away_score ?? "—"}</span>
-      </div>
+    <div className={styles.postGame}>
+      <PolymarketHistoryChart
+        points={polyData.points}
+        homeTeam={polyData.home_team || deck.home_team || "Home"}
+        awayTeam={polyData.away_team || deck.away_team || "Away"}
+        sourceUrl={polyData.source_url}
+        kickoff={polyData.kickoff}
+      />
     </div>
   );
 };

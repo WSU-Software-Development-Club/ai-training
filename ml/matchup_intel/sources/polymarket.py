@@ -28,13 +28,26 @@ from __future__ import annotations
 import json
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import requests
 
 GAMMA_MARKETS_URL = "https://gamma-api.polymarket.com/markets"
+GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
+GAMMA_SEARCH_URL = "https://gamma-api.polymarket.com/public-search"
 CLOB_MIDPOINT_URL = "https://clob.polymarket.com/midpoint"
+CLOB_PRICES_HISTORY_URL = "https://clob.polymarket.com/prices-history"
+
+# Keywords that mark a NON-moneyline market (spread/total/half/quarter/props),
+# so game-win-probability discovery keeps only the full-game moneyline.
+_NON_MONEYLINE = ("spread", "o/u", "over", "under", "1h", "2h", "half",
+                  "1st", "quarter", "props", "player", "margin")
+
+# Finest resolution (minutes) we request from CLOB /prices-history. 1 = per
+# minute, which the endpoint honors for a windowed (startTs/endTs) query as long
+# as the span is short (≲10h); it silently coarsens wider spans on its own.
+_MIN_FIDELITY = 1
 
 # How many days around the game date to pull candidate markets from. Polymarket
 # markets for a game are typically created days-to-weeks out and resolve
@@ -211,5 +224,237 @@ def fetch_game_odds(home_team: str, away_team: str, game_date: str, timeout: int
     never as an error to retry/alert on."""
     try:
         return find_game_market(home_team, away_team, game_date, timeout=timeout)
+    except Exception:
+        return None
+
+
+# --------------------------------------------------------------------------
+# Historical price CURVE (for PAST/resolved games).
+#
+# find_game_market above discovers only ACTIVE markets (Gamma active=true,
+# closed=false) and reports a single CURRENT price — right for an upcoming game,
+# useless for one that already resolved. The functions below instead locate the
+# game's market via Gamma's public-search (which returns resolved events too)
+# and pull the full CLOB /prices-history time series, so the post-game view can
+# render the same win-probability curve Polymarket shows.
+# --------------------------------------------------------------------------
+
+
+def _search_event(home_team: str, away_team: str, game_date: str, timeout: int) -> Optional[dict]:
+    """Find the Polymarket EVENT for a game via public-search, resolved markets
+    included. Returns the event dict (with its markets) whose title mentions
+    both teams and whose date matches, or None. Unlike ``search_markets`` this
+    finds CLOSED markets, which is exactly what a past game needs."""
+    q = f"{away_team} {home_team}"
+    data = _get_with_retry(GAMMA_SEARCH_URL, {"q": q, "limit_per_type": 20}, timeout)
+    events = (data or {}).get("events") if isinstance(data, dict) else None
+    if not events:
+        return None
+    try:
+        target = datetime.fromisoformat(game_date.replace("Z", "+00:00")).date()
+    except (ValueError, AttributeError):
+        target = None
+    best = None
+    for ev in events:
+        title = ev.get("title") or ""
+        if not (_mentions_team(title, home_team) and _mentions_team(title, away_team)):
+            continue
+        # When the game date is known, require the event to fall within a few
+        # days of it (the search can return same-matchup rematches).
+        if target is not None:
+            ev_date = _event_date(ev)
+            if ev_date is not None and abs((ev_date - target).days) > 5:
+                continue
+        best = ev
+        break
+    return best
+
+
+def _event_date(ev: dict) -> Optional["datetime.date"]:
+    for key in ("startDate", "endDate", "startTime"):
+        val = ev.get(key)
+        if not val:
+            continue
+        try:
+            return datetime.fromisoformat(str(val).replace("Z", "+00:00")).date()
+        except (ValueError, AttributeError):
+            continue
+    return None
+
+
+def _pick_moneyline(markets: list[dict], home_team: str, away_team: str) -> Optional[dict]:
+    """From an event's markets, pick the full-game MONEYLINE: exactly two
+    outcomes, one per team, and no spread/total/half phrasing in the question."""
+    for market in markets or []:
+        question = (market.get("question") or "").lower()
+        if any(kw in question for kw in _NON_MONEYLINE):
+            continue
+        outcomes = _parse_json_field(market.get("outcomes")) or []
+        if len(outcomes) != 2:
+            continue
+        mentions = [
+            (_mentions_team(o, home_team), _mentions_team(o, away_team)) for o in outcomes
+        ]
+        if any(h for h, _ in mentions) and any(a for _, a in mentions):
+            return market
+    return None
+
+
+def fetch_price_history(
+    token_id: str,
+    start_ts: int,
+    end_ts: int,
+    timeout: int = 30,
+    fidelity: int = 60,
+) -> Optional[list[dict]]:
+    """Full CLOB price history for one outcome token over [start_ts, end_ts]
+    (unix seconds), as ``[{"t": <unix>, "p": <price 0..1>}, ...]`` or None.
+
+    NOTE: an explicit start/end window is REQUIRED for resolved markets —
+    ``interval=max`` returns an EMPTY series once a market has closed, whereas a
+    windowed query returns the archived curve. ``fidelity`` is the sampling
+    resolution in minutes (min 10)."""
+    if not token_id:
+        return None
+    params = {
+        "market": token_id,
+        "startTs": int(start_ts),
+        "endTs": int(end_ts),
+        "fidelity": max(_MIN_FIDELITY, int(fidelity)),
+    }
+    data = _get_with_retry(CLOB_PRICES_HISTORY_URL, params, timeout)
+    if not isinstance(data, dict):
+        return None
+    history = data.get("history")
+    if not isinstance(history, list):
+        return None
+    out = []
+    for pt in history:
+        t = pt.get("t")
+        p = _safe_float(pt.get("p"))
+        if t is not None and p is not None:
+            out.append({"t": int(t), "p": p})
+    return out
+
+
+def _trim_flat_tail(series: list[dict], eps: float = 0.005, keep_after_s: int = 600) -> list[dict]:
+    """Drop the long flat tail a resolved market leaves after it pins to 0/1.
+
+    Finds the last point that still MOVED (differs from the final price by more
+    than ``eps``) and keeps only ``keep_after_s`` seconds past it, so the curve
+    ends a few minutes after the outcome locks instead of stretching a flat line
+    for hours. Returns the series unchanged when nothing is flat."""
+    if len(series) < 3:
+        return series
+    final = series[-1]["p"]
+    last_move = 0
+    for i, pt in enumerate(series):
+        if abs(pt["p"] - final) > eps:
+            last_move = i
+    if last_move >= len(series) - 1:
+        return series  # movement right up to the end; nothing flat to trim
+    cutoff = series[last_move]["t"] + keep_after_s
+    return [pt for pt in series if pt["t"] <= cutoff]
+
+
+def find_game_price_history(
+    home_team: str,
+    away_team: str,
+    game_date: str,
+    timeout: int = 30,
+    hours_before: int = 2,
+    hours_after: int = 7,
+    fidelity: int = 1,
+    context_days: int = 7,
+) -> Optional[dict]:
+    """The historical win-probability CURVE for a (past) game's moneyline, or
+    None if no market is found. Binary market ⇒ away = 1 − home, so we pull only
+    the home token's series and derive the away side (identical timestamps).
+
+    Two fetches are merged so the UI can default to the game window yet still
+    zoom OUT to the days-long pre-game drift:
+      * a DENSE per-minute game window (kickoff −``hours_before`` / +``hours_after``);
+        CLOB only keeps 1-min resolution for spans ≲10h, hence the tight window.
+      * a COARSE multi-day context (``context_days`` before kickoff, hourly) for
+        everything outside that window.
+    Overlapping coarse points inside the dense window are dropped (the per-minute
+    series wins there), so the result is dense in-game and sparse before it —
+    exactly the shape Polymarket renders.
+
+    On success:
+        {market_id, question, slug, source_url, home_team, away_team,
+         points: [{as_of, home_win_prob, away_win_prob}, ...]}  # as_of ISO-8601 UTC
+    """
+    event = _search_event(home_team, away_team, game_date, timeout)
+    if event is None:
+        return None
+    market = _pick_moneyline(event.get("markets") or [], home_team, away_team)
+    if market is None:
+        return None
+
+    outcomes = _parse_json_field(market.get("outcomes")) or []
+    tokens = _parse_json_field(market.get("clobTokenIds")) or []
+    if len(outcomes) != len(tokens) or not tokens:
+        return None
+    home_token = next(
+        (tok for o, tok in zip(outcomes, tokens) if _mentions_team(o, home_team)), None
+    )
+    if home_token is None:
+        return None
+
+    try:
+        d = datetime.fromisoformat(game_date.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+    game_start = int((d - timedelta(hours=hours_before)).timestamp())
+    game_end = int((d + timedelta(hours=hours_after)).timestamp())
+
+    # Dense per-minute in-game curve (the default view).
+    dense = fetch_price_history(home_token, game_start, game_end, timeout, fidelity) or []
+    # Coarse hourly context for zooming out to the pre-game drift.
+    context_start = int((d - timedelta(days=context_days)).timestamp())
+    coarse = fetch_price_history(home_token, context_start, game_end, timeout, 60) or []
+
+    # Merge: keep every dense point, plus coarse points OUTSIDE the dense window.
+    merged = list(dense)
+    merged.extend(pt for pt in coarse if pt["t"] < game_start or pt["t"] > game_end)
+    merged.sort(key=lambda pt: pt["t"])
+    if not merged:
+        return None
+    # A resolved market pins to 0/1 and then sits flat for hours — meaningless to
+    # plot. Cut the trailing flat run shortly after the last real move.
+    series = _trim_flat_tail(merged)
+
+    slug = event.get("slug") or market.get("slug")
+    points = [
+        {
+            "as_of": datetime.fromtimestamp(pt["t"], tz=timezone.utc).isoformat(),
+            "home_win_prob": pt["p"],
+            "away_win_prob": round(1.0 - pt["p"], 6),
+        }
+        for pt in series
+    ]
+    return {
+        "market_id": str(market.get("id")) if market.get("id") is not None else None,
+        "question": market.get("question"),
+        "slug": slug,
+        "source_url": f"https://polymarket.com/event/{slug}" if slug else None,
+        "home_team": home_team,
+        "away_team": away_team,
+        "points": points,
+    }
+
+
+def fetch_game_price_history(
+    home_team: str, away_team: str, game_date: str, timeout: int = 30, fidelity: int = 1
+) -> Optional[dict]:
+    """Public entrypoint for the historical curve. Wraps
+    ``find_game_price_history`` so ANY unexpected failure degrades to None
+    (treat as "no market/history"), never raising — same contract as
+    ``fetch_game_odds``."""
+    try:
+        return find_game_price_history(
+            home_team, away_team, game_date, timeout=timeout, fidelity=fidelity
+        )
     except Exception:
         return None

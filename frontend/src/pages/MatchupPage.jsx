@@ -19,6 +19,9 @@ const MatchupPage = () => {
   const initialTab = location.state?.initialTab;
   // status: "loading" | "ready" | "empty" | "error"
   const [state, setState] = useState({ status: "loading", data: null, error: null });
+  // Actual score, fetched here (not in the Post-Game tab) so it can render in
+  // the hero next to the team titles regardless of the active tab.
+  const [score, setScore] = useState(null);
 
   useEffect(() => {
     if (!gameId) {
@@ -58,11 +61,26 @@ const MatchupPage = () => {
       }
     };
 
+    const loadScore = async () => {
+      setScore(null);
+      try {
+        const res = await api.getMatchupScore(gameId, { signal: controller.signal });
+        setScore(res && res.success ? res.data : null);
+      } catch (err) {
+        if (err?.name === "AbortError") return;
+        setScore(null); // 404 / any failure → no score, hero shows plain banner
+      }
+    };
+
     load();
+    loadScore();
     return () => controller.abort();
   }, [gameId]);
 
   const data = state.data;
+  // Only surface a score in the hero for a played/in-progress game.
+  const showScore = score && (score.status === "final" || score.status === "live");
+  const statusLabel = score?.status === "live" ? "Live" : "Final";
 
   return (
     <div className={styles.matchupPage}>
@@ -86,7 +104,13 @@ const MatchupPage = () => {
               Before it's ready (loading/empty/error), the tabs render bare so
               the Post-Game panel can show its own status. Manual switching. */}
           {state.status === "ready" && (data?.home_team || data?.away_team) ? (
-            <MatchupHero homeTeam={data.home_team} awayTeam={data.away_team}>
+            <MatchupHero
+              homeTeam={data.home_team}
+              awayTeam={data.away_team}
+              homeScore={showScore ? score.home_score : null}
+              awayScore={showScore ? score.away_score : null}
+              statusLabel={showScore ? statusLabel : null}
+            >
               <GameTabs gameId={gameId} matchup={state} initialTab={initialTab} />
             </MatchupHero>
           ) : (

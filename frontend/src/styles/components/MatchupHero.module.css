@@ -105,6 +105,31 @@
   text-overflow: ellipsis;
 }
 
+/* Final/live score, sitting right beside each team title. */
+.score {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Centered status pill (Final / Live / Scheduled) between the two teams. */
+.status {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-light);
+  background-color: var(--color-secondary);
+  border-radius: var(--radius-pill);
+  padding: var(--spacing-xxs) var(--spacing-md);
+}
+
 .vs {
   flex-shrink: 0;
   font-size: var(--font-size-sm);

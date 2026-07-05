@@ -305,6 +305,11 @@ export const api = {
 
   getMatchupScore: (ncaaGameId, options) =>
     apiRequest(`${appConfig.endpoints.matchup}${ncaaGameId}/score`, options),
+
+  // Polymarket implied-win-probability history for a game. 200 with an empty
+  // `points` list is expected for the many games that never had a market.
+  getMatchupPolymarketHistory: (ncaaGameId, options) =>
+    apiRequest(`${appConfig.endpoints.matchup}${ncaaGameId}/polymarket`, options),
 };
 
 export default api;

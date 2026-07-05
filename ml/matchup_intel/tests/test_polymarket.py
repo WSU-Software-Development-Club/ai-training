@@ -131,3 +131,119 @@ def test_get_with_retry_degrades_to_none_on_persistent_failure(monkeypatch):
     monkeypatch.setattr(polymarket.requests, "get", _raise)
     monkeypatch.setattr(polymarket.time, "sleep", lambda *_: None)  # skip real backoff
     assert polymarket._get_with_retry("https://example.invalid", {}, timeout=1) is None
+
+
+# --- historical price curve (past/resolved games) -----------------------------
+
+def test_pick_moneyline_skips_spread_and_total_markets():
+    markets = [
+        {"question": "Spread: Michigan (-9.5)",
+         "outcomes": json.dumps(["Ohio State", "Michigan"])},
+        {"question": "Ohio State vs. Michigan: O/U 51.5",
+         "outcomes": json.dumps(["Over", "Under"])},
+        {"question": "Ohio State Buckeyes vs. Michigan",
+         "outcomes": json.dumps(["Ohio State Buckeyes", "Michigan"]),
+         "clobTokenIds": json.dumps(["tok-home", "tok-away"])},
+    ]
+    ml = polymarket._pick_moneyline(markets, "Ohio State", "Michigan")
+    assert ml is not None
+    assert ml["question"] == "Ohio State Buckeyes vs. Michigan"
+
+
+def test_pick_moneyline_none_when_only_derivative_markets():
+    markets = [{"question": "Spread: Michigan (-9.5)",
+                "outcomes": json.dumps(["Ohio State", "Michigan"])}]
+    assert polymarket._pick_moneyline(markets, "Ohio State", "Michigan") is None
+
+
+def test_fetch_price_history_windowed(monkeypatch):
+    captured = {}
+
+    def _fake_get(url, params, timeout, max_retries=3):
+        captured["url"] = url
+        captured["params"] = params
+        return {"history": [{"t": 100, "p": 0.6}, {"t": 200, "p": None},
+                            {"t": 300, "p": 0.9}]}
+
+    monkeypatch.setattr(polymarket, "_get_with_retry", _fake_get)
+    out = polymarket.fetch_price_history("tok-home", 1000, 2000, timeout=5, fidelity=1)
+    # fidelity is floored to the CLOB minimum, and a null price point is dropped.
+    assert captured["params"]["fidelity"] == polymarket._MIN_FIDELITY
+    assert captured["params"]["startTs"] == 1000
+    assert out == [{"t": 100, "p": 0.6}, {"t": 300, "p": 0.9}]
+
+
+def test_find_game_price_history_builds_binary_curve(monkeypatch):
+    event = {
+        "title": "Coastal Carolina Chanticleers vs. Louisiana Tech",
+        "slug": "cfb-coast-loutch-2025-12-30",
+        "startDate": "2025-12-30T19:00:00Z",
+        "markets": [
+            {"id": 999, "question": "Coastal Carolina Chanticleers vs. Louisiana Tech",
+             "outcomes": json.dumps(["Coastal Carolina Chanticleers", "Louisiana Tech"]),
+             "clobTokenIds": json.dumps(["tok-away", "tok-home"])},
+        ],
+    }
+    monkeypatch.setattr(polymarket, "_search_event", lambda h, a, d, t: event)
+
+    kickoff = 1767121200  # 2025-12-30T19:00:00Z
+    game_pt = kickoff + 1800          # in the dense game window
+    pregame_pt = kickoff - 2 * 86400  # days before, from the coarse context fetch
+
+    # The function fetches twice: a DENSE per-minute game window (fidelity 1) and
+    # a COARSE hourly context (fidelity 60). Model each returning its own points.
+    def _fake_history(token, s, e, timeout, fidelity):
+        if token != "tok-home":
+            return None
+        return [{"t": pregame_pt, "p": 0.60}] if fidelity == 60 else [{"t": game_pt, "p": 0.72}]
+
+    monkeypatch.setattr(polymarket, "fetch_price_history", _fake_history)
+    res = polymarket.find_game_price_history(
+        "Louisiana Tech", "Coastal Carolina", "2025-12-30T19:00:00+00:00")
+    assert res is not None
+    assert res["slug"] == "cfb-coast-loutch-2025-12-30"
+    assert res["source_url"].endswith("cfb-coast-loutch-2025-12-30")
+    # Merged: the coarse pre-game point (outside the window) + the dense game point.
+    assert len(res["points"]) == 2
+    # Sorted ascending: pre-game first, then the game point; away = 1 - home.
+    assert res["points"][0]["home_win_prob"] == 0.60
+    assert res["points"][1]["home_win_prob"] == 0.72
+    assert res["points"][1]["away_win_prob"] == 0.28
+
+
+def test_find_game_price_history_drops_coarse_points_inside_game_window(monkeypatch):
+    """A coarse-context point that falls INSIDE the dense game window is dropped,
+    so the per-minute series is the single source of truth there (no duplicates)."""
+    event = {
+        "title": "Coastal Carolina Chanticleers vs. Louisiana Tech",
+        "slug": "cfb-coast-loutch-2025-12-30",
+        "startDate": "2025-12-30T19:00:00Z",
+        "markets": [
+            {"id": 999, "question": "Coastal Carolina Chanticleers vs. Louisiana Tech",
+             "outcomes": json.dumps(["Coastal Carolina Chanticleers", "Louisiana Tech"]),
+             "clobTokenIds": json.dumps(["tok-away", "tok-home"])},
+        ],
+    }
+    monkeypatch.setattr(polymarket, "_search_event", lambda h, a, d, t: event)
+    kickoff = 1767121200
+    in_window = kickoff + 1800
+
+    def _fake_history(token, s, e, timeout, fidelity):
+        # Both fetches return a point inside the game window; the coarse one must
+        # be discarded in favor of the dense one.
+        return [{"t": in_window, "p": 0.72 if fidelity != 60 else 0.70}]
+
+    monkeypatch.setattr(polymarket, "fetch_price_history", _fake_history)
+    res = polymarket.find_game_price_history(
+        "Louisiana Tech", "Coastal Carolina", "2025-12-30T19:00:00+00:00")
+    assert len(res["points"]) == 1
+    assert res["points"][0]["home_win_prob"] == 0.72  # dense wins
+
+
+def test_fetch_game_price_history_swallows_any_exception(monkeypatch):
+    def _boom(*a, **kw):
+        raise RuntimeError("bad payload")
+
+    monkeypatch.setattr(polymarket, "find_game_price_history", _boom)
+    assert polymarket.fetch_game_price_history(
+        "Louisiana Tech", "Coastal Carolina", "2025-12-30") is None
