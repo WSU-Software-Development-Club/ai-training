@@ -1,8 +1,17 @@
 .scoreCard {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  /* Brighter than the base --color-surface, plus a faint top-lit sheen, so
+     the cards read as elevated panels floating above the app canvas rather
+     than blending into it. Scoped to ScoreCard only — --color-surface itself
+     stays untouched for every other panel/table/card in the app. */
+  background-color: var(--color-surface-light);
+  background-image: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   padding: var(--spacing-lg);
   transition: var(--transition-all);
   cursor: pointer;
@@ -53,14 +62,14 @@
    border-color here — the left/right borders are set per-team (inline) to the
    teams' brand colors, and changing border-color would clobber them. */
 .scoreCard:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
 
-/* Bring the logos up slightly on hover for a bit of life. */
+/* Brighten the logo backdrops on hover for a bit of life. */
 .scoreCard:hover::before,
 .scoreCard:hover::after {
-  opacity: 0.2;
+  opacity: 0.32;
 }
 
 .scoreCardHeader {
