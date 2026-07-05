@@ -5,12 +5,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xl);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  /* Same elevated-surface treatment as ScoreCard: lighter base + a faint
+     top-lit sheen so the hero reads as raised above the canvas rather than
+     blending into it. Scoped here only — --color-surface itself is untouched. */
+  background-color: var(--color-surface-light);
+  background-image: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  border: 1px solid var(--color-border-strong);
   border-left-width: 4px;
   border-right-width: 4px;
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   padding: var(--spacing-xl) var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
 }
